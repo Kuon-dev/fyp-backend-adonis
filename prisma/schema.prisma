@@ -15,7 +15,7 @@ generator client {
 generator kysely {
   provider = "prisma-kysely"
 
-  output       = "../tmp/kysely/"
+  output       = "../database/kysely/"
   fileName     = "types.ts"
   // Optionally generate runtime enums to a separate file
   enumFileName = "enums.ts"

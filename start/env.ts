@@ -29,4 +29,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   SMTP_PASS: Env.schema.string(),
 
   OPENAI_API_KEY: Env.schema.string(),
+
+
+  DATABASE_URL: Env.schema.string(),
+  DATABASE_LOCAL_HOST: Env.schema.string(),
+  DATABASE_LOCAL_DB: Env.schema.string(),
+  DATABASE_LOCAL_USER: Env.schema.string(),
+  DATABASE_LOCAL_PASSWORD: Env.schema.string(),
+  DATABASE_LOCAL_PORT: Env.schema.number(),
 })
