@@ -8,10 +8,11 @@ import { sha256 } from "oslo/crypto";
 import UserVerificationService from "#services/user_verification_service";
 import lucia from "#services/lucia_service";
 import { prisma } from "#services/prisma_service";
-import { User } from "lucia";
-import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy } from "#validators/auth";
+// import { User } from "lucia";
+// import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy } from "#validators/auth";
 import { inject } from "@adonisjs/core";
 import mailConfig from "#config/mail";
+import { Exception } from "@adonisjs/core/exceptions";
 
 @inject()
 export default class AuthService {
@@ -85,7 +86,7 @@ export default class AuthService {
       return sessionCookie.serialize();
     } catch (e) {
       console.error("Failed to register user: ", e);
-      throw new Error("Failed to register user");
+      throw new Exception("Failed to register user");
     }
   }
 
@@ -136,7 +137,7 @@ export default class AuthService {
    * @param {string} userId - The user's ID.
    * @returns {Promise<string>} - The password reset token.
    */
-  public async handleCreatePasswordResetToken(userId: string): Promise<string> {
+  public async handleCreatePasswordResetToken(userId: string): Promise<string | Response> {
     await prisma.passwordResetToken.deleteMany({ where: { userId } });
 
     const tokenId = generateIdFromEntropySize(25);

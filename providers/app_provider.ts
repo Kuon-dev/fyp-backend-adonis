@@ -9,9 +9,12 @@ export default class AppProvider {
   register() {}
 
   /**
+   *
    * The container bindings have booted
    */
-  async boot() {}
+  async boot() {
+    await import('../src/extensions.js')
+  }
 
   /**
    * The application has been booted

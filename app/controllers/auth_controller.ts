@@ -1,8 +1,8 @@
+
 import type { HttpContext } from '@adonisjs/core/http'
 import AuthService from '#services/auth_service';
+import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy } from "#validators/auth";
 import { inject } from '@adonisjs/core';
-import logger from '@adonisjs/core/services/logger'
-import { AuthValidator, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy, PrismaEmailExistsAuthStrategy, ZodLoginAuthStrategy } from '#validators/auth';
 
 /**
  * Controller class for handling user authentication operations.
@@ -33,7 +33,7 @@ export default class AuthController {
     try {
       await loginValidator.validate({ email, password });
     } catch (e: Error | any) {
-      return response.status(400).send(e.message);
+      return response.abort({ message: e.message }, 400);
     }
 
     try {
@@ -41,9 +41,9 @@ export default class AuthController {
       if (sessionCookie instanceof Response) {
         throw new Error('Invalid credentials');
       }
-      return response.cookie('session', sessionCookie).status(200).send('Login successful');
+      return response.cookie('session', sessionCookie).status(200).json({ message: 'Login successful' });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 
@@ -56,7 +56,6 @@ export default class AuthController {
    * @bodyParam fullname - The user's full name.
    */
   async register({ request, response }: HttpContext) {
-
     const { email, password, fullname } = request.only(['email', 'password', 'fullname']);
     const registrationValidator = new AuthValidator();
     registrationValidator.addStrategy(new ZodRegistrationAuthStrategy());
@@ -65,7 +64,7 @@ export default class AuthController {
     try {
       await registrationValidator.validate({ email, password, fullname });
     } catch (e: Error | any) {
-      return response.status(400).send(e.message);
+      return response.abort({ message: e.message }, 400);
     }
 
     try {
@@ -73,9 +72,9 @@ export default class AuthController {
       if (sessionCookie instanceof Response) {
         throw new Error('Registration failed');
       }
-      return response.cookie('session', sessionCookie).status(201).send('Registration successful');
+      return response.cookie('session', sessionCookie).status(201).json({ message: 'Registration successful' });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 
@@ -89,9 +88,9 @@ export default class AuthController {
     const sessionId = request.cookie('session');
     try {
       await this.authService.handleLogout(sessionId);
-      return response.clearCookie('session').status(200).send('Logout successful');
+      return response.clearCookie('session').status(200).json({ message: 'Logout successful' });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 
@@ -106,9 +105,12 @@ export default class AuthController {
     const { sessionId, code } = request.only(['sessionId', 'code']);
     try {
       const sessionCookie = await this.authService.handleVerifyEmail(sessionId, code);
-      return response.cookie('session', sessionCookie).status(200).send('Email verification successful');
+      if (sessionCookie instanceof Response) {
+        throw new Error('Email verification failed');
+      }
+      return response.cookie('session', sessionCookie).status(200).json({ message: 'Email verification successful' });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 
@@ -122,9 +124,12 @@ export default class AuthController {
     const { userId } = request.only(['userId']);
     try {
       const token = await this.authService.handleCreatePasswordResetToken(userId);
-      return response.status(200).send({ token });
+      if (token instanceof Response) {
+        throw new Error('Password reset token creation failed');
+      }
+      return response.status(200).json({ token });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 
@@ -139,9 +144,12 @@ export default class AuthController {
     const { token, password } = request.only(['token', 'password']);
     try {
       const sessionCookie = await this.authService.handlePasswordReset(token, password);
-      return response.cookie('session', sessionCookie).status(200).send('Password reset successful');
+      if (sessionCookie instanceof Response) {
+        throw new Error('Password reset failed');
+      }
+      return response.cookie('session', sessionCookie).status(200).json({ message: 'Password reset successful' });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 
@@ -155,9 +163,9 @@ export default class AuthController {
     const { email } = request.only(['email']);
     try {
       const exists = await this.authService.handleVerifyUserExistAndEmailVerified(email);
-      return response.status(200).send({ exists });
+      return response.status(200).json({ exists });
     } catch (error) {
-      return response.status(400).send(error.message);
+      return response.abort({ message: error.message }, 400);
     }
   }
 }
