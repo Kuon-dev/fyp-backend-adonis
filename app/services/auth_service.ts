@@ -30,7 +30,8 @@ export default class AuthService {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      return new Response("Invalid email or password", { status: 400 });
+      // return new Response("Invalid email or password", { status: 400 });
+      throw new Exception("Invalid email or password");
     }
 
     const validPassword = await verify(user.passwordHash, password, {
@@ -39,10 +40,9 @@ export default class AuthService {
       parallelism: 1,
       outputLen: 64,
     });
-    console.log(validPassword);
 
     if (!validPassword) {
-      return new Response("Invalid password", { status: 400 });
+      throw new Exception("Invalid password", { status: 400 });
     }
 
     const session = await lucia.createSession(user.id.toString(), {});

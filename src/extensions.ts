@@ -6,9 +6,9 @@ Request.macro('user', function (this: Request) {
   return this.user
 })
 
-Request.getter('user', function (this: Request) {
-  return this.user
-})
+// Request.getter('user', function (this: Request) {
+//   return this.user
+// })
 
 Request.macro('session', function (this: Request) {
   return this.session

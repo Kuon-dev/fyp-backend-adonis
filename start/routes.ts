@@ -1,6 +1,6 @@
 /*
 |--------------------------------------------------------------------------
-| Routes file
+| routers file
 |--------------------------------------------------------------------------
 |
 | The routes file is used for defining the HTTP routes.
@@ -30,9 +30,18 @@ router
         router.post('/forgot-password', [AuthController, 'createPasswordResetToken'])
         router.post('/reset-password', [AuthController, 'resetPassword'])
         router.post('/verify-email', [AuthController, 'verifyEmail'])
+
+        router.post('/support/ticket', 'SupportController.createTicket');
+        router.get('/support/tickets', 'SupportController.getAllTickets');
+        router.get('/support/tickets/paginated', 'SupportController.getPaginatedTickets');
+        router.get('/support/ticket/:id', 'SupportController.getTicketById');
+        router.get('/support/tickets/title', 'SupportController.getTicketsByTitle');
+        router.get('/support/tickets/email', 'SupportController.getTicketsByEmail');
+        router.get('/support/tickets/status', 'SupportController.getTicketsByStatus');
+        router.put('/support/ticket/:id', 'SupportController.updateTicket');
+        router.post('/support/email', 'SupportController.sendDefaultEmail');
       })
       .prefix('v1')
   })
   .prefix('api')
 
-//
