@@ -9,10 +9,8 @@ export default class AuthGuardMiddleware {
     /**
      * Middleware logic goes here (before the next call)
      */
-    // console.log(ctx)
 
     const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
-    console.log(ctx.request.headers())
     if (!sessionId) {
       ctx.request.user = null;
       ctx.request.session = null;

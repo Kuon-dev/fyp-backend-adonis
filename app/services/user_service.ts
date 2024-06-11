@@ -1,0 +1,180 @@
+// user_service.ts
+import { prisma } from "#services/prisma_service";
+import { hash } from "@node-rs/argon2";
+import { UserFactory } from "../factories/user_factory.js";
+import { Role } from "@prisma/client";
+import type { User } from "lucia";
+
+interface UserCreationData {
+  email: string;
+  password: string;
+  fullname: string;
+  role: Role
+}
+
+interface UserProfileUpdateData {
+  email?: string;
+  password?: string;
+  fullname?: string;
+  businessName?: string;
+  businessAddress?: string;
+  businessPhone?: string;
+  businessEmail?: string;
+}
+
+/**
+ * Service class for managing users.
+ */
+export class UserService {
+  /**
+   * Creates a user with the specified role.
+   *
+   * @param {UserCreationData} data - The user creation data.
+   * @returns {Promise<User>} - The created user.
+   * @throws {Error} - If an invalid role is provided.
+   */
+  async createUser(data: UserCreationData): Promise<User> {
+    const { role, ...userData } = data;
+    switch (role) {
+      case "USER":
+        return (await UserFactory.createUser(userData)).user;
+      case "SELLER":
+        return (await UserFactory.createSeller(userData)).user;
+      case "MODERATOR":
+        return (await UserFactory.createModerator(userData)).user;
+      case "ADMIN":
+        return (await UserFactory.createAdmin(userData)).user;
+      default:
+        throw new Error(`Invalid role: ${role}`);
+    }
+  }
+
+  /**
+   * Retrieves a user by their email.
+   *
+   * @param {string} email - The email of the user.
+   * @returns {Promise<User>} - The user.
+   * @throws {Error} - If the user is not found.
+   */
+  async getUserByEmail(email: string): Promise<User> {
+    const user = await prisma.user.findUnique({
+      where: { email, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new Error(`User with email ${email} not found.`);
+    }
+
+    return user;
+  }
+
+  /**
+   * Retrieves all users.
+   *
+   * @returns {Promise<User[]>} - All users.
+   */
+  async getAllUsers(): Promise<User[]> {
+    return prisma.user.findMany({
+      where: { deletedAt: null },
+    });
+  }
+
+  /**
+   * Retrieves paginated users.
+   *
+   * @param {number} page - The page number.
+   * @param {number} pageSize - The number of users per page.
+   * @returns {Promise<{ users: User[], total: number }>} - The paginated users and total count.
+   */
+  async getPaginatedUsers(page: number, pageSize: number): Promise<{ users: User[], total: number }> {
+    const [users, total] = await prisma.$transaction([
+      prisma.user.findMany({
+        where: { deletedAt: null },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.user.count({
+        where: { deletedAt: null },
+      }),
+    ]);
+
+    return { users, total };
+  }
+
+  /**
+   * Updates a user with the specified data.
+   *
+   * @param {string} email - The email of the user to update.
+   * @param {Partial<UserCreationData>} data - The data to update the user with.
+   * @returns {Promise<User>} - The updated user.
+   */
+  async updateUser(email: string, data: Partial<UserCreationData>): Promise<User> {
+    const user = await prisma.user.update({
+      where: { email, deletedAt: null },
+      data,
+    });
+
+    return user;
+  }
+
+  /**
+   * Updates a user's profile based on their role.
+   *
+   * @param {string} email - The email of the user whose profile is to be updated.
+   * @param {UserProfileUpdateData} data - The profile data to update.
+   * @returns {Promise<User>} - The updated user.
+   * @throws {Error} - If the user is not found or the role is invalid.
+   */
+  async updateUserProfile(email: string, data: UserProfileUpdateData): Promise<User> {
+    const user = await this.getUserByEmail(email);
+
+    switch (user.role) {
+      case "USER":
+      case "MODERATOR":
+      case "ADMIN":
+        const updatedUser = await prisma.user.update({
+          where: { email },
+          data: { email: data.email, passwordHash: data.password ? await hash(data.password) : undefined }
+        });
+
+        await prisma.profile.update({
+          where: { userId: user.id },
+          data: { name: data.fullname }
+        });
+
+        return updatedUser;
+
+      case "SELLER":
+        await prisma.sellerProfile.update({
+          where: { userId: user.id },
+          data: {
+            businessName: data.businessName,
+            businessAddress: data.businessAddress,
+            businessPhone: data.businessPhone,
+            businessEmail: data.businessEmail,
+          }
+        });
+
+        return user;
+
+      default:
+        throw new Error(`Invalid role: ${user.role}`);
+    }
+  }
+
+  /**
+   * Soft deletes a user by their email.
+   *
+   * @param {string} email - The email of the user to soft delete.
+   * @returns {Promise<User>} - The soft deleted user.
+   */
+  async deleteUser(email: string): Promise<User> {
+    const user = await prisma.user.update({
+      where: { email },
+      data: { deletedAt: new Date() },
+    });
+
+    return user;
+  }
+}
+

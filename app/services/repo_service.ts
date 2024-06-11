@@ -15,7 +15,7 @@ export default class RepoService {
    *
    * @param data - The data to create a new Repo.
    */
-  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt'>) {
+  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
     return await prisma.codeRepo.create({
       data,
     });

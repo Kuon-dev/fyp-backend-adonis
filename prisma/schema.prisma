@@ -15,7 +15,7 @@ generator client {
 generator kysely {
   provider = "prisma-kysely"
 
-  output       = "../database/kysely/"
+  output       = "../database//kysely/"
   fileName     = "types.ts"
   // Optionally generate runtime enums to a separate file
   enumFileName = "enums.ts"
@@ -45,13 +45,14 @@ enum Role {
 }
 
 model User {
-  id                    String                  @id @default(cuid())
-  email                 String                  @unique
-  passwordHash          String
-  sessions              Session[]
-  emailVerified         Boolean                 @default(false)
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  sessions      Session[]
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   PasswordResetToken    PasswordResetToken[]
   CodeRepo              CodeRepo[]
@@ -114,6 +115,7 @@ model CodeRepo {
   reviews    Review[]
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
+  deletedAt  DateTime?
   visibility String         @default("public") // "public" or "private"
   status     CodeRepoStatus @default(pending)
 

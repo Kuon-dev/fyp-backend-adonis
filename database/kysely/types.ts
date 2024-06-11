@@ -13,6 +13,7 @@ export type CodeRepo = {
     sourceCss: string;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
+    deletedAt: Timestamp | null;
     visibility: Generated<string>;
     status: Generated<CodeRepoStatus>;
     name: string;
@@ -116,6 +117,7 @@ export type User = {
     emailVerified: Generated<boolean>;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
+    deletedAt: Timestamp | null;
     bannedUntil: Timestamp | null;
     role: Generated<Role>;
     isSellerVerified: Generated<boolean>;

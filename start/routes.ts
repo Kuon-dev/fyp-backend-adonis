@@ -1,3 +1,4 @@
+
 /*
 |--------------------------------------------------------------------------
 | routers file
@@ -8,21 +9,12 @@
 */
 
 import router from '@adonisjs/core/services/router'
-import { prisma } from '#services/prisma_service'
 import { middleware } from '#start/kernel'
-
 
 const AuthController = () => import('#controllers/auth_controller')
 const RepoController = () => import('#controllers/repos_controller')
 const SupportController = () => import('#controllers/supports_controller')
-
-router.get('/', async () => {
-  const users = await prisma.user.findMany()
-  return {
-    hello: 'world',
-    users
-  }
-})
+const UserController = () => import('#controllers/users_controller')
 
 router
   .group(() => {
@@ -38,7 +30,7 @@ router
 
         // Support routes
         router.post('/support/ticket', [SupportController, 'createTicket']);
-        router.get('/support/tickets', [SupportController, 'getAllTickets']).use(middleware.auth())
+        router.get('/support/tickets', [SupportController, 'getAllTickets']).use(middleware.auth());
         router.get('/support/tickets/paginated', [SupportController, 'getPaginatedTickets']);
         router.get('/support/ticket/:id', [SupportController, 'getTicketById']);
         router.get('/support/tickets/title', [SupportController, 'getTicketsByTitle']);
@@ -56,6 +48,15 @@ router
         router.get('/repos/search', [RepoController, 'search']);
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);
         router.get('/repos/all', [RepoController, 'getAll']);
+
+        // User routes
+        router.post('/users', [UserController, 'create']);
+        router.get('/users/:email', [UserController, 'getByEmail']);
+        router.put('/users/:email', [UserController, 'update']);
+        router.delete('/users/:email', [UserController, 'delete']);
+        router.get('/users', [UserController, 'getAll']);
+        router.get('/users/paginated', [UserController, 'getPaginated']);
+        router.put('/users/:email/profile', [UserController, 'updateProfile']);
       })
       .prefix('v1');
   })
