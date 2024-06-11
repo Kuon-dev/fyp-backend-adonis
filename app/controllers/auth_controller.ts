@@ -3,6 +3,9 @@ import type { HttpContext } from '@adonisjs/core/http'
 import AuthService from '#services/auth_service';
 import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy } from "#validators/auth";
 import { inject } from '@adonisjs/core';
+import lucia from '#services/lucia_service';
+import { Exception } from '@adonisjs/core/exceptions';
+import type { Cookie } from 'lucia';
 
 /**
  * Controller class for handling user authentication operations.
@@ -11,14 +14,14 @@ import { inject } from '@adonisjs/core';
 export default class AuthController {
   /**
    * Creates an instance of AuthController.
-   * 
+   *
    * @param authService - The authentication service.
    */
   constructor(protected authService: AuthService) {}
 
   /**
    * Handle user login.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam email - The user's email address.
    * @bodyParam password - The user's password.
@@ -37,19 +40,27 @@ export default class AuthController {
     }
 
     try {
-      const sessionCookie = await this.authService.handleLogin(email, password);
+      const sessionCookie: Cookie | Response  = await this.authService.handleLogin(email, password);
       if (sessionCookie instanceof Response) {
         throw new Error('Invalid credentials');
       }
-      return response.cookie('session', sessionCookie).status(200).json({ message: 'Login successful' });
+
+      // const c = sessionCookie.serialize();
+      const c = sessionCookie.serialize();
+      console.log(c)
+      const sid = lucia.readSessionCookie(c);
+      const { user } = await lucia.validateSession(sid ?? "");
+      if (!user) throw new Exception("Invalid session",{ status: 401, code: "E_INVALID_SESSION"});
+
+      return response.header('Set-Cookie', c).status(200).json({ message: 'Login successful' });
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, error.status ?? 400);
     }
   }
 
   /**
    * Handle user registration.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam email - The user's email address.
    * @bodyParam password - The user's password.
@@ -80,7 +91,7 @@ export default class AuthController {
 
   /**
    * Handle user logout.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @cookieParam session - The session ID cookie.
    */
@@ -96,7 +107,7 @@ export default class AuthController {
 
   /**
    * Handle email verification.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam sessionId - The session ID of the user.
    * @bodyParam code - The verification code.
@@ -116,7 +127,7 @@ export default class AuthController {
 
   /**
    * Handle password reset token creation.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam userId - The user's ID.
    */
@@ -135,7 +146,7 @@ export default class AuthController {
 
   /**
    * Handle password reset.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam token - The password reset token.
    * @bodyParam password - The new password.
@@ -155,7 +166,7 @@ export default class AuthController {
 
   /**
    * Verify if user exists and their email is verified.
-   * 
+   *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam email - The user's email address.
    */

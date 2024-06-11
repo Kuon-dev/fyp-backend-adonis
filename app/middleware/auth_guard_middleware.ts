@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import lucia from '#services/lucia_service';
 import { Exception } from '@adonisjs/core/exceptions';
+import UnAuthorizedException from '#exceptions/un_authorized_exception';
 
 export default class AuthGuardMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
@@ -11,11 +12,11 @@ export default class AuthGuardMiddleware {
     // console.log(ctx)
 
     const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
+    console.log(ctx.request.headers())
     if (!sessionId) {
       ctx.request.user = null;
       ctx.request.session = null;
-      // return sendErrorResponse(reply, 401, "Unauthorized");
-      throw new Exception("Unauthorized", { status: 401 });
+      throw new UnAuthorizedException()
     }
 
     const { session, user } = await lucia.validateSession(sessionId);
