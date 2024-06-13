@@ -9,12 +9,22 @@
 */
 
 import router from '@adonisjs/core/services/router'
+import { prisma } from '#services/prisma_service'
 import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
 const RepoController = () => import('#controllers/repos_controller')
 const SupportController = () => import('#controllers/supports_controller')
 const UserController = () => import('#controllers/users_controller')
+const OrderController = () => import('#controllers/orders_controller')
+
+router.get('/', async () => {
+  const users = await prisma.user.findMany()
+  return {
+    hello: 'world',
+    users
+  }
+})
 
 router
   .group(() => {
@@ -57,6 +67,17 @@ router
         router.get('/users', [UserController, 'getAll']);
         router.get('/users/paginated', [UserController, 'getPaginated']);
         router.put('/users/:email/profile', [UserController, 'updateProfile']);
+
+        // Order routes
+        router.post('/orders', [OrderController, 'create']);
+        router.get('/orders', [OrderController, 'getAll']);
+        router.get('/orders/:id', [OrderController, 'getById']);
+        router.get('/users/:userId/orders', [OrderController, 'getByUser']);
+        router.put('/orders/:id', [OrderController, 'update']);
+        router.delete('/orders/:id', [OrderController, 'delete']);
+        router.get('/orders/status/:status', [OrderController, 'getByStatus']);
+        router.get('/users/:userId/orders/status/:status', [OrderController, 'getUserOrdersByStatus']);
+        router.get('/orders/search', [OrderController, 'searchOrders']);
       })
       .prefix('v1');
   })

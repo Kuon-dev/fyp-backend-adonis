@@ -54,6 +54,7 @@ export type Order = {
     codeRepoId: string;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
+    deletedAt: Timestamp | null;
     status: Generated<OrderStatus>;
     totalAmount: number;
 };

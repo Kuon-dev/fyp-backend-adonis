@@ -43,6 +43,10 @@ export default class AuthGuardMiddleware {
       throw new UnAuthorizedException('Permission denied');
     }
 
+    if (user.bannedUntil && user.bannedUntil > new Date()) {
+      throw new UnAuthorizedException('User is banned');
+    }
+
     ctx.request.user = user;
     ctx.request.session = session;
 

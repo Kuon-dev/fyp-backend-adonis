@@ -28,6 +28,7 @@ export const lucia = new Lucia(adapter, {
       emailVerified: attributes.emailVerified,
       // avatar: attributes.avatar,
       role: attributes.role,
+      bannedUntil: attributes.bannedUntil,
     };
   },
 });
@@ -61,6 +62,7 @@ declare module "lucia" {
       avatar: string;
       emailVerified: boolean;
       role: Role;
+      bannedUntil?: Date | null;
     };
   }
 }
