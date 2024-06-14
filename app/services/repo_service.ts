@@ -5,6 +5,13 @@ import { SelectQueryBuilder, expressionBuilder } from "kysely";
 import type { CodeRepo, Language, CodeRepoStatus } from "@prisma/client";
 import { kyselyDb } from "#database/kysely";
 import { prisma } from "./prisma_service.js";
+import env from "#start/env";
+import Stripe from "stripe";
+import logger from '@adonisjs/core/services/logger'
+
+const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
+  apiVersion: '2024-04-10',
+});
 
 /**
  * Service class for handling Repo operations.
@@ -16,9 +23,27 @@ export default class RepoService {
    * @param data - The data to create a new Repo.
    */
   public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
-    return await prisma.codeRepo.create({
+    logger.info(data)
+    const repo = await prisma.codeRepo.create({
       data,
     });
+
+    const product = await stripe.products.create({
+      name: data.name,
+      description: data.description || undefined,
+    });
+
+    // Create a price in Stripe
+    const price = await stripe.prices.create({
+      product: product.id,
+      unit_amount: data.price * 100, // converting to cents
+      currency: 'usd',
+    });
+
+    console.log("Product created: ", product);
+    console.log("Price created: ", price);
+
+    return repo
   }
 
   /**

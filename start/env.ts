@@ -30,6 +30,7 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   OPENAI_API_KEY: Env.schema.string(),
 
+  FRONTEND_URL: Env.schema.string(),
 
   DATABASE_URL: Env.schema.string(),
   DATABASE_LOCAL_HOST: Env.schema.string(),
@@ -37,4 +38,10 @@ export default await Env.create(new URL('../', import.meta.url), {
   DATABASE_LOCAL_USER: Env.schema.string(),
   DATABASE_LOCAL_PASSWORD: Env.schema.string(),
   DATABASE_LOCAL_PORT: Env.schema.number(),
+
+  LEMON_SQUEEZY_API_KEY: Env.schema.string(),
+
+  STRIPE_SECRET_KEY: Env.schema.string(),
+  STRIPE_PUBLIC_KEY: Env.schema.string(),
+  // STRIPE_WEBHOOK_SECRET: Env.schema.string(),
 })

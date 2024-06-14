@@ -17,6 +17,7 @@ const RepoController = () => import('#controllers/repos_controller')
 const SupportController = () => import('#controllers/supports_controller')
 const UserController = () => import('#controllers/users_controller')
 const OrderController = () => import('#controllers/orders_controller')
+const CheckoutController = () => import('#controllers/checkout_controller')
 
 router.get('/', async () => {
   const users = await prisma.user.findMany()
@@ -78,6 +79,9 @@ router
         router.get('/orders/status/:status', [OrderController, 'getByStatus']);
         router.get('/users/:userId/orders/status/:status', [OrderController, 'getUserOrdersByStatus']);
         router.get('/orders/search', [OrderController, 'searchOrders']);
+
+        router.post('/checkout', [CheckoutController, 'createCheckoutSession']);
+        router.get('/checkout/:sessionId', [CheckoutController, 'getCheckoutSession']);
       })
       .prefix('v1');
   })
