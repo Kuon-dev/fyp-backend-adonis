@@ -28,13 +28,13 @@ export default class UserVerificationService {
     return code;
   }
 
-  async sendVerificationCode(email: string, code: string): Promise<void> {
+  async sendVerificationCode(email: string, code: string, token: string): Promise<void> {
     await mail.send((message) => {
       message
         .to(email)
         .from(env.get('SMTP_HOST') ?? "")
         .subject('Verify your email address')
-        .html(render(KortexVerifyEmail({ validationCode: code })))
+        .html(render(KortexVerifyEmail({ validationCode: code, authToken: token })))
     })
   }
 

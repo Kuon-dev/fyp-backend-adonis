@@ -47,6 +47,9 @@ importers:
       '@sentry/profiling-node':
         specifier: ^7.112.2
         version: 7.116.0
+      '@types/react':
+        specifier: ^18.3.3
+        version: 18.3.3
       '@vinejs/vine':
         specifier: ^2.0.0
         version: 2.1.0
@@ -84,8 +87,8 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2
       stripe:
-        specifier: ^15.11.0
-        version: 15.11.0
+        specifier: ^15.12.0
+        version: 15.12.0
       zod:
         specifier: ^3.23.6
         version: 3.23.8
@@ -6353,8 +6356,8 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
-  stripe@15.11.0:
-    resolution: {integrity: sha512-qmZF0PN1jRVpiQrXL8eTb9Jy/6S+aUlcDquKBFT2h3PkaD7RZ444FIojVXUg67FK2zFIUNXgMv02c7csdL5qHg==}
+  stripe@15.12.0:
+    resolution: {integrity: sha512-slTbYS1WhRJXVB8YXU8fgHizkUrM9KJyrw4Dd8pLEwzKHYyQTIE46EePC2MVbSDZdE24o1GdNtzmJV4PrPpmJA==}
     engines: {node: '>=12.*'}
 
   strtok3@7.0.0:
@@ -12936,7 +12939,7 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
-  stripe@15.11.0:
+  stripe@15.12.0:
     dependencies:
       '@types/node': 20.14.2
       qs: 6.12.1

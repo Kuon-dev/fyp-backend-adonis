@@ -1,4 +1,5 @@
 
+
 /*
 |--------------------------------------------------------------------------
 | routers file
@@ -54,7 +55,9 @@ router
 
         // Repo routes
         router.post('/repos', [RepoController, 'create']);
-        router.get('/repos/:id', [RepoController, 'getById']);
+
+        router.get('/repo/:id', [RepoController, 'getById']);
+
         router.put('/repos/:id', [RepoController, 'update']);
         router.delete('/repos/:id', [RepoController, 'delete']);
         router.get('/repos', [RepoController, 'getPaginated']);

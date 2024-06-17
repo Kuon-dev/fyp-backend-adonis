@@ -16,6 +16,7 @@ import * as React from "react";
 
 interface KortexVerifyEmailProps {
   validationCode?: string;
+  authToken?: string
 }
 
 // const baseUrl = process.env.BASE_URL || "http://localhost:5173";
@@ -23,6 +24,7 @@ const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
 export const KortexVerifyEmail = ({
   validationCode,
+  authToken
 }: KortexVerifyEmailProps) => (
   <Html>
     <Head />
@@ -38,7 +40,7 @@ export const KortexVerifyEmail = ({
         />
         <Heading style={heading}>Verify Your Email</Heading>
         <Section style={buttonContainer}>
-          <Button style={button} href={`${frontendUrl}/verify-email?code=${validationCode}`}>
+          <Button style={button} href={`${frontendUrl}/verify-email?code=${validationCode}&auth_session=${authToken}`}>
               Click here to verify your email
           </Button>
         </Section>

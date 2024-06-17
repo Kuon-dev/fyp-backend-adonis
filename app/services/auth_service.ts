@@ -78,13 +78,14 @@ export default class AuthService {
       await prisma.profile.create({
         data: { userId: id, name: fullname },
       });
-
-      const code = await this.userVerificationService.generateEmailVerificationCode(id, email);
-      await this.userVerificationService.sendVerificationCode(email, code);
-
       const session = await lucia.createSession(id, {});
       const sessionCookie = lucia.createSessionCookie(session.id);
-      return sessionCookie.serialize();
+      const token = sessionCookie.serialize();
+
+      const code = await this.userVerificationService.generateEmailVerificationCode(id, email);
+      await this.userVerificationService.sendVerificationCode(email, code, token);
+      return token
+
     } catch (e) {
       console.error("Failed to register user: ", e);
       throw new Exception("Failed to register user");
@@ -112,7 +113,7 @@ export default class AuthService {
     const { user } = await lucia.validateSession(sessionId);
 
     if (!user) {
-      throw new UnAuthorizedException("Invalid session", { status: 401 });
+      throw new UnAuthorizedException("Invalid User", { status: 401 });
     }
 
     const validCode = await this.userVerificationService.verifyVerificationCode(user, code);
@@ -208,7 +209,10 @@ export default class AuthService {
     if (user.emailVerified) {
       throw new Exception("Email already verified", { status: 400 });
     }
+    const session = await lucia.createSession(user.id.toString(), {});
+    const token = lucia.createSessionCookie(session.id).serialize();
+
     const code = await this.userVerificationService.generateEmailVerificationCode(user.id, user.email);
-    await this.userVerificationService.sendVerificationCode(user.email, code);
+    await this.userVerificationService.sendVerificationCode(user.email, code, token);
   }
 }

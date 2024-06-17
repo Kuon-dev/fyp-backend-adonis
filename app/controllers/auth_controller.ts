@@ -8,6 +8,7 @@ import { Exception } from '@adonisjs/core/exceptions';
 import type { Cookie } from 'lucia';
 import { UserService } from '#services/user_service';
 import { prisma } from '#services/prisma_service';
+import InvalidSessionIdException from '#exceptions/invalid_session_id_exception';
 
 /**
  * Controller class for handling user authentication operations.
@@ -52,7 +53,7 @@ export default class AuthController {
       console.log(c)
       const sid = lucia.readSessionCookie(c);
       const { user } = await lucia.validateSession(sid ?? "");
-      if (!user) throw new Exception("Invalid session",{ status: 401, code: "E_INVALID_SESSION"});
+      if (!user) throw new InvalidSessionIdException();
 
       return response.header('Set-Cookie', c).status(200).json({ message: 'Login successful' });
     } catch (error) {
@@ -77,7 +78,11 @@ export default class AuthController {
     try {
       await registrationValidator.validate({ email, password, fullname });
     } catch (e: Error | any) {
-      return response.abort({ message: e.message }, 400);
+      console.log(e)
+      if (Array.isArray(e)) {
+        return response.abort({ message: e}, 400);
+      }
+      else return response.abort({ message: e.message }, 400);
     }
 
     try {
@@ -119,7 +124,7 @@ export default class AuthController {
     try {
       const sessionId = lucia.readSessionCookie(request.headers().cookie ?? "");
       if (!sessionId) {
-        throw new Error('Invalid session');
+        throw new InvalidSessionIdException();
       }
       const sessionCookie = await this.authService.handleVerifyEmail(sessionId, code);
       if (sessionCookie instanceof Response) {
@@ -187,7 +192,7 @@ export default class AuthController {
   }
 
   async sendVerifyEmailCodeFromUser({ request, response }: HttpContext) {
-    if (request.user === null) throw new Exception('User not found in request object', { status: 401, code: 'E_UNAUTHORIZED' });
+    if (request.user === null) throw new UnauthorizedException('User not found in request object');
     console.log(request.user)
     try {
       await this.authService.sendVerifyEmailCode(request.user);
@@ -211,7 +216,7 @@ export default class AuthController {
       if (!profile) await prisma.profile.create({ data: { userId: request.user?.id, name: 'new user' } });
       return response.status(200).json({
         user: request.user,
-        profile: profile 
+        profile: profile
       });
     } catch (error) {
       return response.abort({ message: error.message }, 400);

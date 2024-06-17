@@ -196,7 +196,7 @@ export class SearchSpecification implements RepoSpecification {
 
   apply(query : SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
     return query.where((eb) => eb.or([
-      eb('title', 'ilike', `%${this.query}%`),
+      eb('name', 'ilike', `%${this.query}%`),
       eb('description', 'ilike', `%${this.query}%`),
     ]))
   }

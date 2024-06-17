@@ -1,5 +1,5 @@
 import { prisma } from '#services/prisma_service';
-import { z } from 'zod';
+import { ZodError, z } from 'zod';
 
 /**
  * Schema for validating user registration data.
@@ -61,7 +61,19 @@ export interface AuthStrategy {
  */
 export class ZodRegistrationAuthStrategy implements AuthStrategy {
   async validate(data: { email: string; password: string; fullname: string }): Promise<void> {
-    registrationSchema.parse(data);
+    try {
+      registrationSchema.parse(data);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw error.errors.map(e => ({
+          code: e.code,
+          path: e.path,
+          message: e.message,
+          fatalError: e.fatal,
+        }));
+      }
+      throw error;
+    }
   }
 }
 
@@ -70,7 +82,19 @@ export class ZodRegistrationAuthStrategy implements AuthStrategy {
  */
 export class ZodLoginAuthStrategy implements AuthStrategy {
   async validate(data: { email: string; password: string }): Promise<void> {
-    loginSchema.parse(data);
+    try {
+      loginSchema.parse(data);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw error.errors.map(e => ({
+          code: e.code,
+          path: e.path,
+          message: e.message,
+          fatalError: e.fatal,
+        }));
+      }
+      throw error;
+    }
   }
 }
 
@@ -79,7 +103,19 @@ export class ZodLoginAuthStrategy implements AuthStrategy {
  */
 export class ZodForgotPasswordAuthStrategy implements AuthStrategy {
   async validate(data: { email: string }): Promise<void> {
-    forgotPasswordSchema.parse(data);
+    try {
+      forgotPasswordSchema.parse(data);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw error.errors.map(e => ({
+          code: e.code,
+          path: e.path,
+          message: e.message,
+          fatalError: e.fatal,
+        }));
+      }
+      throw error;
+    }
   }
 }
 
@@ -88,10 +124,21 @@ export class ZodForgotPasswordAuthStrategy implements AuthStrategy {
  */
 export class ZodResetPasswordAuthStrategy implements AuthStrategy {
   async validate(data: { token: string; password: string; confirmPassword: string }): Promise<void> {
-    resetPasswordSchema.parse(data);
+    try {
+      resetPasswordSchema.parse(data);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw error.errors.map(e => ({
+          code: e.code,
+          path: e.path,
+          message: e.message,
+          fatalError: e.fatal,
+        }));
+      }
+      throw error;
+    }
   }
 }
-
 /**
  * Strategy for ensuring unique email using Prisma.
  */
