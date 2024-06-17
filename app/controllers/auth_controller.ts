@@ -6,6 +6,8 @@ import { inject } from '@adonisjs/core';
 import lucia from '#services/lucia_service';
 import { Exception } from '@adonisjs/core/exceptions';
 import type { Cookie } from 'lucia';
+import { UserService } from '#services/user_service';
+import { prisma } from '#services/prisma_service';
 
 /**
  * Controller class for handling user authentication operations.
@@ -17,7 +19,7 @@ export default class AuthController {
    *
    * @param authService - The authentication service.
    */
-  constructor(protected authService: AuthService) {}
+  constructor(protected authService: AuthService, protected userService: UserService) {}
 
   /**
    * Handle user login.
@@ -106,15 +108,19 @@ export default class AuthController {
   }
 
   /**
-   * Handle email verification.
+   * Handle email verification, this refers to verifying a user's email address.
    *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam sessionId - The session ID of the user.
    * @bodyParam code - The verification code.
    */
   async verifyEmail({ request, response }: HttpContext) {
-    const { sessionId, code } = request.only(['sessionId', 'code']);
+    const { code } = request.only([ 'code']);
     try {
+      const sessionId = lucia.readSessionCookie(request.headers().cookie ?? "");
+      if (!sessionId) {
+        throw new Error('Invalid session');
+      }
       const sessionCookie = await this.authService.handleVerifyEmail(sessionId, code);
       if (sessionCookie instanceof Response) {
         throw new Error('Email verification failed');
@@ -175,6 +181,38 @@ export default class AuthController {
     try {
       const exists = await this.authService.handleVerifyUserExistAndEmailVerified(email);
       return response.status(200).json({ exists });
+    } catch (error) {
+      return response.abort({ message: error.message }, 400);
+    }
+  }
+
+  async sendVerifyEmailCodeFromUser({ request, response }: HttpContext) {
+    if (request.user === null) throw new Exception('User not found in request object', { status: 401, code: 'E_UNAUTHORIZED' });
+    console.log(request.user)
+    try {
+      await this.authService.sendVerifyEmailCode(request.user);
+      return response.status(200).json({ message: 'Verification email sent' });
+    } catch (error) {
+      return response.abort({ message: error.message }, error.status ?? 400);
+    }
+  }
+
+  /**
+   * Get the user profile.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   */
+
+  async me({ request, response }: HttpContext) {
+    try {
+      if (request.user === null) throw new Exception('User not found in request object', { status: 401, code: 'E_UNAUTHORIZED' });
+      const profile = await this.userService.getUserProfileById(request.user?.id);
+      // if the user profile is somehow not being created
+      if (!profile) await prisma.profile.create({ data: { userId: request.user?.id, name: 'new user' } });
+      return response.status(200).json({
+        user: request.user,
+        profile: profile 
+      });
     } catch (error) {
       return response.abort({ message: error.message }, 400);
     }

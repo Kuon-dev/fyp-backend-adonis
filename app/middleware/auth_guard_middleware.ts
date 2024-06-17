@@ -5,12 +5,8 @@ import lucia from '#services/lucia_service';
 import UnAuthorizedException from '#exceptions/un_authorized_exception';
 import { Role } from '@prisma/client';
 
-interface MiddlewareOptions {
-  roles?: Role[];
-}
-
 export default class AuthGuardMiddleware {
-  async handle(ctx: HttpContext, next: NextFn, options?: MiddlewareOptions) {
+  async handle(ctx: HttpContext, next: NextFn, options: { role: Role }) {
     const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
     if (!sessionId) {
       ctx.request.user = null;
@@ -39,8 +35,8 @@ export default class AuthGuardMiddleware {
     }
 
     // Check if the user has the required role
-    if (options?.roles && !options.roles.includes(user.role)) {
-      throw new UnAuthorizedException('Permission denied');
+    if (options.role && user.role !== options.role) {
+      throw new UnAuthorizedException('User does not have the required role');
     }
 
     if (user.bannedUntil && user.bannedUntil > new Date()) {

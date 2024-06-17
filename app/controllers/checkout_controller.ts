@@ -18,42 +18,48 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
  */
 // @inject()
 export default class CheckoutController {
+
   /**
    * Create a Stripe Checkout Session.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam repoId - The ID of the Repo to purchase.
+   * @bodyParam repoIds - An array of IDs of the Repos to purchase.
    */
   public async createCheckoutSession({ request, response }: HttpContext) {
-    const { repoId } = request.body();
+    const { repoIds } = request.body();
 
-    // Retrieve the repo from the database
-    const repo = await prisma.codeRepo.findUnique({
-      where: { id: repoId },
+    if (!Array.isArray(repoIds) || repoIds.length === 0) {
+      return response.status(400).send({ error: 'Invalid repoIds provided' });
+    }
+
+    // Retrieve the repos from the database
+    const repos = await prisma.codeRepo.findMany({
+      where: { id: { in: repoIds } },
     });
 
-    if (!repo) {
-      return response.status(404).send({ error: 'Repo not found' });
+    if (repos.length === 0) {
+      return response.status(404).send({ error: 'No repos found for the provided IDs' });
     }
+
+    // Create line items for the checkout session
+    const lineItems = repos.map(repo => ({
+      price: repo.stripePriceId!,
+      quantity: 1,
+    }));
 
     try {
       // Create a Checkout Session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
-        line_items: [
-          {
-            price: "price_1PRdvpBwwJRw41A6xzVSGWMD",
-            quantity: 1,
-          },
-        ],
+        line_items: lineItems,
         mode: 'payment',
-        success_url: `${env.get("FRONTEND_URL")}/checkout-success`,
-        cancel_url: `${env.get("FRONTEND_URL")}/checkout-cancel`,
+        success_url: `${env.get('FRONTEND_URL')}/checkout/success`,
+        cancel_url: `${env.get('FRONTEND_URL')}/checkout/cancel`,
       });
 
-      return response.send({ url: session.url, id: session.id});
+      return response.send({ url: session.url, id: session.id });
     } catch (error) {
-      logger.error(error)
+      logger.error(error);
       return response.status(500).send({ error: 'Error creating checkout session' });
     }
   }

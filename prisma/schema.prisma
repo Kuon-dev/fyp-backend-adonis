@@ -125,7 +125,9 @@ model CodeRepo {
   price       Float    @default(0.0)
   tags        Tag[]
 
-  orders Order[]
+  orders          Order[]
+  stripeProductId String?
+  stripePriceId   String?
 }
 
 enum CodeRepoStatus {

@@ -2,7 +2,7 @@
 import { prisma } from "#services/prisma_service";
 import { hash } from "@node-rs/argon2";
 import { UserFactory } from "../factories/user_factory.js";
-import { Role } from "@prisma/client";
+import type { Role, SellerProfile, Profile } from "@prisma/client";
 import type { User } from "lucia";
 
 interface UserCreationData {
@@ -99,6 +99,40 @@ export class UserService {
     ]);
 
     return { users, total };
+  }
+
+  /*
+   * Retrieves a user by their ID.
+   *
+   * @param {string} id - The ID of the user.
+   * @returns {Promise<User>} - The user.
+   * @throws {Error} - If the user is not found.
+   *
+ */
+
+  async getUserProfileById(id: string): Promise<Profile | SellerProfile | null> {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+    if (!user) {
+      throw new Error(`User with id ${id} not found.`);
+    }
+
+    if (user.role === "SELLER") {
+      const profile = await prisma.sellerProfile.findFirst({
+        where: { userId: id },
+      });
+
+      return profile
+    }
+
+    else {
+      const profile = await prisma.profile.findFirst({
+        where: { userId: id },
+      });
+
+      return profile ?? null
+    }
   }
 
   /**

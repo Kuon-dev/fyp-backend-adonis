@@ -38,10 +38,12 @@ router
         router.post('/forgot-password', [AuthController, 'createPasswordResetToken']);
         router.post('/reset-password', [AuthController, 'resetPassword']);
         router.post('/verify-email', [AuthController, 'verifyEmail']);
+        router.post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser']).use(middleware.auth({ role: 'USER' }));
+        router.get('/me', [AuthController, 'me']).use(middleware.auth({ role: 'USER' }));
 
         // Support routes
         router.post('/support/ticket', [SupportController, 'createTicket']);
-        router.get('/support/tickets', [SupportController, 'getAllTickets']).use(middleware.auth());
+        router.get('/support/tickets', [SupportController, 'getAllTickets']).use(middleware.auth({ role: 'ADMIN' }));
         router.get('/support/tickets/paginated', [SupportController, 'getPaginatedTickets']);
         router.get('/support/ticket/:id', [SupportController, 'getTicketById']);
         router.get('/support/tickets/title', [SupportController, 'getTicketsByTitle']);
@@ -58,6 +60,7 @@ router
         router.get('/repos', [RepoController, 'getPaginated']);
         router.get('/repos/search', [RepoController, 'search']);
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);
+        router.get('/repos/user', [RepoController, 'getByUserSession']);
         router.get('/repos/all', [RepoController, 'getAll']);
 
         // User routes

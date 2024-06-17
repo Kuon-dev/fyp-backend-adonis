@@ -2,7 +2,7 @@
 import { createDate, TimeSpan, isWithinExpirationDate } from "oslo";
 import { verify } from "@node-rs/argon2";
 import { hash } from "@node-rs/argon2";
-import { Cookie, generateIdFromEntropySize } from "lucia";
+import { Cookie, User, generateIdFromEntropySize } from "lucia";
 import { encodeHex } from "oslo/encoding";
 import { sha256 } from "oslo/crypto";
 import UserVerificationService from "#services/user_verification_service";
@@ -13,6 +13,8 @@ import { prisma } from "#services/prisma_service";
 import { inject } from "@adonisjs/core";
 import mailConfig from "#config/mail";
 import { Exception } from "@adonisjs/core/exceptions";
+import logger from "@adonisjs/core/services/logger";
+import UnAuthorizedException from "#exceptions/un_authorized_exception";
 
 @inject()
 export default class AuthService {
@@ -76,7 +78,6 @@ export default class AuthService {
       await prisma.profile.create({
         data: { userId: id, name: fullname },
       });
-      console.log(mailConfig)
 
       const code = await this.userVerificationService.generateEmailVerificationCode(id, email);
       await this.userVerificationService.sendVerificationCode(email, code);
@@ -111,7 +112,7 @@ export default class AuthService {
     const { user } = await lucia.validateSession(sessionId);
 
     if (!user) {
-      return new Response("Unauthorized", { status: 401 });
+      throw new UnAuthorizedException("Invalid session", { status: 401 });
     }
 
     const validCode = await this.userVerificationService.verifyVerificationCode(user, code);
@@ -200,5 +201,14 @@ export default class AuthService {
 
     const session = await lucia.createSession(tokenData.userId.toString(), {});
     return lucia.createSessionCookie(session.id);
+  }
+
+  public async sendVerifyEmailCode(user: User) {
+    logger.info('sending email verification code to ' + user.email);
+    if (user.emailVerified) {
+      throw new Exception("Email already verified", { status: 400 });
+    }
+    const code = await this.userVerificationService.generateEmailVerificationCode(user.id, user.email);
+    await this.userVerificationService.sendVerificationCode(user.email, code);
   }
 }

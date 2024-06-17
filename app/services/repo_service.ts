@@ -1,7 +1,5 @@
 // import { SelectQueryBuilder, ExpressionBuilder, expressionBuilder } from "kysely";
 import { SelectQueryBuilder, expressionBuilder } from "kysely";
-// import { prisma } from "@/services/prisma";
-// import { kyselyDb } from "@/database/kysely/database";
 import type { CodeRepo, Language, CodeRepoStatus } from "@prisma/client";
 import { kyselyDb } from "#database/kysely";
 import { prisma } from "./prisma_service.js";
@@ -22,7 +20,7 @@ export default class RepoService {
    *
    * @param data - The data to create a new Repo.
    */
-  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>) {
+  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'>) {
     logger.info(data)
     const repo = await prisma.codeRepo.create({
       data,

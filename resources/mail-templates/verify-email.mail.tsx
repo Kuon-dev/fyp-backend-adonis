@@ -26,7 +26,7 @@ export const KortexVerifyEmail = ({
 }: KortexVerifyEmailProps) => (
   <Html>
     <Head />
-    <Preview>Your login code for Kortex</Preview>
+    <Preview>Verify Your Email</Preview>
     <Body style={main}>
       <Container style={container}>
         <Img
@@ -36,21 +36,20 @@ export const KortexVerifyEmail = ({
           alt="Kortex"
           style={logo}
         />
-        <Heading style={heading}>Your login code for Kortex</Heading>
+        <Heading style={heading}>Verify Your Email</Heading>
         <Section style={buttonContainer}>
-          <Button style={button} href={`${frontendUrl}/login`}>
-            Login to Kortex
+          <Button style={button} href={`${frontendUrl}/verify-email?code=${validationCode}`}>
+              Click here to verify your email
           </Button>
         </Section>
         <Text style={paragraph}>
-          This link and code will only be valid for the next 5 minutes. If the
-          link does not work, you can use the login verification code directly:
+            Thanks for signing up for Kortex! To complete your registration, please verify your email address by entering the following code:
         </Text>
         <code style={code}>{validationCode}</code>
         <Hr style={hr} />
-        <Link href={`${frontendUrl}/login`} style={reportLink}>
-          Kortex
-        </Link>
+        <Text style={paragraph}>
+        Kortex will never ask you for your password or verification code in an email. If you didn't request this code, please ignore this email.
+        </Text>
       </Container>
     </Body>
   </Html>

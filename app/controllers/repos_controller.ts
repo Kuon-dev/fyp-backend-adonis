@@ -21,8 +21,7 @@ export default class RepoController {
     const data = request.only([
       'name', 'description', 'language', 'price', 'tags'
     ]);
-    console.log(data)
-    // if (!request.user) throw new Exception('User not found in request object');
+    if (!request.user) throw new Exception('User not found in request object');
 
     try {
       const repo = await this.repoService.createRepo({
@@ -161,6 +160,18 @@ export default class RepoController {
       return response.abort({ message: error.message }, 400);
     }
   }
+
+  public async getByUserSession({ request, response }: HttpContext) {
+    console.log(request.user)
+    if (!request.user) throw new Exception('User not found in request object');
+
+    try {
+      const repos = await this.repoService.getReposByUser(request.user.id);
+      return response.status(200).json(repos);
+    } catch (error) {
+      return response.abort({ message: error.message }, 400);
+    }
+  };
 
   /**
    * Retrieve all Repos without filtering by visibility.

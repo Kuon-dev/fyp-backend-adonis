@@ -5,7 +5,6 @@ import { prisma } from "#services/prisma_service";
 import { generateIdFromEntropySize } from "lucia";
 import { Role } from "@prisma/client";
 
-
 interface UserFactoryData {
   email: string;
   password: string;

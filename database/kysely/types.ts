@@ -20,6 +20,8 @@ export type CodeRepo = {
     description: string | null;
     language: Language;
     price: Generated<number>;
+    stripeProductId: string | null;
+    stripePriceId: string | null;
 };
 export type CodeRepoToTag = {
     A: string;
