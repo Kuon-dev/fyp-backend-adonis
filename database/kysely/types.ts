@@ -83,6 +83,12 @@ export type Review = {
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
 };
+export type SearchHistory = {
+    id: string;
+    userId: string;
+    tag: string;
+    createdAt: Generated<Timestamp>;
+};
 export type SellerProfile = {
     id: string;
     userId: string;
@@ -135,6 +141,7 @@ export type DB = {
     PasswordResetToken: PasswordResetToken;
     Profile: Profile;
     Review: Review;
+    SearchHistory: SearchHistory;
     SellerProfile: SellerProfile;
     Session: Session;
     SupportTicket: SupportTicket;

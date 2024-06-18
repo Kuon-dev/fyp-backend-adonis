@@ -1,5 +1,4 @@
-// import { SelectQueryBuilder, ExpressionBuilder, expressionBuilder } from "kysely";
-import { SelectQueryBuilder, expressionBuilder } from "kysely";
+import { SelectQueryBuilder, expressionBuilder, sql } from "kysely";
 import type { CodeRepo, Language, CodeRepoStatus } from "@prisma/client";
 import { kyselyDb } from "#database/kysely";
 import { prisma } from "./prisma_service.js";
@@ -15,7 +14,6 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
  * Service class for handling Repo operations.
  */
 export default class RepoService {
-
   /**
    * Create a new Repo.
    *
@@ -56,6 +54,9 @@ export default class RepoService {
       currency: 'usd',
     });
 
+    console.log("Product created: ", product);
+    console.log("Price created: ", price);
+
     return repo;
   }
 
@@ -63,9 +64,10 @@ export default class RepoService {
    * Retrieve a Repo by ID.
    *
    * @param id - The ID of the Repo.
+   * @param userId - The ID of the user viewing the repo (can be null for guests).
    */
-  public async getRepoById(id: string) {
-    return await prisma.codeRepo.findUnique({
+  public async getRepoById(id: string, userId: string | null) {
+    const repo = await prisma.codeRepo.findUnique({
       where: { id },
       include: {
         reviews: true,
@@ -73,6 +75,14 @@ export default class RepoService {
         orders: true,
       },
     });
+
+    if (repo && userId) {
+      for (const tag of repo.tags) {
+        await this.recordSearch(userId, tag.name);
+      }
+    }
+
+    return repo;
   }
 
   /**
@@ -123,16 +133,63 @@ export default class RepoService {
   }
 
   /**
+   * Record search tag for a user.
+   *
+   * @param userId - The ID of the user.
+   * @param tag - The searched tag.
+   */
+  public async recordSearch(userId: string, tag: string) {
+    await prisma.searchHistory.create({
+      data: {
+        userId,
+        tag,
+      },
+    });
+  }
+
+  /**
    * Search Repos by dynamic criteria.
    *
    * @param specifications - The list of specifications to filter by.
+   * @param userId - The ID of the user performing the search (can be null for guests).
    */
-  public async searchRepos(specifications: RepoSpecification[]) {
+  public async searchRepos(specifications: RepoSpecification[], userId: string | null) {
     const compositeSpecification = new CompositeSpecification();
     specifications.forEach((spec) => compositeSpecification.add(spec));
 
     const query = kyselyDb.selectFrom("CodeRepo").selectAll();
     const filteredQuery = compositeSpecification.apply(query);
+
+    // Record the search tags if user is logged in
+    if (userId) {
+      for (const spec of specifications) {
+        if (spec instanceof TagSpecification) {
+          for (const tag of spec.tags) {
+            await this.recordSearch(userId, tag);
+          }
+        }
+      }
+
+      // Fetch user's recent search tags
+      const recentTags = await prisma.searchHistory.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10, // Adjust as needed
+      });
+
+      const recentTagNames = recentTags.map(tag => tag.tag);
+
+      // Prioritize repos that match recent search tags
+      const prioritizedQuery = filteredQuery
+        .orderBy(
+          (sql
+            `CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
+          )
+        )
+        .orderBy('createdAt', 'desc');
+
+      return await prioritizedQuery.execute();
+    }
 
     return await filteredQuery.execute();
   }
@@ -161,8 +218,6 @@ export default class RepoService {
   }
 }
 
-
-
 interface RepoSpecification {
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any>;
 }
@@ -176,7 +231,7 @@ export class VisibilitySpecification implements RepoSpecification {
 }
 
 export class TagSpecification implements RepoSpecification {
-  constructor(private tags: string[]) {}
+  constructor(public tags: string[]) {}
 
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
     const eb = expressionBuilder(query);
@@ -209,7 +264,7 @@ export class UserSpecification implements RepoSpecification {
 export class SearchSpecification implements RepoSpecification {
   constructor(private query: string) {}
 
-  apply(query : SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
+  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
     return query.where((eb) => eb.or([
       eb('name', 'ilike', `%${this.query}%`),
       eb('description', 'ilike', `%${this.query}%`),

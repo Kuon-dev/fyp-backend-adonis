@@ -4,9 +4,10 @@ import { Role } from "@prisma/client";
 import { prisma } from "./prisma_service.js";
 
 import {
-  Request,
+  HttpContext,
   // Response,
 } from '@adonisjs/core/http'
+import logger from "@adonisjs/core/services/logger";
 
 // import type { Session, User } from 'lucia'
 
@@ -33,9 +34,8 @@ export const lucia = new Lucia(adapter, {
   },
 });
 
-export const validateRequest = async (request: Request) => {
-  // get session from fastify cookie
-  const sessionId = request.cookie('session', undefined)
+export const validateRequestFromMiddleware = async (ctx: HttpContext) => {
+  const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
   if (!sessionId)
     return {
       user: null,
@@ -46,10 +46,10 @@ export const validateRequest = async (request: Request) => {
   try {
     if (result.session && result.session.fresh) {
       const sessionCookie = lucia.createSessionCookie(result.session.id);
-      request.cookie('session', sessionCookie.serialize());
+      ctx.request.headers().SetCookie = sessionCookie.serialize()
     }
   } catch (error) {
-    console.log(error);
+    logger.error(error);
   }
   return result;
 };

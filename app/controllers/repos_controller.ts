@@ -1,4 +1,3 @@
-// import { HttpContext } from '@ioc:Adonis/Core/HttpContext';
 import type { HttpContext } from '@adonisjs/core/http'
 import RepoService, { LanguageSpecification, SearchSpecification, TagSpecification, UserSpecification, VisibilitySpecification } from '#services/repo_service';
 import { inject } from '@adonisjs/core';
@@ -19,8 +18,9 @@ export default class RepoController {
    */
   public async create({ request, response }: HttpContext) {
     const data = request.only([
-      'name', 'description', 'language', 'price', 'tags'
+      'name', 'description', 'language', 'price', 'tags', 'visibility'
     ]);
+
     if (!request.user) throw new Exception('User not found in request object');
 
     try {
@@ -29,7 +29,6 @@ export default class RepoController {
         ...data,
         sourceJs: '',
         sourceCss: '',
-        visibility: 'private',  // Default visibility, can be adjusted as needed
         status: 'pending',  // Default status, can be adjusted as needed
       });
       return response.status(201).json(repo);
@@ -37,17 +36,18 @@ export default class RepoController {
       return response.abort({ message: error.message }, 400);
     }
   }
+
   /**
    * Retrieve a Repo by ID.
    *
    * @param {HttpContext} ctx - The HTTP context object.
    * @paramParam id - The ID of the Repo.
    */
-  public async getById({ params, response }: HttpContext) {
+  public async getById({ params, request, response }: HttpContext) {
     const { id } = params;
 
     try {
-      const repo = await this.repoService.getRepoById(id);
+      const repo = await this.repoService.getRepoById(id, request.user?.id ?? null);
       return response.status(200).json(repo);
     } catch (error) {
       return response.abort({ message: error.message }, 400);
@@ -137,7 +137,7 @@ export default class RepoController {
     if (query) specifications.push(new SearchSpecification(query));
 
     try {
-      const repos = await this.repoService.searchRepos(specifications);
+      const repos = await this.repoService.searchRepos(specifications, request.user?.id ?? null);
       return response.status(200).json(repos);
     } catch (error) {
       return response.abort({ message: error.message }, 400);
@@ -162,6 +162,7 @@ export default class RepoController {
   }
 
   public async getByUserSession({ request, response }: HttpContext) {
+    console.log(request.user)
     if (!request.user) throw new Exception('User not found in request object');
 
     try {

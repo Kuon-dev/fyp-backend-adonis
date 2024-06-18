@@ -35,7 +35,7 @@ router
         // Auth routes
         router.post('/login', [AuthController, 'login']);
         router.post('/register', [AuthController, 'register']);
-        router.post('/logout', [AuthController, 'logout']);
+        router.post('/logout', [AuthController, 'logout']).use(middleware.auth({ role: 'USER' }));
         router.post('/forgot-password', [AuthController, 'createPasswordResetToken']);
         router.post('/reset-password', [AuthController, 'resetPassword']);
         router.post('/verify-email', [AuthController, 'verifyEmail']);
@@ -60,7 +60,7 @@ router
         router.put('/repos/:id', [RepoController, 'update']);
         router.delete('/repos/:id', [RepoController, 'delete']);
         router.get('/repos', [RepoController, 'getPaginated']);
-        router.get('/repos/search', [RepoController, 'search']);
+        router.get('/repos/search', [RepoController, 'search']).use(middleware.getUserSession());
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);
         router.get('/repos/user', [RepoController, 'getByUserSession']).use(middleware.auth({ role: 'USER' }));
         router.get('/repos/all', [RepoController, 'getAll']);
