@@ -162,7 +162,6 @@ export default class RepoController {
   }
 
   public async getByUserSession({ request, response }: HttpContext) {
-    console.log(request.user)
     if (!request.user) throw new Exception('User not found in request object');
 
     try {

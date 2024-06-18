@@ -15,15 +15,33 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
  * Service class for handling Repo operations.
  */
 export default class RepoService {
+
   /**
    * Create a new Repo.
    *
    * @param data - The data to create a new Repo.
    */
-  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'>) {
-    logger.info(data)
+  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'> & { tags: string[] }) {
+    logger.info(data);
+
+    // Create tags and link them to the repo
+    const tagRecords = await Promise.all(
+      data.tags.map(async (tag) => {
+        return prisma.tag.upsert({
+          where: { name: tag },
+          update: {},
+          create: { name: tag },
+        });
+      })
+    );
+
     const repo = await prisma.codeRepo.create({
-      data,
+      data: {
+        ...data,
+        tags: {
+          connect: tagRecords.map(tag => ({ id: tag.id })),
+        },
+      },
     });
 
     const product = await stripe.products.create({
@@ -38,10 +56,7 @@ export default class RepoService {
       currency: 'usd',
     });
 
-    console.log("Product created: ", product);
-    console.log("Price created: ", price);
-
-    return repo
+    return repo;
   }
 
   /**

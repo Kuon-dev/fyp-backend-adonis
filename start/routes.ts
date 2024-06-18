@@ -54,8 +54,7 @@ router
         router.post('/support/email', [SupportController, 'sendDefaultEmail']);
 
         // Repo routes
-        router.post('/repos', [RepoController, 'create']);
-
+        router.post('/repos', [RepoController, 'create']).use(middleware.auth({ role: 'USER' }));
         router.get('/repo/:id', [RepoController, 'getById']);
 
         router.put('/repos/:id', [RepoController, 'update']);
@@ -63,7 +62,7 @@ router
         router.get('/repos', [RepoController, 'getPaginated']);
         router.get('/repos/search', [RepoController, 'search']);
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);
-        router.get('/repos/user', [RepoController, 'getByUserSession']);
+        router.get('/repos/user', [RepoController, 'getByUserSession']).use(middleware.auth({ role: 'USER' }));
         router.get('/repos/all', [RepoController, 'getAll']);
 
         // User routes
