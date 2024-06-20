@@ -114,16 +114,32 @@ export default class RepoService {
    *
    * @param page - The page number for pagination.
    * @param limit - The number of items per page.
+   * @param userId - The ID of the user requesting the pagination (can be null for guests).
    */
-  public async getPaginatedRepos(page: number = 1, limit: number = 10) {
+  public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null) {
     const offset = (page - 1) * limit;
-    const repos = await prisma.codeRepo.findMany({
-      skip: offset,
-      take: limit,
-      where: {
-        visibility: 'public',
-      },
-    });
+
+    let query = kyselyDb.selectFrom("CodeRepo").selectAll().where("visibility", "=", "public").limit(limit).offset(offset);
+
+    if (userId) {
+      // Fetch user's recent search tags
+      const recentTags = await prisma.searchHistory.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10, // Adjust as needed
+      });
+
+      const recentTagNames = recentTags.map(tag => tag.tag);
+
+      // Prioritize repos that match recent search tags
+      query = query
+        .orderBy(
+          sql`CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
+        )
+        .orderBy('createdAt', 'desc');
+    }
+
+    const repos = await query.execute();
     const total = await prisma.codeRepo.count({
       where: {
         visibility: 'public',
@@ -182,9 +198,7 @@ export default class RepoService {
       // Prioritize repos that match recent search tags
       const prioritizedQuery = filteredQuery
         .orderBy(
-          (sql
-            `CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
-          )
+          sql`CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
         )
         .orderBy('createdAt', 'desc');
 

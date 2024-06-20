@@ -59,7 +59,7 @@ router
 
         router.put('/repos/:id', [RepoController, 'update']);
         router.delete('/repos/:id', [RepoController, 'delete']);
-        router.get('/repos', [RepoController, 'getPaginated']);
+        router.get('/repos', [RepoController, 'getPaginated']).use(middleware.getUserSession());
         router.get('/repos/search', [RepoController, 'search']).use(middleware.getUserSession());
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);
         router.get('/repos/user', [RepoController, 'getByUserSession']).use(middleware.auth({ role: 'USER' }));

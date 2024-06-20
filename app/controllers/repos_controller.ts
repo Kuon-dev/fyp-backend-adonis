@@ -104,7 +104,40 @@ export default class RepoController {
     const limit = request.input('limit', 10);
 
     try {
-      const repos = await this.repoService.getPaginatedRepos(page, limit);
+      const repos = await this.repoService.getPaginatedRepos(page, limit, request.user?.id ?? '');
+      return response.status(200).json(repos);
+    } catch (error) {
+      return response.abort({ message: error.message }, 400);
+    }
+  }
+
+  /**
+   * Search Repos by dynamic criteria.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @queryParam tags - Optional tags filter.
+   * @queryParam language - Optional language filter.
+   * @queryParam userId - Optional user ID filter.
+   * @queryParam query - Optional search query for title and description.
+   */
+  public async search({ request, response }: HttpContext) {
+    // const visibility = request.input('visibility');
+    const tags = request.input('tags');
+    const language = request.input('language');
+    const userId = request.input('userId');
+    const query = request.input('query');
+
+    const specifications = [];
+
+    // force public visibility for all users except admin and mods
+    specifications.push(new VisibilitySpecification("public"));
+    if (tags) specifications.push(new TagSpecification(tags));
+    if (language) specifications.push(new LanguageSpecification(language));
+    if (userId) specifications.push(new UserSpecification(userId));
+    if (query) specifications.push(new SearchSpecification(query));
+
+    try {
+      const repos = await this.repoService.searchRepos(specifications, request.user?.id ?? null);
       return response.status(200).json(repos);
     } catch (error) {
       return response.abort({ message: error.message }, 400);
@@ -121,7 +154,7 @@ export default class RepoController {
    * @queryParam userId - Optional user ID filter.
    * @queryParam query - Optional search query for title and description.
    */
-  public async search({ request, response }: HttpContext) {
+  public async searchElevated({ request, response }: HttpContext) {
     const visibility = request.input('visibility');
     const tags = request.input('tags');
     const language = request.input('language');
@@ -130,6 +163,7 @@ export default class RepoController {
 
     const specifications = [];
 
+    // force public visibility for all users except admin and mods
     if (visibility) specifications.push(new VisibilitySpecification(visibility));
     if (tags) specifications.push(new TagSpecification(tags));
     if (language) specifications.push(new LanguageSpecification(language));
@@ -143,6 +177,7 @@ export default class RepoController {
       return response.abort({ message: error.message }, 400);
     }
   }
+
 
   /**
    * Retrieve Repos by user ID.
