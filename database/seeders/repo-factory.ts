@@ -4,6 +4,7 @@ import type { CodeRepo, User, Tag } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import Stripe from 'stripe';
 import { randomBoolean, weightedRandomDelete } from "./utils.js";
+import { TYPESCRIPT_VARIANT_1, TYPESCRIPT_VARIANT_2, TYPESCRIPT_VARIANT_3, TYPESCRIPT_VARIANT_4, TYPESCRIPT_VARIANT_5 } from "./constants.js";
 
 const prisma = new PrismaClient();
 
@@ -37,8 +38,14 @@ export const generateCodeRepos = async (count: number = 10) => {
     const codeRepo: CodeRepo = {
       id: generateIdFromEntropySize(32),
       userId: userId,
-      sourceJs: faker.lorem.paragraphs(3),
-      sourceCss: faker.lorem.paragraphs(2),
+      sourceJs: faker.helpers.arrayElement([
+        TYPESCRIPT_VARIANT_1,
+        TYPESCRIPT_VARIANT_2,
+        TYPESCRIPT_VARIANT_3,
+        TYPESCRIPT_VARIANT_4,
+        TYPESCRIPT_VARIANT_5,
+      ]),
+      sourceCss: "/* CSS */",
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: weightedRandomDelete(),

@@ -40,7 +40,7 @@ router
         router.post('/reset-password', [AuthController, 'resetPassword']);
         router.post('/verify-email', [AuthController, 'verifyEmail']);
         router.post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser']).use(middleware.auth({ role: 'USER' }));
-        router.get('/me', [AuthController, 'me']).use(middleware.auth({ role: 'USER' }));
+        router.get('/me', [AuthController, 'me'])
 
         // Support routes
         router.post('/support/ticket', [SupportController, 'createTicket']);
@@ -59,8 +59,8 @@ router
 
         router.put('/repos/:id', [RepoController, 'update']);
         router.delete('/repos/:id', [RepoController, 'delete']);
-        router.get('/repos', [RepoController, 'getPaginated']).use(middleware.getUserSession());
-        router.get('/repos/search', [RepoController, 'search']).use(middleware.getUserSession());
+        router.get('/repos', [RepoController, 'getPaginated'])
+        router.get('/repos/search', [RepoController, 'search'])
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);
         router.get('/repos/user', [RepoController, 'getByUserSession']).use(middleware.auth({ role: 'USER' }));
         router.get('/repos/all', [RepoController, 'getAll']);

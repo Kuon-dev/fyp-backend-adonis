@@ -1,5 +1,6 @@
+
 import { SelectQueryBuilder, expressionBuilder, sql } from "kysely";
-import type { CodeRepo, Language, CodeRepoStatus } from "@prisma/client";
+import type { CodeRepo, OrderStatus } from "@prisma/client";
 import { kyselyDb } from "#database/kysely";
 import { prisma } from "./prisma_service.js";
 import env from "#start/env";
@@ -10,6 +11,12 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
   apiVersion: '2024-04-10',
 });
 
+// Create a type that makes sourceJs and sourceCss optional
+type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss'> & {
+  sourceJs?: string;
+  sourceCss?: string;
+};
+
 /**
  * Service class for handling Repo operations.
  */
@@ -19,7 +26,7 @@ export default class RepoService {
    *
    * @param data - The data to create a new Repo.
    */
-  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'> & { tags: string[] }) {
+  public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'> & { tags: string[] }): Promise<CodeRepo> {
     logger.info(data);
 
     // Create tags and link them to the repo
@@ -66,7 +73,7 @@ export default class RepoService {
    * @param id - The ID of the Repo.
    * @param userId - The ID of the user viewing the repo (can be null for guests).
    */
-  public async getRepoById(id: string, userId: string | null) {
+  public async getRepoById(id: string, userId: string | null): Promise<PartialCodeRepo | null> {
     const repo = await prisma.codeRepo.findUnique({
       where: { id },
       include: {
@@ -80,9 +87,36 @@ export default class RepoService {
       for (const tag of repo.tags) {
         await this.recordSearch(userId, tag.name);
       }
+
+      // Check if the user is the owner, admin, or has purchased the code
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const hasAccess = repo.userId === userId || user?.role === 'ADMIN' || await this.hasPurchased(userId, id);
+      const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
+
+      if (!hasAccess) {
+        delete partialRepo.sourceJs;
+        delete partialRepo.sourceCss;
+      }
     }
 
     return repo;
+  }
+
+  /**
+   * Check if a user has purchased a repo.
+   *
+   * @param userId - The ID of the user.
+   * @param repoId - The ID of the repo.
+   */
+  private async hasPurchased(userId: string, repoId: string): Promise<boolean> {
+    const count = await prisma.order.count({
+      where: {
+        userId,
+        codeRepoId: repoId,
+        status: 'completed' as OrderStatus,
+      },
+    });
+    return count > 0;
   }
 
   /**
@@ -91,7 +125,7 @@ export default class RepoService {
    * @param id - The ID of the Repo.
    * @param data - The data to update the Repo.
    */
-  public async updateRepo(id: string, data: Partial<CodeRepo>) {
+  public async updateRepo(id: string, data: Partial<CodeRepo>): Promise<CodeRepo> {
     return await prisma.codeRepo.update({
       where: { id },
       data,
@@ -103,7 +137,7 @@ export default class RepoService {
    *
    * @param id - The ID of the Repo.
    */
-  public async deleteRepo(id: string) {
+  public async deleteRepo(id: string): Promise<CodeRepo> {
     return await prisma.codeRepo.delete({
       where: { id },
     });
@@ -116,7 +150,7 @@ export default class RepoService {
    * @param limit - The number of items per page.
    * @param userId - The ID of the user requesting the pagination (can be null for guests).
    */
-  public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null) {
+  public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null): Promise<{ repos: PartialCodeRepo[]; total: number; page: number; limit: number }> {
     const offset = (page - 1) * limit;
 
     let query = kyselyDb.selectFrom("CodeRepo").selectAll().where("visibility", "=", "public").limit(limit).offset(offset);
@@ -145,7 +179,26 @@ export default class RepoService {
         visibility: 'public',
       },
     });
-    return { repos, total, page, limit };
+
+    // Filter out source code for unauthorized users
+    const filteredRepos = await Promise.all(repos.map(async (repo) => {
+      const partialRepo: PartialCodeRepo = { ...repo };
+      if (userId) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const hasAccess = repo.userId === userId || user?.role === 'ADMIN' || await this.hasPurchased(userId, repo.id);
+
+        if (!hasAccess) {
+          delete partialRepo.sourceJs;
+          delete partialRepo.sourceCss;
+        }
+      } else {
+        delete partialRepo.sourceJs;
+        delete partialRepo.sourceCss;
+      }
+      return partialRepo;
+    }));
+
+    return { repos: filteredRepos, total, page, limit };
   }
 
   /**
@@ -154,7 +207,7 @@ export default class RepoService {
    * @param userId - The ID of the user.
    * @param tag - The searched tag.
    */
-  public async recordSearch(userId: string, tag: string) {
+  public async recordSearch(userId: string, tag: string): Promise<void> {
     await prisma.searchHistory.create({
       data: {
         userId,
@@ -169,7 +222,7 @@ export default class RepoService {
    * @param specifications - The list of specifications to filter by.
    * @param userId - The ID of the user performing the search (can be null for guests).
    */
-  public async searchRepos(specifications: RepoSpecification[], userId: string | null) {
+  public async searchRepos(specifications: RepoSpecification[], userId: string | null): Promise<PartialCodeRepo[]> {
     const compositeSpecification = new CompositeSpecification();
     specifications.forEach((spec) => compositeSpecification.add(spec));
 
@@ -202,10 +255,35 @@ export default class RepoService {
         )
         .orderBy('createdAt', 'desc');
 
-      return await prioritizedQuery.execute();
+      const repos = await prioritizedQuery.execute();
+
+      // Filter out source code for unauthorized users
+      const filteredRepos = await Promise.all(repos.map(async (repo) => {
+        const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const hasAccess = repo.userId === userId || user?.role === 'ADMIN' || await this.hasPurchased(userId, repo.id);
+
+        if (!hasAccess) {
+          delete partialRepo.sourceJs;
+          delete partialRepo.sourceCss;
+        }
+        return partialRepo;
+      }));
+
+      return filteredRepos;
     }
 
-    return await filteredQuery.execute();
+    const repos = await filteredQuery.execute();
+
+    // Filter out source code for guest users
+    const filteredRepos = repos.map((repo) => {
+      const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
+      delete partialRepo.sourceJs;
+      delete partialRepo.sourceCss;
+      return partialRepo;
+    });
+
+    return filteredRepos;
   }
 
   /**
@@ -213,7 +291,7 @@ export default class RepoService {
    *
    * @param userId - The user ID to filter by.
    */
-  public async getReposByUser(userId: string) {
+  public async getReposByUser(userId: string): Promise<CodeRepo[]> {
     const query = kyselyDb.selectFrom("CodeRepo").selectAll().where("userId", "=", userId);
     return await query.execute();
   }
@@ -221,7 +299,7 @@ export default class RepoService {
   /**
    * Retrieve all Repos without filtering by visibility.
    */
-  public async getAllRepos() {
+  public async getAllRepos(): Promise<CodeRepo[]> {
     return await prisma.codeRepo.findMany({
       include: {
         reviews: true,

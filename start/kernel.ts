@@ -26,6 +26,7 @@ server.use([
   () => import('#middleware/container_bindings_middleware'),
   () => import('#middleware/force_json_response_middleware'),
   () => import('@adonisjs/cors/cors_middleware'),
+  () => import('#middleware/get_user_session_middleware'),
 ])
 
 /**
@@ -42,6 +43,5 @@ router.use([
  * the routes or the routes group.
  */
 export const middleware = router.named({
-  getUserSession: () => import('#middleware/get_user_session_middleware'),
   auth: () => import('#middleware/auth_guard_middleware'),
 })
