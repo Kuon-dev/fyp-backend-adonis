@@ -1,7 +1,7 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import {
   // getAuthenticatedUser,
-  lemonSqueezySetup,
+  // lemonSqueezySetup,
 } from "@lemonsqueezy/lemonsqueezy.js";
 import env from "#start/env"
 
@@ -20,18 +20,18 @@ export default class AppProvider {
   async boot() {
     await import('../src/extensions.js')
 
-    const apiKey = env.get("LEMON_SQUEEZY_API_KEY")
-
-    lemonSqueezySetup({
-      apiKey,
-      onError: (error) => console.error("Error while setting up Lemon Squeezy", error),
-    });
-
-    fetch("https://api.lemonsqueezy.com/v1/stores/94953", {
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-      },
-    }).then((response) => response.json()).then((data) => console.log(data));
+    // const apiKey = env.get("LEMON_SQUEEZY_API_KEY")
+    //
+    // lemonSqueezySetup({
+    //   apiKey,
+    //   onError: (error) => console.error("Error while setting up Lemon Squeezy", error),
+    // });
+    //
+    // fetch("https://api.lemonsqueezy.com/v1/stores/94953", {
+    //   headers: {
+    //     "Authorization": `Bearer ${apiKey}`,
+    //   },
+    // }).then((response) => response.json()).then((data) => console.log(data));
   }
 
   /**
