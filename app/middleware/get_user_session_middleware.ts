@@ -10,9 +10,10 @@ export default class GetUserSessionMiddleware {
      */
     const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
     if (!sessionId) {
+      console.log('null')
       ctx.request.user = null;
       ctx.request.session = null;
-      throw new UnAuthorizedException();
+      return await next()
     }
 
     const { session, user } = await lucia.validateSession(sessionId);

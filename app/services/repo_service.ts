@@ -150,7 +150,7 @@ export default class RepoService {
    * @param limit - The number of items per page.
    * @param userId - The ID of the user requesting the pagination (can be null for guests).
    */
-  public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null): Promise<{ repos: PartialCodeRepo[]; total: number; page: number; limit: number }> {
+  public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null): Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> {
     const offset = (page - 1) * limit;
 
     let query = kyselyDb.selectFrom("CodeRepo").selectAll().where("visibility", "=", "public").limit(limit).offset(offset);
@@ -198,7 +198,7 @@ export default class RepoService {
       return partialRepo;
     }));
 
-    return { repos: filteredRepos, total, page, limit };
+    return { data: filteredRepos, total, page, limit };
   }
 
   /**

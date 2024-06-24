@@ -87,6 +87,14 @@ router
 
         router.post('/checkout', [CheckoutController, 'createCheckoutSession']);
         router.get('/checkout/:sessionId', [CheckoutController, 'getCheckoutSession']);
+
+        router.get('/ping', async () => {
+          return {
+            message: 'pong',
+            // time interval to calculate response time
+            time: Date.now()
+          }
+        })
       })
       .prefix('v1');
   })
