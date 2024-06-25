@@ -1,3 +1,4 @@
+
 import type { HttpContext } from '@adonisjs/core/http'
 import Stripe from 'stripe';
 import { prisma } from '#services/prisma_service';
@@ -12,20 +13,19 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
   apiVersion: '2024-04-10',
 });
 
-
 /**
- * Controller class for handling Checkout operations.
+ * Controller class for handling Payment operations.
  */
 // @inject()
-export default class CheckoutController {
+export default class PaymentController {
 
   /**
-   * Create a Stripe Checkout Session.
+   * Create a Stripe Payment Intent.
    *
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam repoIds - An array of IDs of the Repos to purchase.
    */
-  public async createCheckoutSession({ request, response }: HttpContext) {
+  public async createPaymentIntent({ request, response }: HttpContext) {
     const { repoIds } = request.body();
 
     if (!Array.isArray(repoIds) || repoIds.length === 0) {
@@ -41,44 +41,45 @@ export default class CheckoutController {
       return response.status(404).send({ error: 'No repos found for the provided IDs' });
     }
 
-    // Create line items for the checkout session
-    const lineItems = repos.map(repo => ({
-      price: repo.stripePriceId!,
-      quantity: 1,
-    }));
+    // Calculate the total amount for the payment intent
+    const amount = repos.reduce((total, repo) => total + repo.price, 0);
 
     try {
-      // Create a Checkout Session
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: lineItems,
-        mode: 'payment',
-        success_url: `${env.get('FRONTEND_URL')}/checkout/success`,
-        cancel_url: `${env.get('FRONTEND_URL')}/checkout/cancel`,
+      // Create a Payment Intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          repoIds: repoIds.join(','),
+        },
       });
 
-      return response.send({ url: session.url, id: session.id });
+      return response.send({ clientSecret: paymentIntent.client_secret });
     } catch (error) {
       logger.error(error);
-      return response.status(500).send({ error: 'Error creating checkout session' });
+      return response.status(500).send({ error: 'Error creating payment intent' });
     }
   }
 
   /**
-   * Retrieve a Stripe Checkout Session.
+   * Retrieve a Stripe Payment Intent.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam sessionId - The ID of the Stripe Checkout Session.
+   * @paramParam paymentIntentId - The ID of the Stripe Payment Intent.
    */
-  public async getCheckoutSession({ params, response }: HttpContext) {
-    const { sessionId } = params;
+  public async getPaymentIntent({ params, response }: HttpContext) {
+    const { paymentIntentId } = params;
 
     try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-      return response.send(session);
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      return response.send(paymentIntent);
     } catch (error) {
-      logger.error(error)
-      return response.status(500).send({ error: 'Error retrieving checkout session' });
+      logger.error(error);
+      return response.status(500).send({ error: 'Error retrieving payment intent' });
     }
   }
 }
+
