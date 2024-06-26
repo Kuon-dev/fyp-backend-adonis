@@ -6,6 +6,7 @@ import env from "#start/env";
 import logger from '@adonisjs/core/services/logger'
 import { OrderService } from '#services/order_service';
 import { OrderStatus } from '@prisma/client';
+import { inject } from '@adonisjs/core';
 
 const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
   apiVersion: '2024-04-10',
@@ -14,13 +15,10 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
 /**
  * Controller class for handling Payment operations.
  */
+
+@inject()
 export default class PaymentController {
-  private orderService: OrderService;
-
-  constructor() {
-    this.orderService = new OrderService();
-  }
-
+  constructor(protected orderService: OrderService) {} 
   /**
    * Create a Stripe Payment Intent.
    *

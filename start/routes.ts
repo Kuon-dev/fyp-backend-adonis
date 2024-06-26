@@ -19,6 +19,7 @@ const SupportController = () => import('#controllers/supports_controller')
 const UserController = () => import('#controllers/users_controller')
 const OrderController = () => import('#controllers/orders_controller')
 const CheckoutController = () => import('#controllers/checkout_controller')
+const CodeCheckController = () => import('#controllers/code_checks_controller')
 
 const HealthChecksController = () => import('#controllers/health_checks_controller')
 
@@ -89,6 +90,8 @@ router
 
         router.post('/checkout', [CheckoutController, 'createPaymentIntent']);
         router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent']);
+
+        router.post('/code-check', [CodeCheckController, 'checkCode']);
 
         router.get('/health', [HealthChecksController])
         router.get('/ping', async () => {
