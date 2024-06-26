@@ -42,6 +42,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   LEMON_SQUEEZY_API_KEY: Env.schema.string(),
 
   STRIPE_SECRET_KEY: Env.schema.string(),
-  STRIPE_PUBLIC_KEY: Env.schema.string(),
+  STRIPE_PUBLIC_KEY: Env.schema.string(),,
   // STRIPE_WEBHOOK_SECRET: Env.schema.string(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring the limiter package
+  |----------------------------------------------------------
+  */
+  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const)
 })

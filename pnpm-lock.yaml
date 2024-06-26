@@ -17,6 +17,9 @@ importers:
       '@adonisjs/cors':
         specifier: ^2.2.1
         version: 2.2.1(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))
+      '@adonisjs/limiter':
+        specifier: ^2.3.1
+        version: 2.3.1(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))(@adonisjs/lucid@20.6.0(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))(pg@8.12.0))
       '@adonisjs/lucid':
         specifier: ^20.6.0
         version: 20.6.0(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))(pg@8.12.0)
@@ -301,6 +304,18 @@ packages:
       '@adonisjs/events': ^9.0.0
       '@adonisjs/fold': ^10.0.1
       '@adonisjs/logger': ^6.0.1
+
+  '@adonisjs/limiter@2.3.1':
+    resolution: {integrity: sha512-vABPT1jFgQ9fUhRkfoKjeEfiQ2DXYZencn6l2A1wegoZvhj01ihsCjarsFiHki4o22Xvbj/9x1W89uKz4fROCg==}
+    peerDependencies:
+      '@adonisjs/core': ^6.12.1
+      '@adonisjs/lucid': ^20.1.0 || ^21.0.0
+      '@adonisjs/redis': ^8.0.1 || ^9.0.0
+    peerDependenciesMeta:
+      '@adonisjs/lucid':
+        optional: true
+      '@adonisjs/redis':
+        optional: true
 
   '@adonisjs/logger@6.0.3':
     resolution: {integrity: sha512-CKxIpWBEX/e6duRE6qq8GJ90NQC8q26Q0aSuj+bUO6X4mgcgawxhciJTfpxmJNj9KEUmNAeHOn0hSpTITdk8Lg==}
@@ -6058,6 +6073,9 @@ packages:
   randombytes@2.1.0:
     resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
 
+  rate-limiter-flexible@5.0.3:
+    resolution: {integrity: sha512-lWx2y8NBVlTOLPyqs+6y7dxfEpT6YFqKy3MzWbCy95sTTOhOuxufP2QvRyOHpfXpB9OUJPbVLybw3z3AVAS5fA==}
+
   raw-body@2.5.2:
     resolution: {integrity: sha512-8zGqypfENjCIqGhgXToC8aB2r7YrBX+AQAfIPs/Mlk+BtPTztOvTS01NRW/3Eh60J+a48lt8qsCzirQ6loCVfA==}
     engines: {node: '>= 0.8'}
@@ -7244,6 +7262,13 @@ snapshots:
       type-is: 1.6.18
       vary: 1.1.2
       youch: 3.3.3
+
+  '@adonisjs/limiter@2.3.1(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))(@adonisjs/lucid@20.6.0(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))(pg@8.12.0))':
+    dependencies:
+      '@adonisjs/core': 6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2)
+      rate-limiter-flexible: 5.0.3
+    optionalDependencies:
+      '@adonisjs/lucid': 20.6.0(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@adonisjs/core@6.12.1(@adonisjs/assembler@7.7.0(typescript@5.4.5))(@vinejs/vine@2.1.0)(edge.js@6.0.2))(pg@8.12.0)
 
   '@adonisjs/logger@6.0.3':
     dependencies:
@@ -12662,6 +12687,8 @@ snapshots:
   randombytes@2.1.0:
     dependencies:
       safe-buffer: 5.2.1
+
+  rate-limiter-flexible@5.0.3: {}
 
   raw-body@2.5.2:
     dependencies:

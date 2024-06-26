@@ -32,7 +32,8 @@ export default defineConfig({
     () => import('@adonisjs/cors/cors_provider'),
     // () => import('#providers/prisma_provider'),
     () => import('#providers/app_provider'),
-    () => import('@adonisjs/mail/mail_provider')
+    () => import('@adonisjs/mail/mail_provider'),
+    () => import('@adonisjs/limiter/limiter_provider')
   ],
 
   /*
