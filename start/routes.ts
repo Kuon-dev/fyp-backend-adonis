@@ -20,6 +20,8 @@ const UserController = () => import('#controllers/users_controller')
 const OrderController = () => import('#controllers/orders_controller')
 const CheckoutController = () => import('#controllers/checkout_controller')
 
+const HealthChecksController = () => import('#controllers/health_checks_controller')
+
 router.get('/', async () => {
   const users = await prisma.user.findMany()
   return {
@@ -85,9 +87,10 @@ router
         router.get('/users/:userId/orders/status/:status', [OrderController, 'getUserOrdersByStatus']);
         router.get('/orders/search', [OrderController, 'searchOrders']);
 
-        router.post('/checkout', [CheckoutController, 'createCheckoutSession']);
-        router.get('/checkout/:sessionId', [CheckoutController, 'getCheckoutSession']);
+        router.post('/checkout', [CheckoutController, 'createPaymentIntent']);
+        router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent']);
 
+        router.get('/health', [HealthChecksController])
         router.get('/ping', async () => {
           return {
             message: 'pong',

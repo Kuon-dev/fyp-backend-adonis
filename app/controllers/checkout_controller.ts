@@ -4,10 +4,8 @@ import Stripe from 'stripe';
 import { prisma } from '#services/prisma_service';
 import env from "#start/env";
 import logger from '@adonisjs/core/services/logger'
-
-// const stripe = new Stripe('YOUR_STRIPE_SECRET_KEY', {
-//   apiVersion: '2022-11-15',
-// });
+import { OrderService } from '#services/order_service';
+import { OrderStatus } from '@prisma/client';
 
 const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
   apiVersion: '2024-04-10',
@@ -16,8 +14,12 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
 /**
  * Controller class for handling Payment operations.
  */
-// @inject()
 export default class PaymentController {
+  private orderService: OrderService;
+
+  constructor() {
+    this.orderService = new OrderService();
+  }
 
   /**
    * Create a Stripe Payment Intent.
@@ -79,6 +81,47 @@ export default class PaymentController {
     } catch (error) {
       logger.error(error);
       return response.status(500).send({ error: 'Error retrieving payment intent' });
+    }
+  }
+
+  /**
+   * Submit a Stripe Payment Intent and create an order.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @bodyParam paymentIntentId - The ID of the Stripe Payment Intent.
+   * @bodyParam userId - The ID of the user making the payment.
+   */
+  public async submitPaymentIntent({ request, response }: HttpContext) {
+    const { paymentIntentId, userId } = request.body();
+
+    try {
+      // Confirm the Payment Intent
+      const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId);
+
+      if (paymentIntent.status === 'succeeded') {
+        const repoIds = paymentIntent.metadata.repoIds.split(',');
+
+        // Retrieve the repos from the database
+        const repos = await prisma.codeRepo.findMany({
+          where: { id: { in: repoIds } },
+        });
+
+        // Create orders for each repo
+        for (const repo of repos) {
+          await this.orderService.createOrder({
+            userId,
+            codeRepoId: repo.id,
+            totalAmount: repo.price,
+          });
+        }
+
+        return response.send({ success: true });
+      } else {
+        return response.status(400).send({ error: 'Payment not completed' });
+      }
+    } catch (error) {
+      logger.error(error);
+      return response.status(500).send({ error: 'Error confirming payment intent' });
     }
   }
 }
