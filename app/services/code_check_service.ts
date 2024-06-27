@@ -86,7 +86,7 @@ export default class CodeCheckService {
         chat_history: [],
       });
       logger.info(result)
-      const parsedResponse = codeCheckSchema.safeParse(result);
+      const parsedResponse = codeCheckSchema.parse(result);
       return parsedResponse;
     } catch (error) {
       logger.error(error);

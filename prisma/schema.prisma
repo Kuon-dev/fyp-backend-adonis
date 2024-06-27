@@ -123,8 +123,9 @@ model CodeRepo {
   name        String
   description String?
   language    Language
-  price       Float    @default(0.0)
+  price       Float       @default(0.0)
   tags        Tag[]
+  codeChecks  CodeCheck[]
 
   orders          Order[]
   stripeProductId String?
@@ -244,4 +245,15 @@ model SearchHistory {
   user      User     @relation(fields: [userId], references: [id])
   tag       String
   createdAt DateTime @default(now())
+}
+
+model CodeCheck {
+  id          String   @id @default(cuid())
+  repoId      String
+  score       Int
+  message     String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Repo        CodeRepo @relation(fields: [repoId], references: [id])
 }

@@ -80,6 +80,7 @@ export default class RepoService {
         reviews: true,
         tags: true,
         orders: true,
+        codeChecks: true,
       },
     });
 

@@ -6,6 +6,15 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 import type { Role, CodeRepoStatus, Visibility, Language, OrderStatus, SupportTicketStatus, SupportTicketType } from "./enums";
 
+export type CodeCheck = {
+    id: string;
+    repoId: string;
+    score: number;
+    message: string;
+    description: string;
+    createdAt: Generated<Timestamp>;
+    updatedAt: Timestamp;
+};
 export type CodeRepo = {
     id: string;
     userId: string;
@@ -133,6 +142,7 @@ export type User = {
 };
 export type DB = {
     _CodeRepoToTag: CodeRepoToTag;
+    CodeCheck: CodeCheck;
     CodeRepo: CodeRepo;
     Comment: Comment;
     emailVerificationCode: emailVerificationCode;

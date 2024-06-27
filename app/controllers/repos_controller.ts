@@ -2,13 +2,18 @@ import type { HttpContext } from '@adonisjs/core/http'
 import RepoService, { LanguageSpecification, SearchSpecification, TagSpecification, UserSpecification, VisibilitySpecification } from '#services/repo_service';
 import { inject } from '@adonisjs/core';
 import { Exception } from '@adonisjs/core/exceptions';
+import CodeCheckService from '#services/code_check_service';
+import { prisma } from '#services/prisma_service';
 
 /**
  * Controller class for handling Repo operations.
  */
 @inject()
 export default class RepoController {
-  constructor(protected repoService: RepoService) {}
+  constructor(
+    protected repoService: RepoService,
+    protected codeCheckService: CodeCheckService
+  ) {}
 
   /**
    * Create a new Repo.
@@ -61,14 +66,33 @@ export default class RepoController {
    * @paramParam id - The ID of the Repo.
    * @bodyParam data - The data to update the Repo.
    */
-  public async update({ params, request, response }: HttpContext) {
+ public async update({ params, request, response }: HttpContext) {
     const { id } = params;
     const data = request.only([
       'sourceJs', 'sourceCss', 'name', 'description', 'language', 'price', 'tags', 'visibility', 'status'
     ]);
 
     try {
+      // Update the repo
       const repo = await this.repoService.updateRepo(id, data);
+
+      // Conduct code check if sourceJs is present
+      if (data.sourceJs) {
+        const language = data.language || 'JavaScript';
+        const codeCheckResult = await this.codeCheckService.performCodeCheck(data.sourceJs, language);
+
+        // Save the code check result
+        await prisma.codeCheck.create({
+          data: {
+            repoId: id,
+            score: codeCheckResult.score,
+            message: codeCheckResult.suggestion,
+            description: codeCheckResult.description,
+          },
+        });
+        // Attach code check result to response
+      }
+
       return response.status(200).json(repo);
     } catch (error) {
       return response.abort({ message: error.message }, 400);
