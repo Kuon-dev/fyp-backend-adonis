@@ -26,7 +26,7 @@ export default class RepoController {
     const data = request.only([
       'name', 'description', 'language', 'price', 'tags', 'visibility'
     ]);
-    if (!request.user) throw new Exception('User not found in request object');
+    // if (!request.user) throw new Exception('User not found in request object');
 
     try {
       const repo = await this.repoService.createRepo({

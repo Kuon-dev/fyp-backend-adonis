@@ -64,6 +64,8 @@ export const generateCodeRepos = async (count: number = 10) => {
       repo: codeRepo,
       tags: faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 })),
     });
+
+    console.log('Generated code repo:', codeRepo.name)
   }
 
   return codeRepos;

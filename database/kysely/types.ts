@@ -23,7 +23,7 @@ export type CodeRepo = {
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
-    visibility: Generated<string>;
+    visibility: Generated<Visibility>;
     status: Generated<CodeRepoStatus>;
     name: string;
     description: string | null;
@@ -31,10 +31,6 @@ export type CodeRepo = {
     price: Generated<number>;
     stripeProductId: string | null;
     stripePriceId: string | null;
-};
-export type CodeRepoToTag = {
-    A: string;
-    B: string;
 };
 export type Comment = {
     id: string;
@@ -127,6 +123,10 @@ export type SupportTicket = {
 export type Tag = {
     id: string;
     name: string;
+    repoId: string;
+    createdAt: Generated<Timestamp>;
+    updatedAt: Timestamp;
+    deletedAt: Timestamp | null;
 };
 export type User = {
     id: string;
@@ -141,7 +141,6 @@ export type User = {
     isSellerVerified: Generated<boolean>;
 };
 export type DB = {
-    _CodeRepoToTag: CodeRepoToTag;
     CodeCheck: CodeCheck;
     CodeRepo: CodeRepo;
     Comment: Comment;

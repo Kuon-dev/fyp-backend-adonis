@@ -15,11 +15,17 @@ async function main() {
     data: users,
   });
 
+  console.log("Users generated");
+
   await prisma.profile.createMany({
     data: profiles,
   });
 
+  console.log("Profiles generated");
+
   const codeRepos = await createCodeRepos(await generateCodeRepos(1000));
+
+  console.log("Code repos generated");
 
   await prisma.order.createMany({
     data: await generateOrders(
@@ -28,6 +34,8 @@ async function main() {
       1000,
     ),
   });
+
+  console.log("Orders generated");
 
   await prisma.supportTicket.createMany({
     data: await generateSupportTickets(
@@ -67,17 +75,21 @@ export const createCodeRepos = async (codeRepos: { repo: CodeRepo, tags: string[
     const createdRepo = await prisma.codeRepo.create({
       data: {
         ...repo,
-        tags: {
-          connectOrCreate: tags.map((tag) => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        },
       },
       include: {
         tags: true,
       },
     });
+
+    await Promise.all(
+      tags.map(async (tag) => {
+        return prisma.tag.upsert({
+          where: { name: tag },
+          update: {},
+          create: { name: tag, repoId: createdRepo.id},
+        });
+      })
+    );
 
     createdRepos.push(createdRepo);
   }

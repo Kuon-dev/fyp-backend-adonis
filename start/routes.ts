@@ -57,7 +57,7 @@ router
         router.post('/support/email', [SupportController, 'sendDefaultEmail']);
 
         // Repo routes
-        router.post('/repos', [RepoController, 'create']).use(middleware.auth({ role: 'USER' }));
+        router.post('/repos', [RepoController, 'create'])
         router.get('/repo/:id', [RepoController, 'getById']);
 
         router.put('/repos/:id', [RepoController, 'update']);

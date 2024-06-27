@@ -29,42 +29,41 @@ export default class RepoService {
   public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'> & { tags: string[] }): Promise<CodeRepo> {
     logger.info(data);
 
-    const repo = await prisma.codeRepo.create({
-      data: {
-        ...data,
-        tags: {
-          connectOrCreate: data.tags.map((tag) => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        },
-      },
-      include: {
-        tags: true,
-      },
-    });
-
     const product = await stripe.products.create({
       name: data.name,
       description: data.description || undefined,
     });
 
+    // Create a price in Stripe
     const price = await stripe.prices.create({
       product: product.id,
       unit_amount: data.price * 100, // converting to cents
       currency: 'usd',
     });
 
-    console.log("Product created: ", product);
-    console.log("Price created: ", price);
+    // Create tags and link them to the repo
 
-    await prisma.codeRepo.update({
-      where: { id: repo.id },
+    const repo = await prisma.codeRepo.create({
       data: {
+        ...data,
         stripeProductId: product.id,
         stripePriceId: price.id,
+        tags: undefined
       },
     });
+
+    await Promise.all(
+      data.tags.map(async (tag) => {
+        return prisma.tag.upsert({
+          where: { name: tag },
+          update: {},
+          create: { name: tag, repoId: repo.id},
+        });
+      })
+    );
+
+    console.log("Product created: ", product);
+    console.log("Price created: ", price);
 
     return repo;
   }
@@ -82,7 +81,6 @@ export default class RepoService {
         reviews: true,
         tags: true,
         orders: true,
-        codeChecks: true,
       },
     });
 
@@ -91,6 +89,7 @@ export default class RepoService {
         await this.recordSearch(userId, tag.name);
       }
 
+      // Check if the user is the owner, admin, or has purchased the code
       const user = await prisma.user.findUnique({ where: { id: userId } });
       const hasAccess = repo.userId === userId || user?.role === 'ADMIN' || await this.hasPurchased(userId, id);
       const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
@@ -99,7 +98,6 @@ export default class RepoService {
         delete partialRepo.sourceJs;
         delete partialRepo.sourceCss;
       }
-      return partialRepo;
     }
 
     return repo;
@@ -159,14 +157,16 @@ export default class RepoService {
     let query = kyselyDb.selectFrom("CodeRepo").selectAll().where("visibility", "=", "public").limit(limit).offset(offset);
 
     if (userId) {
+      // Fetch user's recent search tags
       const recentTags = await prisma.searchHistory.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 10,
+        take: 10, // Adjust as needed
       });
 
       const recentTagNames = recentTags.map(tag => tag.tag);
 
+      // Prioritize repos that match recent search tags
       query = query
         .orderBy(
           sql`CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
@@ -181,6 +181,7 @@ export default class RepoService {
       },
     });
 
+    // Filter out source code for unauthorized users
     const filteredRepos = await Promise.all(repos.map(async (repo) => {
       const partialRepo: PartialCodeRepo = { ...repo };
       if (userId) {
@@ -229,6 +230,7 @@ export default class RepoService {
     const query = kyselyDb.selectFrom("CodeRepo").selectAll();
     const filteredQuery = compositeSpecification.apply(query);
 
+    // Record the search tags if user is logged in
     if (userId) {
       for (const spec of specifications) {
         if (spec instanceof TagSpecification) {
@@ -238,14 +240,16 @@ export default class RepoService {
         }
       }
 
+      // Fetch user's recent search tags
       const recentTags = await prisma.searchHistory.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 10,
+        take: 10, // Adjust as needed
       });
 
       const recentTagNames = recentTags.map(tag => tag.tag);
 
+      // Prioritize repos that match recent search tags
       const prioritizedQuery = filteredQuery
         .orderBy(
           sql`CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
@@ -254,6 +258,7 @@ export default class RepoService {
 
       const repos = await prioritizedQuery.execute();
 
+      // Filter out source code for unauthorized users
       const filteredRepos = await Promise.all(repos.map(async (repo) => {
         const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
         const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -271,6 +276,7 @@ export default class RepoService {
 
     const repos = await filteredQuery.execute();
 
+    // Filter out source code for guest users
     const filteredRepos = repos.map((repo) => {
       const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
       delete partialRepo.sourceJs;
@@ -324,10 +330,10 @@ export class TagSpecification implements RepoSpecification {
     const eb = expressionBuilder(query);
 
     return query.where(eb.exists(
-      eb.selectFrom("CodeRepoTag")
-        .select("CodeRepoTag.tagId")
-        .whereRef("CodeRepoTag.codeRepoId", "=", "CodeRepo.id")
-        .where("CodeRepoTag.tagId", "in", this.tags)
+      eb.selectFrom("RepoTags")
+        .select("RepoTags.tagId")
+        .whereRef("RepoTags.repoId", "=", "CodeRepo.id")
+        .where("RepoTags.name", 'in', this.tags)
     ));
   }
 }
