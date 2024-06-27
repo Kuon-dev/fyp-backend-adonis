@@ -25,7 +25,7 @@ export default class CodeCheckService {
     properties: {
       score: { title: "Score", description: "The code quality score", type: "integer", minimum: 0, maximum: 10 },
       suggestion: { title: "Suggestion", description: "Suggestions for improvement based on the given code only", type: "string" },
-      description: { title: "Description", description: "Describe the overall quality and problem of the code", type: "string" },
+      description: { title: "Description", description: "Describe the code without mentioning the soure code itself or problems", type: "string" },
     },
     required: ["score", "suggestion", "description"],
   };

@@ -10,42 +10,46 @@ export default class GetUserSessionMiddleware {
      */
     const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
     if (!sessionId) {
-      console.log('null')
+      console.log('no session')
       ctx.request.user = null;
       ctx.request.session = null;
-      return await next()
+      const output = await next()
+      return output
     }
+    else {
+      const { session, user } = await lucia.validateSession(sessionId);
+      if (session && session.fresh) {
+        ctx.response.header(
+          "Set-Cookie",
+          lucia.createSessionCookie(session.id).serialize()
+        );
+      }
 
-    const { session, user } = await lucia.validateSession(sessionId);
-    if (session && session.fresh) {
-      ctx.response.header(
-        "Set-Cookie",
-        lucia.createSessionCookie(session.id).serialize()
-      );
-    }
+      if (!session) {
+        ctx.response.header(
+          "Set-Cookie",
+          lucia.createBlankSessionCookie().serialize()
+        );
+      }
+      // if there is no user found but a role prop exist
+      if (!user) {
+        throw new UnAuthorizedException();
+      }
 
-    if (!session) {
-      ctx.response.header(
-        "Set-Cookie",
-        lucia.createBlankSessionCookie().serialize()
-      );
-    }
-    // if there is no user found but a role prop exist
-    if (!user) {
-      throw new UnAuthorizedException();
-    }
+      if (user.bannedUntil && user.bannedUntil > new Date()) {
+        throw new UnAuthorizedException('User is banned');
+      }
 
-    if (user.bannedUntil && user.bannedUntil > new Date()) {
-      throw new UnAuthorizedException('User is banned');
-    }
+      if (user.deletedAt) {
+        throw new UnAuthorizedException('User account is deleted');
+      }
+      ctx.request.user = user;
+      ctx.request.session = session;
 
-    if (user.deletedAt) {
-      throw new UnAuthorizedException('User account is deleted');
+      /**
+       * Call next method in the pipeline and return its output
+       */
+      await next()
     }
-    /**
-     * Call next method in the pipeline and return its output
-     */
-    const output = await next()
-    return output
   }
 }

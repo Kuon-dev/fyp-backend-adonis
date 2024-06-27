@@ -105,29 +105,30 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+
 model CodeRepo {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  id             String          @id @default(cuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
 
-  sourceJs  String @db.Text
-  sourceCss String @db.Text
+  sourceJs       String          @db.Text
+  sourceCss      String          @db.Text
 
-  reviews    Review[]
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  deletedAt  DateTime?
-  visibility String         @default("public") // "public" or "private"
-  status     CodeRepoStatus @default(pending)
+  reviews        Review[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  visibility     Visibility      @default(public)
+  status         CodeRepoStatus  @default(pending)
 
-  name        String
-  description String?
-  language    Language
-  price       Float       @default(0.0)
-  tags        Tag[]
-  codeChecks  CodeCheck[]
+  name           String
+  description    String?
+  language       Language
+  price          Float           @default(0.0)
+  tags           Tag[]           @relation(fields: [id], references: [codeRepoId])
+  codeChecks     CodeCheck[]
 
-  orders          Order[]
+  orders         Order[]
   stripeProductId String?
   stripePriceId   String?
 }
@@ -146,6 +147,39 @@ enum Visibility {
 enum Language {
   JSX
   TSX
+}
+
+model Tag {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  codeRepos   CodeRepo[] @relation(fields: [id], references: [tagId])
+}
+
+model CodeRepoTag {
+  codeRepoId  String
+  tagId       String
+  codeRepo    CodeRepo   @relation(fields: [codeRepoId], references: [id])
+  tag         Tag        @relation(fields: [tagId], references: [id])
+  @id([codeRepoId, tagId])
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tag       String
+  createdAt DateTime @default(now())
+}
+
+model CodeCheck {
+  id          String   @id @default(cuid())
+  repoId      String
+  score       Int
+  message     String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Repo        CodeRepo @relation(fields: [repoId], references: [id])
 }
 
 model Order {
@@ -194,12 +228,6 @@ model Comment {
 }
 
 // each repo can have many tags
-model Tag {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  codeRepos CodeRepo[]
-}
-
 // support tickets
 model SupportTicket {
   id        String              @id @default(cuid())
@@ -239,21 +267,4 @@ model Media {
   updatedAt DateTime @updatedAt
 }
 
-model SearchHistory {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  tag       String
-  createdAt DateTime @default(now())
-}
 
-model CodeCheck {
-  id          String   @id @default(cuid())
-  repoId      String
-  score       Int
-  message     String
-  description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  Repo        CodeRepo @relation(fields: [repoId], references: [id])
-}

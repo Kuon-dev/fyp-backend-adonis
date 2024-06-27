@@ -9,6 +9,7 @@ import type { Cookie } from 'lucia';
 import { UserService } from '#services/user_service';
 import { prisma } from '#services/prisma_service';
 import InvalidSessionIdException from '#exceptions/invalid_session_id_exception';
+import UnAuthorizedException from '#exceptions/un_authorized_exception';
 
 /**
  * Controller class for handling user authentication operations.
@@ -192,7 +193,7 @@ export default class AuthController {
   }
 
   async sendVerifyEmailCodeFromUser({ request, response }: HttpContext) {
-    if (request.user === null) throw new UnauthorizedException('User not found in request object');
+    if (request.user === null) throw new UnAuthorizedException('User not found in request object');
     console.log(request.user)
     try {
       await this.authService.sendVerifyEmailCode(request.user);
@@ -210,16 +211,17 @@ export default class AuthController {
 
   async me({ request, response }: HttpContext) {
     try {
-      if (request.user === null) throw new Exception('User not found in request object', { status: 401, code: 'E_UNAUTHORIZED' });
-      const profile = await this.userService.getUserProfileById(request.user?.id);
+      if (request.user === null) throw new Exception('No cookie session found', { status: 204, code: 'E_EMPTY_SESSION' });
+      console.log(request.user)
+      const profile = await this.userService.getUserProfileById(request.user.id);
       // if the user profile is somehow not being created
-      if (!profile) await prisma.profile.create({ data: { userId: request.user?.id, name: 'new user' } });
+      if (!profile) await prisma.profile.create({ data: { userId: request.user.id, name: 'new user' } });
       return response.status(200).json({
         user: request.user,
         profile: profile
       });
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, error.status ?? 400);
     }
   }
 }

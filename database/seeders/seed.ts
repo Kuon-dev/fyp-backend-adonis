@@ -1,10 +1,13 @@
 import { prisma } from "#services/prisma_service";
+import { faker } from "@faker-js/faker";
 import { generateComments } from "./comment-factory.js";
+import { REPO_TAGS } from "./constants.js";
 import { generateOrders } from "./order-factory.js";
 import { generateCodeRepos } from "./repo-factory.js";
 import { generateReviews } from "./review-factorty.js";
 import { generateSupportTickets } from "./support-factorty.js";
 import { generateUsers } from "./user-factory.js";
+import { CodeRepo } from "@prisma/client";
 
 async function main() {
   const { users, profiles } = await generateUsers(100);
@@ -16,12 +19,7 @@ async function main() {
     data: profiles,
   });
 
-  const codeRepos = await generateCodeRepos(
-    1000,
-  );
-  await prisma.codeRepo.createMany({
-    data: codeRepos,
-  });
+  const codeRepos = await createCodeRepos(await generateCodeRepos(1000));
 
   await prisma.order.createMany({
     data: await generateOrders(
@@ -56,6 +54,36 @@ async function main() {
     ),
   });
 }
+
+/**
+ * Creates multiple CodeRepo entries with their associated tags.
+ * @param codeRepos - Array of objects containing CodeRepo data and associated tags.
+ * @returns An array of created CodeRepo entries with tags.
+ */
+export const createCodeRepos = async (codeRepos: { repo: CodeRepo, tags: string[] }[]) => {
+  const createdRepos = [];
+
+  for (const { repo, tags } of codeRepos) {
+    const createdRepo = await prisma.codeRepo.create({
+      data: {
+        ...repo,
+        tags: {
+          connectOrCreate: tags.map((tag) => ({
+            where: { name: tag },
+            create: { name: tag },
+          })),
+        },
+      },
+      include: {
+        tags: true,
+      },
+    });
+
+    createdRepos.push(createdRepo);
+  }
+
+  return createdRepos;
+};
 
 console.log('Seeding database...')
 main()

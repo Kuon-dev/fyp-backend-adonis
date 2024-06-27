@@ -22,10 +22,10 @@ export default class RepoController {
    * @bodyParam data - The data for the new Repo.
    */
   public async create({ request, response }: HttpContext) {
+    console.log('create')
     const data = request.only([
       'name', 'description', 'language', 'price', 'tags', 'visibility'
     ]);
-
     if (!request.user) throw new Exception('User not found in request object');
 
     try {

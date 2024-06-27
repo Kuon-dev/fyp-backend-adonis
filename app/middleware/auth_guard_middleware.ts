@@ -11,27 +11,28 @@ export default class AuthGuardMiddleware {
     if (!user) {
       throw new UnAuthorizedException('User not authenticated');
     }
-    // Check if the user has the required role
-    if (options.role && user.role !== options.role) {
-      // admin has all the privileges, if the provided role is user and the user is admin, then allow, otherwise throw an error
-      if (options.role === Role.USER && user.role === Role.ADMIN) {
-        return await next();
-      }
 
-      // if min role is moderator and user is admin, allow
-      if (options.role === Role.MODERATOR && user.role === Role.ADMIN) {
-        ctx.request.user = user;
-        return await next();
-      }
-
-      // if min role is user and user is moderator, allow
-      if (options.role === Role.USER && user.role === Role.MODERATOR) {
-        return await next();
-      }
-
-      else
-        throw new UnAuthorizedException('User does not have the required role');
-    }
+    // // Check if the user has the required role
+    // if (options.role && user.role !== options.role) {
+    //   // admin has all the privileges, if the provided role is user and the user is admin, then allow, otherwise throw an error
+    //   if (options.role === Role.USER && user.role === Role.ADMIN) {
+    //     return await next();
+    //   }
+    //
+    //   // if min role is moderator and user is admin, allow
+    //   if (options.role === Role.MODERATOR && user.role === Role.ADMIN) {
+    //     ctx.request.user = user;
+    //     return await next();
+    //   }
+    //
+    //   // if min role is user and user is moderator, allow
+    //   if (options.role === Role.USER && user.role === Role.MODERATOR) {
+    //     return await next();
+    //   }
+    //
+    //   else
+    //     throw new UnAuthorizedException('User does not have the required role');
+    // }
 
   }
 }

@@ -4,7 +4,7 @@ import type { CodeRepo, User, Tag } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import Stripe from 'stripe';
 import { randomBoolean, weightedRandomDelete } from "./utils.js";
-import { TYPESCRIPT_VARIANT_1, TYPESCRIPT_VARIANT_2, TYPESCRIPT_VARIANT_3, TYPESCRIPT_VARIANT_4, TYPESCRIPT_VARIANT_5 } from "./constants.js";
+import { REPO_TAGS, TYPESCRIPT_VARIANT_1, TYPESCRIPT_VARIANT_2, TYPESCRIPT_VARIANT_3, TYPESCRIPT_VARIANT_4, TYPESCRIPT_VARIANT_5 } from "./constants.js";
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export const generateCodeRepos = async (count: number = 10) => {
-  const codeRepos: CodeRepo[] = [];
+  const codeRepos: {repo: CodeRepo, tags: string[]}[] = [];
 
   const users: User[] = await prisma.user.findMany();
 
@@ -55,12 +55,15 @@ export const generateCodeRepos = async (count: number = 10) => {
       description: product.description!,
       language: faker.helpers.arrayElement(["JSX", "TSX"]),
       price: priceAmount,
-
+      // tags: faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 })),
       stripeProductId: product.id,
       stripePriceId: price.id,
     };
 
-    codeRepos.push(codeRepo);
+    codeRepos.push({
+      repo: codeRepo,
+      tags: faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 })),
+    });
   }
 
   return codeRepos;
