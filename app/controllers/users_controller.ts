@@ -133,5 +133,23 @@ export default class UserController {
       return response.status(error.status ?? 400).json({ message: error.message });
     }
   }
+
+  /**
+   * Ban a user by email.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @bodyParam email - The email of the user to ban.
+   */
+  public async ban({ request, response }: HttpContext) {
+    const { email } = request.only(['email']);
+
+    try {
+      const user = await this.userService.banUser(email);
+      return response.status(200).json({ message: 'User banned successfully', user });
+    } catch (error) {
+      return response.status(error.status ?? 400).json({ message: error.message });
+    }
+  }
+
 }
 

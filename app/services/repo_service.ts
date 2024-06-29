@@ -1,11 +1,10 @@
-
 import { SelectQueryBuilder, expressionBuilder, sql } from "kysely";
 import type { CodeRepo, OrderStatus } from "@prisma/client";
 import { kyselyDb } from "#database/kysely";
 import { prisma } from "./prisma_service.js";
 import env from "#start/env";
 import Stripe from "stripe";
-import logger from '@adonisjs/core/services/logger'
+import logger from '@adonisjs/core/services/logger';
 
 const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
   apiVersion: '2024-04-10',
@@ -27,8 +26,6 @@ export default class RepoService {
    * @param data - The data to create a new Repo.
    */
   public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'> & { tags: string[] }): Promise<CodeRepo> {
-    logger.info(data);
-
     const product = await stripe.products.create({
       name: data.name,
       description: data.description || undefined,
@@ -41,29 +38,26 @@ export default class RepoService {
       currency: 'usd',
     });
 
-    // Create tags and link them to the repo
-
+    // Create the repo without tags first
     const repo = await prisma.codeRepo.create({
       data: {
         ...data,
         stripeProductId: product.id,
         stripePriceId: price.id,
-        tags: undefined
+        tags: undefined,
       },
     });
 
+    // Upsert tags and link them to the repo
     await Promise.all(
       data.tags.map(async (tag) => {
         return prisma.tag.upsert({
           where: { name: tag },
           update: {},
-          create: { name: tag, repoId: repo.id},
+          create: { name: tag, repoId: repo.id },
         });
       })
     );
-
-    console.log("Product created: ", product);
-    console.log("Price created: ", price);
 
     return repo;
   }
@@ -98,6 +92,7 @@ export default class RepoService {
         delete partialRepo.sourceJs;
         delete partialRepo.sourceCss;
       }
+      return partialRepo;
     }
 
     return repo;
@@ -154,7 +149,15 @@ export default class RepoService {
   public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null): Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> {
     const offset = (page - 1) * limit;
 
-    let query = kyselyDb.selectFrom("CodeRepo").selectAll().where("visibility", "=", "public").limit(limit).offset(offset);
+    let query = kyselyDb.selectFrom('CodeRepo as cr')
+      .leftJoin('Tag as t', 'cr.id', 't.repoId')
+      .selectAll('cr')
+      .select('t.name as tagName')
+      .where('cr.visibility', '=', 'public')
+      .where('cr.status', '=', 'active')
+      .distinctOn('cr.id')
+      .limit(limit)
+      .offset(offset);
 
     if (userId) {
       // Fetch user's recent search tags
@@ -169,15 +172,16 @@ export default class RepoService {
       // Prioritize repos that match recent search tags
       query = query
         .orderBy(
-          sql`CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
+          sql`CASE WHEN t.name IN (${recentTagNames.map(tag => `'${tag}'`).join(', ')}) THEN 1 ELSE 2 END`
         )
-        .orderBy('createdAt', 'desc');
+        .orderBy('cr.createdAt', 'desc');
     }
 
     const repos = await query.execute();
     const total = await prisma.codeRepo.count({
       where: {
         visibility: 'public',
+        status: 'active',
       },
     });
 
@@ -227,10 +231,13 @@ export default class RepoService {
     const compositeSpecification = new CompositeSpecification();
     specifications.forEach((spec) => compositeSpecification.add(spec));
 
-    const query = kyselyDb.selectFrom("CodeRepo").selectAll();
-    const filteredQuery = compositeSpecification.apply(query);
+    let query = kyselyDb.selectFrom('CodeRepo as cr')
+      .leftJoin('Tag as t', 'cr.id', 't.repoId')
+      .selectAll('cr')
+      .select('t.name as tagName');
 
-    // Record the search tags if user is logged in
+    query = compositeSpecification.apply(query);
+
     if (userId) {
       for (const spec of specifications) {
         if (spec instanceof TagSpecification) {
@@ -240,27 +247,24 @@ export default class RepoService {
         }
       }
 
-      // Fetch user's recent search tags
       const recentTags = await prisma.searchHistory.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
-        take: 10, // Adjust as needed
+        take: 10,
       });
 
       const recentTagNames = recentTags.map(tag => tag.tag);
 
-      // Prioritize repos that match recent search tags
-      const prioritizedQuery = filteredQuery
-        .orderBy(
-          sql`CASE WHEN tags @> ARRAY[${recentTagNames.map(tag => `'${tag}'`).join(', ')}] THEN 1 ELSE 2 END`
-        )
-        .orderBy('createdAt', 'desc');
+      query = query.orderBy(sql`CASE WHEN t.name IN (${recentTagNames.map(tag => `'${tag}'`).join(', ')}) THEN 1 ELSE 2 END`);
+      query = query.orderBy('cr.createdAt', 'desc');
+    }
 
-      const repos = await prioritizedQuery.execute();
+    const repos = await query.execute();
 
-      // Filter out source code for unauthorized users
-      const filteredRepos = await Promise.all(repos.map(async (repo) => {
-        const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
+    const partialRepos = await Promise.all(repos.map(async (repo) => {
+      const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
+
+      if (userId) {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         const hasAccess = repo.userId === userId || user?.role === 'ADMIN' || await this.hasPurchased(userId, repo.id);
 
@@ -268,23 +272,15 @@ export default class RepoService {
           delete partialRepo.sourceJs;
           delete partialRepo.sourceCss;
         }
-        return partialRepo;
-      }));
+      } else {
+        delete partialRepo.sourceJs;
+        delete partialRepo.sourceCss;
+      }
 
-      return filteredRepos;
-    }
-
-    const repos = await filteredQuery.execute();
-
-    // Filter out source code for guest users
-    const filteredRepos = repos.map((repo) => {
-      const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
-      delete partialRepo.sourceJs;
-      delete partialRepo.sourceCss;
       return partialRepo;
-    });
+    }));
 
-    return filteredRepos;
+    return partialRepos;
   }
 
   /**
@@ -293,7 +289,7 @@ export default class RepoService {
    * @param userId - The user ID to filter by.
    */
   public async getReposByUser(userId: string): Promise<CodeRepo[]> {
-    const query = kyselyDb.selectFrom("CodeRepo").selectAll().where("userId", "=", userId);
+    const query = kyselyDb.selectFrom('CodeRepo').selectAll().where('userId', '=', userId);
     return await query.execute();
   }
 
@@ -319,7 +315,7 @@ export class VisibilitySpecification implements RepoSpecification {
   constructor(private visibility: string) {}
 
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where("visibility", "=", this.visibility);
+    return query.where('cr.visibility', '=', this.visibility);
   }
 }
 
@@ -330,10 +326,10 @@ export class TagSpecification implements RepoSpecification {
     const eb = expressionBuilder(query);
 
     return query.where(eb.exists(
-      eb.selectFrom("RepoTags")
-        .select("RepoTags.tagId")
-        .whereRef("RepoTags.repoId", "=", "CodeRepo.id")
-        .where("RepoTags.name", 'in', this.tags)
+      eb.selectFrom('Tag as t')
+        .select('t.id')
+        .whereRef('t.repoId', '=', 'cr.id')
+        .where('t.name', 'in', this.tags)
     ));
   }
 }
@@ -342,7 +338,7 @@ export class LanguageSpecification implements RepoSpecification {
   constructor(private language: string) {}
 
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where("language", "=", this.language);
+    return query.where('cr.language', '=', this.language);
   }
 }
 
@@ -350,18 +346,18 @@ export class UserSpecification implements RepoSpecification {
   constructor(private userId: string) {}
 
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where("userId", "=", this.userId);
+    return query.where('cr.userId', '=', this.userId);
   }
 }
 
 export class SearchSpecification implements RepoSpecification {
-  constructor(private query: string) {}
+  constructor(private searchQuery: string) {}
 
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
     return query.where((eb) => eb.or([
-      eb('name', 'ilike', `%${this.query}%`),
-      eb('description', 'ilike', `%${this.query}%`),
-    ]))
+      eb('cr.name', 'ilike', `%${this.searchQuery}%`),
+      eb('cr.description', 'ilike', `%${this.searchQuery}%`),
+    ]));
   }
 }
 
@@ -378,4 +374,3 @@ export class CompositeSpecification implements RepoSpecification {
     }, query);
   }
 }
-

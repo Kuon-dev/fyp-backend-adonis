@@ -22,7 +22,7 @@ export default class RepoController {
    * @bodyParam data - The data for the new Repo.
    */
   public async create({ request, response }: HttpContext) {
-    console.log('create')
+    if (!request.user) throw new Exception('User not found in request object');
     const data = request.only([
       'name', 'description', 'language', 'price', 'tags', 'visibility'
     ]);
@@ -30,7 +30,7 @@ export default class RepoController {
 
     try {
       const repo = await this.repoService.createRepo({
-        userId: request.user?.id ?? 'mfql4vlvth56cxyku6qvztsivhsyrre7ousijpvks4dbyhi2tqjq',  // The user ID is retrieved from the request object
+        userId: request.user.id,  // The user ID is retrieved from the request object
         ...data,
         sourceJs: '',
         sourceCss: '',

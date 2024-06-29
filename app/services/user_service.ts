@@ -210,5 +210,33 @@ export class UserService {
 
     return user;
   }
+
+
+  /**
+   * Bans a user by setting their status to 'banned' and recording the reason.
+   * Also hides all repositories owned by the user.
+   *
+   * @param {string} email - The email of the user to ban.
+   * @returns {Promise<User>} - The banned user.
+   */
+  async banUser(email: string): Promise<User> {
+    return prisma.$transaction(async (tx) => {
+      // Update user status to banned
+      const user = await tx.user.update({
+        where: { email, deletedAt: null },
+        data: {
+          bannedUntil: new Date(),
+        },
+      });
+
+      // Update all repositories owned by the user to 'bannedUser'
+      await tx.codeRepo.updateMany({
+        where: { userId: user.id },
+        data: { status: 'bannedUser' },
+      });
+
+      return user;
+    });
+  }
 }
 

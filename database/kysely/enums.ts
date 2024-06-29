@@ -8,7 +8,8 @@ export type Role = (typeof Role)[keyof typeof Role];
 export const CodeRepoStatus = {
     pending: "pending",
     active: "active",
-    rejected: "rejected"
+    rejected: "rejected",
+    bannedUser: "bannedUser"
 } as const;
 export type CodeRepoStatus = (typeof CodeRepoStatus)[keyof typeof CodeRepoStatus];
 export const Visibility = {

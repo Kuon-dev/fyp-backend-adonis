@@ -58,7 +58,9 @@ model User {
   CodeRepo              CodeRepo[]
   emailVerificationCode emailVerificationCode[]
   orders                Order[]
+
   bannedUntil           DateTime?
+
   role                  Role                    @default(USER)
   isSellerVerified      Boolean                 @default(false)
   sellerProfile         SellerProfile?
@@ -136,6 +138,7 @@ enum CodeRepoStatus {
   pending
   active
   rejected
+  bannedUser
 }
 
 enum Visibility {
