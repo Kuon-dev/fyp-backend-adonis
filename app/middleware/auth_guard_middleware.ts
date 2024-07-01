@@ -1,7 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import lucia from '#services/lucia_service';
-// import { Exception } from '@adonisjs/core/exceptions';
+//import lucia from '#services/lucia_service';
 import UnAuthorizedException from '#exceptions/un_authorized_exception';
 import { Role } from '@prisma/client';
 
@@ -12,28 +11,25 @@ export default class AuthGuardMiddleware {
       throw new UnAuthorizedException('User not authenticated');
     }
 
-    // // Check if the user has the required role
-    // if (options.role && user.role !== options.role) {
-    //   // admin has all the privileges, if the provided role is user and the user is admin, then allow, otherwise throw an error
-    //   if (options.role === Role.USER && user.role === Role.ADMIN) {
-    //     return await next();
-    //   }
-    //
-    //   // if min role is moderator and user is admin, allow
-    //   if (options.role === Role.MODERATOR && user.role === Role.ADMIN) {
-    //     ctx.request.user = user;
-    //     return await next();
-    //   }
-    //
-    //   // if min role is user and user is moderator, allow
-    //   if (options.role === Role.USER && user.role === Role.MODERATOR) {
-    //     return await next();
-    //   }
-    //
-    //   else
-    //     throw new UnAuthorizedException('User does not have the required role');
-    // }
+    const userRole = user.role;
+    const requiredRole = options.role;
 
+    if (!this.hasAccess(userRole, requiredRole)) {
+      throw new UnAuthorizedException('Insufficient permissions');
+    }
+
+    // If the user has the required role or higher, allow access
+    await next()
+  }
+
+  private hasAccess(userRole: Role, requiredRole: Role): boolean {
+    const roleHierarchy = {
+      [Role.USER]: 1,
+      [Role.SELLER]: 1, // Same level as USER
+      [Role.MODERATOR]: 2,
+      [Role.ADMIN]: 3
+    };
+
+    return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
   }
 }
-

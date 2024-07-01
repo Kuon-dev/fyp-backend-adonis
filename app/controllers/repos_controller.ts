@@ -4,6 +4,7 @@ import { inject } from '@adonisjs/core';
 import { Exception } from '@adonisjs/core/exceptions';
 import CodeCheckService from '#services/code_check_service';
 import { prisma } from '#services/prisma_service';
+import UnAuthorizedException from '#exceptions/un_authorized_exception';
 
 /**
  * Controller class for handling Repo operations.
@@ -22,7 +23,7 @@ export default class RepoController {
    * @bodyParam data - The data for the new Repo.
    */
   public async create({ request, response }: HttpContext) {
-    if (!request.user) throw new Exception('User not found in request object');
+    if (!request.user) throw new UnAuthorizedException('User not found in request object');
     const data = request.only([
       'name', 'description', 'language', 'price', 'tags', 'visibility'
     ]);
@@ -79,7 +80,8 @@ export default class RepoController {
       // Conduct code check if sourceJs is present
       if (data.sourceJs) {
         const language = data.language || 'JavaScript';
-        const codeCheckResult = await this.codeCheckService.performCodeCheck(data.sourceJs, language);
+        const cleanedSource = data.sourceJs.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        const codeCheckResult = await this.codeCheckService.performCodeCheck(cleanedSource, language);
 
         // Save the code check result
         await prisma.codeCheck.create({
@@ -105,8 +107,9 @@ export default class RepoController {
    * @param {HttpContext} ctx - The HTTP context object.
    * @paramParam id - The ID of the Repo.
    */
-  public async delete({ params, response }: HttpContext) {
+  public async delete({ request, params, response }: HttpContext) {
     const { id } = params;
+    if (!request.user) throw new UnAuthorizedException('User not found in request object')
 
     try {
       await this.repoService.deleteRepo(id);

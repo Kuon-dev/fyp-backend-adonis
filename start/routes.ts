@@ -1,5 +1,4 @@
 
-
 /*
 |--------------------------------------------------------------------------
 | routers file
@@ -20,8 +19,9 @@ const UserController = () => import('#controllers/users_controller')
 const OrderController = () => import('#controllers/orders_controller')
 const CheckoutController = () => import('#controllers/checkout_controller')
 const CodeCheckController = () => import('#controllers/code_checks_controller')
-
 const HealthChecksController = () => import('#controllers/health_checks_controller')
+const ReviewController = () => import('#controllers/reviews_controller')
+const CommentController = () => import('#controllers/comments_controller')
 
 router.get('/', async () => {
   const users = await prisma.user.findMany()
@@ -93,6 +93,7 @@ router
 
         router.post('/code-check', [CodeCheckController, 'checkCode']);
 
+        // Health Check routes
         router.get('/health', [HealthChecksController])
         router.get('/ping', async () => {
           return {
@@ -101,6 +102,24 @@ router
             time: Date.now()
           }
         })
+
+        // Review routes
+        router.post('/reviews', [ReviewController, 'create']);
+        router.get('/reviews/:id', [ReviewController, 'getById']);
+        router.put('/reviews/:id', [ReviewController, 'update']);
+        router.delete('/reviews/:id', [ReviewController, 'delete']);
+        router.get('/reviews', [ReviewController, 'getAll']);
+        router.post('/reviews/:id/upvote', [ReviewController, 'upvote']);
+        router.post('/reviews/:id/downvote', [ReviewController, 'downvote']);
+
+        // Comment routes
+        router.post('/comments', [CommentController, 'create']);
+        router.get('/comments/:id', [CommentController, 'getById']);
+        router.put('/comments/:id', [CommentController, 'update']);
+        router.delete('/comments/:id', [CommentController, 'delete']);
+        router.get('/comments', [CommentController, 'getAll']);
+        router.post('/comments/:id/upvote', [CommentController, 'upvote']);
+        router.post('/comments/:id/downvote', [CommentController, 'downvote']);
       })
       .prefix('v1');
   })

@@ -40,6 +40,9 @@ export type Comment = {
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
+    flag: Generated<number | null>;
+    upvotes: Generated<number>;
+    downvotes: Generated<number>;
 };
 export type emailVerificationCode = {
     id: string;
@@ -87,6 +90,9 @@ export type Review = {
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
+    flag: Generated<number | null>;
+    upvotes: Generated<number>;
+    downvotes: Generated<number>;
 };
 export type SearchHistory = {
     id: string;

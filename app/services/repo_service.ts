@@ -72,7 +72,13 @@ export default class RepoService {
     const repo = await prisma.codeRepo.findUnique({
       where: { id },
       include: {
-        reviews: true,
+        reviews: {
+          include: {
+            comments: {
+              take: 2, // Fetch initial set of comments (e.g., 2 comments per review)
+            },
+          },
+        },
         tags: true,
         orders: true,
       },

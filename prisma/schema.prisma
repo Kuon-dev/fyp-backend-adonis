@@ -199,6 +199,15 @@ enum OrderStatus {
   cancelled
 }
 
+// 0 - No Flag: The comment or review has no issues.
+// 1 - Spam: The comment or review is flagged as spam.
+// 2 - Inappropriate Language: The comment or review contains inappropriate language.
+// 3 - Harassment: The comment or review contains harassment or abusive content.
+// 4 - Off-topic: The comment or review is off-topic or irrelevant.
+// 5 - False Information: The comment or review contains false or misleading information.
+// 6 - Plagiarism: The comment or review is flagged for plagiarism.
+// 7 - Other: The comment or review is flagged for other reasons not specified above.
+
 model Review {
   id        String    @id @default(cuid())
   content   String
@@ -211,6 +220,9 @@ model Review {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   comments  Comment[] // New relation to the Comment model
+  flag      Int?      @default(0) // Flag field to indicate different issues
+  upvotes   Int       @default(0) // New field for upvotes
+  downvotes Int       @default(0) // New field for downvotes
 }
 
 model Comment {
@@ -223,6 +235,9 @@ model Comment {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+  flag      Int?      @default(0) // Flag field to indicate different issues
+  upvotes   Int       @default(0) // New field for upvotes
+  downvotes Int       @default(0) // New field for downvotes
 }
 
 // each repo can have many tags

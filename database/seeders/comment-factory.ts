@@ -1,3 +1,4 @@
+
 import { faker } from "@faker-js/faker";
 import type { Comment } from "@prisma/client";
 import { generateIdFromEntropySize } from "lucia";
@@ -24,9 +25,13 @@ export const generateComments = async (
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: weightedRandomDelete(),
+      upvotes: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
+      downvotes: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
+      flag: 0,
     };
     generatedComments.push(comment);
   }
 
   return generatedComments;
 };
+;

@@ -1,9 +1,5 @@
 import { faker } from "@faker-js/faker";
-import type {
-  Review,
-  // Repo,
-  // User,
-} from "@prisma/client";
+import type { Review } from "@prisma/client";
 import { generateIdFromEntropySize } from "lucia";
 import { weightedRandomDelete } from "./utils.js";
 
@@ -29,9 +25,13 @@ export const generateReviews = async (
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: weightedRandomDelete(),
+      upvotes: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
+      downvotes: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
+      flag: 0,
     };
     generatedReviews.push(review);
   }
 
   return generatedReviews;
-};
+}
+;
