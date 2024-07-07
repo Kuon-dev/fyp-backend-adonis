@@ -59,15 +59,18 @@ model User {
   emailVerificationCode emailVerificationCode[]
   orders                Order[]
 
-  bannedUntil           DateTime?
+  bannedUntil DateTime?
 
-  role                  Role                    @default(USER)
-  isSellerVerified      Boolean                 @default(false)
-  sellerProfile         SellerProfile?
-  profile               Profile?
-  Review                Review[]
-  Comment               Comment[]
-  SearchHistory         SearchHistory[]
+  role             Role    @default(USER)
+  isSellerVerified Boolean @default(false)
+
+  sellerProfile  SellerProfile?
+  profile        Profile?
+  stripeCustomer StripeCustomer?
+
+  Review        Review[]
+  Comment       Comment[]
+  SearchHistory SearchHistory[]
 }
 
 model Profile {
@@ -90,6 +93,14 @@ model SellerProfile {
   businessEmail    String
   identityDoc      String? // file path
   verificationDate DateTime?
+}
+
+model StripeCustomer {
+  id               String @id
+  userId           String @unique
+  user             User   @relation(fields: [userId], references: [id])
+  stripeCustomerId String
+  stripePriceId    String
 }
 
 model Session {

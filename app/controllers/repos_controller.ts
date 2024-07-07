@@ -5,6 +5,8 @@ import { Exception } from '@adonisjs/core/exceptions';
 import CodeCheckService from '#services/code_check_service';
 import { prisma } from '#services/prisma_service';
 import UnAuthorizedException from '#exceptions/un_authorized_exception';
+import { z } from 'zod';
+import { createRepoSchema, updateRepoSchema } from '#validators/repo';
 
 /**
  * Controller class for handling Repo operations.
@@ -22,26 +24,27 @@ export default class RepoController {
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam data - The data for the new Repo.
    */
-  public async create({ request, response }: HttpContext) {
-    if (!request.user) throw new UnAuthorizedException('User not found in request object');
-    const data = request.only([
-      'name', 'description', 'language', 'price', 'tags', 'visibility'
-    ]);
-    // if (!request.user) throw new Exception('User not found in request object');
-
-    try {
-      const repo = await this.repoService.createRepo({
-        userId: request.user.id,  // The user ID is retrieved from the request object
-        ...data,
-        sourceJs: '',
-        sourceCss: '',
-        status: 'pending',  // Default status, can be adjusted as needed
-      });
-      return response.status(201).json(repo);
-    } catch (error) {
-      return response.abort({ message: error.message }, 400);
+    public async create({ request, response }: HttpContext) {
+      if (!request.user) throw new UnAuthorizedException('User not found in request object');
+      
+      try {
+        const data = createRepoSchema.parse(request.body());
+        
+        const repo = await this.repoService.createRepo({
+          userId: request.user.id,
+          ...data,
+          sourceJs: '',
+          sourceCss: '',
+          status: 'pending',
+        });
+        return response.status(201).json(repo);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return response.abort({ message: 'Validation error', errors: error.errors }, 400);
+        }
+        return response.abort({ message: error.message }, 400);
+      }
     }
-  }
 
   /**
    * Retrieve a Repo by ID.
@@ -54,7 +57,18 @@ export default class RepoController {
 
     try {
       const repo = await this.repoService.getRepoById(id, request.user?.id ?? null);
-      return response.status(200).json(repo);
+      const repoCodeCheck = await prisma.codeCheck.findFirst({
+        where: {
+          repoId: id,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      return response.status(200).json({
+        repo: repo,
+        repoCodeCheck: repoCodeCheck ?? null
+      });
     } catch (error) {
       return response.abort({ message: error.message }, 400);
     }
@@ -67,39 +81,37 @@ export default class RepoController {
    * @paramParam id - The ID of the Repo.
    * @bodyParam data - The data to update the Repo.
    */
- public async update({ params, request, response }: HttpContext) {
-    const { id } = params;
-    const data = request.only([
-      'sourceJs', 'sourceCss', 'name', 'description', 'language', 'price', 'tags', 'visibility', 'status'
-    ]);
+public async update({ params, request, response }: HttpContext) {
+  const { id } = params;
+  
+  try {
+    const data = updateRepoSchema.parse(request.body());
+    
+    const repo = await this.repoService.updateRepo(id, data);
 
-    try {
-      // Update the repo
-      const repo = await this.repoService.updateRepo(id, data);
+    if (data.sourceJs) {
+      const language = data.language || 'JSX'; // Default to JSX if not provided
+      const cleanedSource = data.sourceJs.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      const codeCheckResult = await this.codeCheckService.performCodeCheck(cleanedSource, language);
 
-      // Conduct code check if sourceJs is present
-      if (data.sourceJs) {
-        const language = data.language || 'JavaScript';
-        const cleanedSource = data.sourceJs.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-        const codeCheckResult = await this.codeCheckService.performCodeCheck(cleanedSource, language);
-
-        // Save the code check result
-        await prisma.codeCheck.create({
-          data: {
-            repoId: id,
-            score: codeCheckResult.score,
-            message: codeCheckResult.suggestion,
-            description: codeCheckResult.description,
-          },
-        });
-        // Attach code check result to response
-      }
-
-      return response.status(200).json(repo);
-    } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      await prisma.codeCheck.create({
+        data: {
+          repoId: id,
+          score: codeCheckResult.score,
+          message: codeCheckResult.suggestion,
+          description: codeCheckResult.description,
+        },
+      });
     }
+
+    return response.status(200).json(repo);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return response.abort({ message: 'Validation error', errors: error.errors }, 400);
+    }
+    return response.abort({ message: error.message }, 400);
   }
+}
 
   /**
    * Delete a Repo by ID.
