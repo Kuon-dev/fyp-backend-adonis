@@ -60,7 +60,7 @@ export default class SupportController {
   async getAllTickets({ response }: HttpContext) {
     try {
       const tickets = await this.supportTicketService.getAllTickets();
-      return response.status(200).json({ tickets });
+      return response.status(200).json({ tickets, status: 'success' });
     } catch (error) {
       return response.abort({ message: error.message }, 400);
     }

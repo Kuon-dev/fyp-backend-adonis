@@ -5,7 +5,7 @@ import env from '#start/env'
 
 const { Pool } = pg;
 
-const connectionString = `${env.get('DATABASE_LOCAL_URL')}`;
+const connectionString = `${env.get('DATABASE_URL')}`;
 
 const pool = new Pool({ connectionString });
 

@@ -12,10 +12,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-04-10',
 });
 
-export const generateCodeRepos = async (count: number = 10) => {
+export const generateCodeRepos = async (users: User[], count: number = 10) => {
   const codeRepos: {repo: CodeRepo, tags: string[]}[] = [];
 
-  const users: User[] = await prisma.user.findMany();
+  //const users: User[] = await prisma.user.findMany();
 
   for (let i = 0; i < count; i++) {
     const userId = users[Math.floor(Math.random() * users.length)].id;

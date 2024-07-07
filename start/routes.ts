@@ -11,6 +11,8 @@
 import router from '@adonisjs/core/services/router'
 import { prisma } from '#services/prisma_service'
 import { middleware } from '#start/kernel'
+import AutoSwagger from "adonis-autoswagger";
+import swagger from "#config/swagger";
 
 const AuthController = () => import('#controllers/auth_controller')
 const RepoController = () => import('#controllers/repos_controller')
@@ -125,3 +127,15 @@ router
   })
   .prefix('api');
 
+
+// returns swagger in YAML
+router.get("/swagger", async () => {
+  return AutoSwagger.default.docs(router.toJSON(), swagger);
+});
+
+// Renders Swagger-UI and passes YAML-output of /swagger
+router.get("/docs", async () => {
+  return AutoSwagger.default.ui("/swagger", swagger);
+  // return AutoSwagger.default.scalar("/swagger", swagger); to use Scalar instead
+  // return AutoSwagger.default.rapidoc("/swagger", swagger); to use RapiDoc instead
+});

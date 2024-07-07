@@ -7,6 +7,7 @@ import { generateCodeRepos } from "./repo-factory.js";
 import { generateReviews } from "./review-factorty.js";
 import { generateSupportTickets } from "./support-factorty.js";
 import { generateUsers } from "./user-factory.js";
+import { generateSellerProfiles } from "./seller-profile-factory.js";
 import { CodeRepo } from "@prisma/client";
 
 async function main() {
@@ -23,7 +24,7 @@ async function main() {
 
   console.log("Profiles generated");
 
-  const codeRepos = await createCodeRepos(await generateCodeRepos(1000));
+  const codeRepos = await createCodeRepos(await generateCodeRepos(users, 100));
 
   console.log("Code repos generated");
 
@@ -58,9 +59,17 @@ async function main() {
     data: await generateComments(
       users.map((u) => u.id),
       reviews.map((r) => r.id),
-      1000,
+      2000,
     ),
   });
+}
+
+export const createSellers = async () => {
+  await prisma.$connect();
+  console.log(prisma.)
+  const users = await prisma.user.findMany({ where: { role: "SELLER" }});
+  await generateSellerProfiles(users, 100);
+  console.log('done')
 }
 
 /**
@@ -98,7 +107,17 @@ export const createCodeRepos = async (codeRepos: { repo: CodeRepo, tags: string[
 };
 
 console.log('Seeding database...')
-main()
+//main()
+//  .then(async () => {
+//    await prisma.$disconnect();
+//  })
+//  .catch(async (e) => {
+//    console.error(e);
+//    await prisma.$disconnect();
+//    process.exit(1);
+//  });
+
+createSellers()
   .then(async () => {
     await prisma.$disconnect();
   })

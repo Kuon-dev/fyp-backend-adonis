@@ -1,4 +1,3 @@
-
 import type { HttpContext } from '@adonisjs/core/http'
 import AuthService from '#services/auth_service';
 import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy } from "#validators/auth";
@@ -24,11 +23,11 @@ export default class AuthController {
   constructor(protected authService: AuthService, protected userService: UserService) {}
 
   /**
-   * Handle user login.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam email - The user's email address.
-   * @bodyParam password - The user's password.
+   * @login
+   * @description Handle user login.
+   * @requestBody { "email": "user@example.com", "password": "123123123"}
+   * @responseBody 200 - { "message": "Login successful" }
+   * @responseBody 400 - { "message": "Invalid credentials" }
    */
   async login({ request, response }: HttpContext) {
     const { email, password } = request.only(['email', 'password']);
@@ -49,9 +48,7 @@ export default class AuthController {
         throw new Error('Invalid credentials');
       }
 
-      // const c = sessionCookie.serialize();
       const c = sessionCookie.serialize();
-      console.log(c)
       const sid = lucia.readSessionCookie(c);
       const { user } = await lucia.validateSession(sid ?? "");
       if (!user) throw new InvalidSessionIdException();
@@ -63,12 +60,14 @@ export default class AuthController {
   }
 
   /**
-   * Handle user registration.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
+   * @register
+   * @description Handle user registration.
    * @bodyParam email - The user's email address.
+   * @requestBody { "email": "user@example.com", "password": "123123123", "fullname": "John Doe"}
    * @bodyParam password - The user's password.
    * @bodyParam fullname - The user's full name.
+   * @responseBody 201 - { "message": "Registration successful" }
+   * @responseBody 400 - { "message": "Registration failed" }
    */
   async register({ request, response }: HttpContext) {
     const { email, password, fullname } = request.only(['email', 'password', 'fullname']);
@@ -79,11 +78,11 @@ export default class AuthController {
     try {
       await registrationValidator.validate({ email, password, fullname });
     } catch (e: Error | any) {
-      console.log(e)
       if (Array.isArray(e)) {
         return response.abort({ message: e}, 400);
+      } else {
+        return response.abort({ message: e.message }, 400);
       }
-      else return response.abort({ message: e.message }, 400);
     }
 
     try {
@@ -98,10 +97,10 @@ export default class AuthController {
   }
 
   /**
-   * Handle user logout.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @cookieParam session - The session ID cookie.
+   * @logout
+   * @description Handle user logout.
+   * @responseBody 200 - { "message": "Logout successful" }
+   * @responseBody 400 - { "message": "Logout failed" }
    */
   async logout({ request, response }: HttpContext) {
     const sessionId = request.cookie('session');
@@ -114,11 +113,11 @@ export default class AuthController {
   }
 
   /**
-   * Handle email verification, this refers to verifying a user's email address.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam sessionId - The session ID of the user.
-   * @bodyParam code - The verification code.
+   * @verifyEmail
+   * @description Handle email verification.
+   * @requestBody { "code": "123456" }
+   * @responseBody 200 - { "message": "Email verification successful" }
+   * @responseBody 400 - { "message": "Email verification failed" }
    */
   async verifyEmail({ request, response }: HttpContext) {
     const { code } = request.only([ 'code']);
@@ -138,10 +137,11 @@ export default class AuthController {
   }
 
   /**
-   * Handle password reset token creation.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam userId - The user's ID.
+   * @createPasswordResetToken
+   * @description Handle password reset token creation.
+   * @requestBody { "userId": "123456" }
+   * @responseBody 200 - { "token": "generated_token" }
+   * @responseBody 400 - { "message": "Password reset token creation failed" }
    */
   async createPasswordResetToken({ request, response }: HttpContext) {
     const { userId } = request.only(['userId']);
@@ -157,11 +157,11 @@ export default class AuthController {
   }
 
   /**
-   * Handle password reset.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam token - The password reset token.
-   * @bodyParam password - The new password.
+   * @resetPassword
+   * @description Handle password reset.
+   * @requestBody { "token": "generated_token", "password": "123456" }
+   * @responseBody 200 - { "message": "Password reset successful" }
+   * @responseBody 400 - { "message": "Password reset failed" }
    */
   async resetPassword({ request, response }: HttpContext) {
     const { token, password } = request.only(['token', 'password']);
@@ -177,10 +177,11 @@ export default class AuthController {
   }
 
   /**
-   * Verify if user exists and their email is verified.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
+   * @verifyUserExistAndEmailVerified
+   * @description Verify if user exists and their email is verified.
    * @bodyParam email - The user's email address.
+   * @responseBody 200 - { "exists": true }
+   * @responseBody 400 - { "message": "Verification failed" }
    */
   async verifyUserExistAndEmailVerified({ request, response }: HttpContext) {
     const { email } = request.only(['email']);
@@ -192,9 +193,14 @@ export default class AuthController {
     }
   }
 
+  /**
+   * @sendVerifyEmailCodeFromUser
+   * @description Send verification email code to the user.
+   * @responseBody 401 - { "message": "User not found in request object" }
+   * @responseBody 400 - { "message": "Sending verification email failed" }
+   */
   async sendVerifyEmailCodeFromUser({ request, response }: HttpContext) {
     if (request.user === null) throw new UnAuthorizedException('User not found in request object');
-    console.log(request.user)
     try {
       await this.authService.sendVerifyEmailCode(request.user);
       return response.status(200).json({ message: 'Verification email sent' });
@@ -204,22 +210,19 @@ export default class AuthController {
   }
 
   /**
-   * Get the user profile.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
+   * @me
+   * @description Get the user profile.
+   * @responseBody 200 - { "user": { "email": "wOwYg@example.com", "role": "USER" }, "profile": { "firstName": "John", "lastName": "Doe" } }
+   * @responseBody 400 - { "message": "Profile retrieval failed" }
    */
-
   async me({ request, response }: HttpContext) {
     try {
-      if (request.user === null) throw new Exception('No cookie session found', { status: 204, code: 'E_EMPTY_SESSION' });
-      console.log(request.user)
-      const profile = await this.userService.getUserProfileById(request.user.id);
-      // if the user profile is somehow not being created
-      if (!profile) await prisma.profile.create({ data: { userId: request.user.id, name: 'new user' } });
-      return response.status(200).json({
-        user: request.user,
-        profile: profile
-      });
+      if (request.user === null) throw new Exception('No cookie session found', { status: 204 });
+      const [user, profile] = await Promise.all([
+        this.userService.getUserByEmail(request.user.email),
+        prisma.profile.findFirst({ where: { userId: request.user.id } })
+      ]);
+      return response.status(200).json({ user, profile });
     } catch (error) {
       return response.abort({ message: error.message }, error.status ?? 400);
     }

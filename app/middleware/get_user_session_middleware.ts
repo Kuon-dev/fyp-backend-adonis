@@ -10,7 +10,7 @@ export default class GetUserSessionMiddleware {
      */
     const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
     if (!sessionId) {
-      console.log('no session')
+      //console.log('no session')
       ctx.request.user = null;
       ctx.request.session = null;
       const output = await next()

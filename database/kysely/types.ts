@@ -116,6 +116,12 @@ export type Session = {
     userId: string;
     expiresAt: Timestamp;
 };
+export type StripeCustomer = {
+    id: string;
+    userId: string;
+    stripeCustomerId: string;
+    stripePriceId: string;
+};
 export type SupportTicket = {
     id: string;
     email: string;
@@ -159,6 +165,7 @@ export type DB = {
     SearchHistory: SearchHistory;
     SellerProfile: SellerProfile;
     Session: Session;
+    StripeCustomer: StripeCustomer;
     SupportTicket: SupportTicket;
     Tag: Tag;
     User: User;

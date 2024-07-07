@@ -75,6 +75,7 @@
     "@sentry/profiling-node": "^7.116.0",
     "@types/react": "^18.3.3",
     "@vinejs/vine": "^2.1.0",
+    "adonis-autoswagger": "^3.54.0",
     "hnswlib-node": "^3.0.0",
     "js-tiktoken": "^1.0.12",
     "kysely": "^0.27.3",
