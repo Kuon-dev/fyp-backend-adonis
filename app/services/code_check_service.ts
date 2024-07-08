@@ -14,7 +14,6 @@ interface CodeCheckResult {
   securityScore: number;
   maintainabilityScore: number;
   readabilityScore: number;
-
   securitySuggestion: string;
   maintainabilitySuggestion: string;
   readabilitySuggestion: string;
@@ -65,16 +64,46 @@ export default class CodeCheckService {
         securityScore: { type: "integer", minimum: 0, maximum: 100 },
         maintainabilityScore: { type: "integer", minimum: 0, maximum: 100 },
         readabilityScore: { type: "integer", minimum: 0, maximum: 100 },
-
         securitySuggestion: { type: "string" },
         maintainabilitySuggestion: { type: "string" },
         readabilitySuggestion: { type: "string" },
-
         overallDescription: { type: "string" },
       },
-      required: ["securityScore", "maintainabilityScore", "readabilityScore", "securitySuggestion", "maintainabilitySuggestion", "readabilitySuggestion", "overallDescription"],
+      required: [
+        "securityScore",
+        "maintainabilityScore",
+        "readabilityScore",
+        "securitySuggestion",
+        "maintainabilitySuggestion",
+        "readabilitySuggestion",
+        "overallDescription",
+      ],
     };
-    this.eslint = new ESLint();
+
+    // Initialize ESLint with settings for JSX and TSX
+    this.eslint = new ESLint({
+      useEslintrc: false,
+      overrideConfig: {
+        parser: "@typescript-eslint/parser",
+        parserOptions: {
+          ecmaVersion: 2021,
+          sourceType: "module",
+          ecmaFeatures: {
+            jsx: true,
+          },
+        },
+        plugins: ["react", "@typescript-eslint"],
+        extends: [
+          "eslint:recommended",
+          "plugin:react/recommended",
+          "plugin:@typescript-eslint/recommended",
+        ],
+        rules: {
+          // Add any specific rules you want to enforce
+          "react/prop-types": "off", // Example: Turn off prop-types rule
+        },
+      },
+    });
   }
 
   private async initializeVectorStore(): Promise<void> {
@@ -106,11 +135,12 @@ export default class CodeCheckService {
       .join("\n");
   }
 
-  private async lintCode(code: string): Promise<ESLint.LintResult[]> {
-    return await this.eslint.lintText(code);
+  private async lintCode(code: string, language: 'JSX' | 'TSX'): Promise<ESLint.LintResult[]> {
+    const extension = language === 'JSX' ? '.jsx' : '.tsx';
+    return await this.eslint.lintText(code, { filePath: `temp${extension}` });
   }
 
-  public async performCodeCheck(code: string, language: string): Promise<CodeCheckResult> {
+  public async performCodeCheck(code: string, language: 'JSX' | 'TSX'): Promise<CodeCheckResult> {
     try {
       await this.initializeVectorStore();
       
@@ -137,10 +167,8 @@ export default class CodeCheckService {
         chat_history: [],
       });
 
-      let eslintResults: ESLint.LintResult[] | undefined;
-      if (language === 'javascript' || language === 'typescript') {
-        eslintResults = await this.lintCode(code);
-      }
+      const eslintResults = await this.lintCode(code, language);
+      
       logger.info({ message: "Code check result", result })
       logger.info({ message: "ESLint results", eslintResults })
 
