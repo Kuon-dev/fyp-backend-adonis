@@ -6,6 +6,7 @@ import env from "#start/env";
 import Stripe from "stripe";
 import logger from '@adonisjs/core/services/logger';
 
+// Initialize Stripe with the secret key from environment variables
 const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
   apiVersion: '2024-04-10',
 });
@@ -24,8 +25,10 @@ export default class RepoService {
    * Create a new Repo.
    *
    * @param data - The data to create a new Repo.
+   * @returns Promise<CodeRepo> - The created CodeRepo object.
    */
   public async createRepo(data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'> & { tags: string[] }): Promise<CodeRepo> {
+    // Create a product in Stripe
     const product = await stripe.products.create({
       name: data.name,
       description: data.description || undefined,
@@ -67,6 +70,7 @@ export default class RepoService {
    *
    * @param id - The ID of the Repo.
    * @param userId - The ID of the user viewing the repo (can be null for guests).
+   * @returns Promise<PartialCodeRepo | null> - The retrieved CodeRepo object or null if not found.
    */
   public async getRepoById(id: string, userId: string | null): Promise<PartialCodeRepo | null> {
     const repo = await prisma.codeRepo.findUnique({
@@ -85,6 +89,7 @@ export default class RepoService {
     });
 
     if (repo && userId) {
+      // Record search for each tag
       for (const tag of repo.tags) {
         await this.recordSearch(userId, tag.name);
       }
@@ -94,6 +99,7 @@ export default class RepoService {
       const hasAccess = repo.userId === userId || user?.role === 'ADMIN' || await this.hasPurchased(userId, id);
       const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
 
+      // Remove source code if user doesn't have access
       if (!hasAccess) {
         delete partialRepo.sourceJs;
         delete partialRepo.sourceCss;
@@ -109,6 +115,7 @@ export default class RepoService {
    *
    * @param userId - The ID of the user.
    * @param repoId - The ID of the repo.
+   * @returns Promise<boolean> - True if the user has purchased the repo, false otherwise.
    */
   private async hasPurchased(userId: string, repoId: string): Promise<boolean> {
     const count = await prisma.order.count({
@@ -126,6 +133,7 @@ export default class RepoService {
    *
    * @param id - The ID of the Repo.
    * @param data - The data to update the Repo.
+   * @returns Promise<CodeRepo> - The updated CodeRepo object.
    */
   public async updateRepo(id: string, data: Partial<CodeRepo>): Promise<CodeRepo> {
     return await prisma.codeRepo.update({
@@ -138,6 +146,7 @@ export default class RepoService {
    * Delete a Repo by ID.
    *
    * @param id - The ID of the Repo.
+   * @returns Promise<CodeRepo> - The deleted CodeRepo object.
    */
   public async deleteRepo(id: string): Promise<CodeRepo> {
     return await prisma.codeRepo.delete({
@@ -151,6 +160,7 @@ export default class RepoService {
    * @param page - The page number for pagination.
    * @param limit - The number of items per page.
    * @param userId - The ID of the user requesting the pagination (can be null for guests).
+   * @returns Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> - Paginated results.
    */
   public async getPaginatedRepos(page: number = 1, limit: number = 10, userId: string | null): Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> {
     const offset = (page - 1) * limit;
@@ -232,6 +242,7 @@ export default class RepoService {
    *
    * @param specifications - The list of specifications to filter by.
    * @param userId - The ID of the user performing the search (can be null for guests).
+   * @returns Promise<PartialCodeRepo[]> - Array of CodeRepo objects matching the search criteria.
    */
   public async searchRepos(specifications: RepoSpecification[], userId: string | null): Promise<PartialCodeRepo[]> {
     const compositeSpecification = new CompositeSpecification();
@@ -245,6 +256,7 @@ export default class RepoService {
     query = compositeSpecification.apply(query);
 
     if (userId) {
+      // Record search for each tag specification
       for (const spec of specifications) {
         if (spec instanceof TagSpecification) {
           for (const tag of spec.tags) {
@@ -253,6 +265,7 @@ export default class RepoService {
         }
       }
 
+      // Fetch user's recent search tags
       const recentTags = await prisma.searchHistory.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -261,12 +274,14 @@ export default class RepoService {
 
       const recentTagNames = recentTags.map(tag => tag.tag);
 
+      // Prioritize repos that match recent search tags
       query = query.orderBy(sql`CASE WHEN t.name IN (${recentTagNames.map(tag => `'${tag}'`).join(', ')}) THEN 1 ELSE 2 END`);
       query = query.orderBy('cr.createdAt', 'desc');
     }
 
     const repos = await query.execute();
 
+    // Filter out source code for unauthorized users
     const partialRepos = await Promise.all(repos.map(async (repo) => {
       const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo;
 
@@ -293,6 +308,7 @@ export default class RepoService {
    * Retrieve Repos by user ID.
    *
    * @param userId - The user ID to filter by.
+   * @returns Promise<CodeRepo[]> - Array of CodeRepo objects belonging to the user.
    */
   public async getReposByUser(userId: string): Promise<CodeRepo[]> {
     const query = kyselyDb.selectFrom('CodeRepo').selectAll().where('userId', '=', userId);
@@ -301,6 +317,8 @@ export default class RepoService {
 
   /**
    * Retrieve all Repos without filtering by visibility.
+   *
+   * @returns Promise<CodeRepo[]> - Array of all CodeRepo objects.
    */
   public async getAllRepos(): Promise<CodeRepo[]> {
     return await prisma.codeRepo.findMany({
@@ -313,10 +331,16 @@ export default class RepoService {
   }
 }
 
+/**
+ * Interface for Repository specifications used in search queries.
+ */
 interface RepoSpecification {
   apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any>;
 }
 
+/**
+ * Specification for filtering repos by visibility.
+ */
 export class VisibilitySpecification implements RepoSpecification {
   constructor(private visibility: string) {}
 
@@ -325,6 +349,9 @@ export class VisibilitySpecification implements RepoSpecification {
   }
 }
 
+/**
+ * Specification for filtering repos by tags.
+ */
 export class TagSpecification implements RepoSpecification {
   constructor(public tags: string[]) {}
 
@@ -340,6 +367,9 @@ export class TagSpecification implements RepoSpecification {
   }
 }
 
+/**
+ * Specification for filtering repos by language.
+ */
 export class LanguageSpecification implements RepoSpecification {
   constructor(private language: string) {}
 
@@ -348,6 +378,9 @@ export class LanguageSpecification implements RepoSpecification {
   }
 }
 
+/**
+ * Specification for filtering repos by user ID.
+ */
 export class UserSpecification implements RepoSpecification {
   constructor(private userId: string) {}
 
@@ -356,6 +389,9 @@ export class UserSpecification implements RepoSpecification {
   }
 }
 
+/**
+ * Specification for searching repos by name or description.
+ */
 export class SearchSpecification implements RepoSpecification {
   constructor(private searchQuery: string) {}
 
@@ -367,6 +403,9 @@ export class SearchSpecification implements RepoSpecification {
   }
 }
 
+/**
+ * Composite specification for combining multiple specifications.
+ */
 export class CompositeSpecification implements RepoSpecification {
   private specifications: RepoSpecification[] = [];
 

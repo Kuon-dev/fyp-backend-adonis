@@ -4,6 +4,8 @@ import { ProfileService } from '#services/profile_service'
 import { inject } from '@adonisjs/core';
 import { prisma } from '#services/prisma_service'
 import { S3Facade } from '#integrations/s3/s3_facade'
+import { updateProfileSchema } from '#validators/profile';
+import { Multipart } from '@adonisjs/core/bodyparser';
 
 @inject()
 export default class ProfileController {
@@ -52,60 +54,82 @@ export default class ProfileController {
     return response.ok(profile)
   }
 
-  /**
+  /*  /**
    * @updateProfile
-   * @description Update the authenticated user's profile
+   * @description Update user profile information and optionally upload a profile image
    * @requestBody {
-   *   "profileImg": <file>,
-   *   "name": "Jane Doe",
-   *   "phoneNumber": "+9876543210"
+   *   "name": "John Doe",
+   *   "phoneNumber": "+1234567890",
+   *   "profileImg": File (optional)
    * }
-   * @responseBody 200 - { "profile": { "id": "...", "name": "...", "phoneNumber": "...", "userId": "..." }, "signedUrl": "..." }
+   * @responseBody 200 - { "message": "Profile updated successfully", "status": "success" }
    * @responseBody 400 - { "message": "Invalid input data" }
-   * @responseBody 404 - { "message": "Profile not found" }
+   * @responseBody 500 - { "message": "Profile update failed" }
    */
   async updateProfile({ request, response }: HttpContext) {
     const user = request.user!
-    
+
     try {
-      return new Promise<void>((resolve, reject) => {
-        request.multipart.onFile('profileImg', {}, async (part) => {
-          try {
-            part.pause()
-            
-            const chunks: Buffer[] = []
-            for await (const chunk of part) {
-              chunks.push(chunk)
-            }
-            const buffer = Buffer.concat(chunks)
-            const fileType = part.headers['content-type']
+      const { name, phoneNumber } = request.only(['name', 'phoneNumber'])
+      updateProfileSchema.parse({ name, phoneNumber })
 
-            const result = await prisma.$transaction(async (tx) => {
-              const { media, signedUrl } = await this.s3Facade.uploadFile(buffer, fileType, tx)
+      if (!request.multipart) {
+        await this.updateProfileWithoutImage(user.id, name, phoneNumber)
+      } else {
+        await this.updateProfileWithImage(user.id, name, phoneNumber, request.multipart)
+      }
 
-              // Update user's profile with the new image URL
-              const updatedProfile = await tx.profile.upsert({
-                where: { userId: user.id },
-                update: { profileImg: media.url },
-                create: { userId: user.id, profileImg: media.url }
-              })
-
-              return { profile: updatedProfile, signedUrl }
-            })
-
-            response.status(200).json(result)
-            resolve()
-          } catch (error) {
-            console.error('Profile image upload error:', error)
-            response.status(500).json({ error: 'Profile image upload failed' })
-            reject(error)
-          }
-        })
-
-        request.multipart.process()
+      return response.status(200).json({
+        message: 'Profile updated successfully',
+        status: 'success',
       })
     } catch (error) {
-      console.error('Multipart processing error:', error)
-      return response.status(500).json({ error: 'File processing failed' })
+      console.error('Profile update error:', error)
+      return response.status(500).json({ message: 'Profile update failed' })
     }
-  }}
+  }
+
+  private async updateProfileWithoutImage(userId: string, name: string, phoneNumber: string) {
+    await prisma.profile.upsert({
+      where: { userId },
+      update: { name, phoneNumber },
+      create: { name, phoneNumber, userId }
+    })
+  }
+
+  private updateProfileWithImage(userId: string, name: string, phoneNumber: string, multipart: Multipart): Promise<void> {
+    return new Promise((resolve, reject) => {
+      multipart.onFile('profileImg', {}, async (part) => {
+        try {
+          const buffer = await this.readFileBuffer(part)
+          const fileType = part.headers['content-type']
+
+          await prisma.$transaction(async (tx) => {
+            const { media } = await this.s3Facade.uploadFile(buffer, fileType, tx)
+            await tx.profile.upsert({
+              where: { userId },
+              update: { name, phoneNumber, profileImg: media.url },
+              create: { userId, name, phoneNumber, profileImg: media.url }
+            })
+          })
+
+          resolve()
+        } catch (error) {
+          console.error('Profile image upload error:', error)
+          reject(error)
+        }
+      })
+
+      multipart.process()
+    })
+  }
+
+  private async readFileBuffer(part: any): Promise<Buffer> {
+    part.pause()
+    const chunks: Buffer[] = []
+    for await (const chunk of part) {
+      chunks.push(chunk)
+    }
+    return Buffer.concat(chunks)
+  }
+}

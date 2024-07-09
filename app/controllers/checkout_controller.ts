@@ -1,4 +1,3 @@
-
 import type { HttpContext } from '@adonisjs/core/http'
 import Stripe from 'stripe';
 import { prisma } from '#services/prisma_service';
@@ -15,15 +14,22 @@ const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
 /**
  * Controller class for handling Payment operations.
  */
-
 @inject()
 export default class PaymentController {
-  constructor(protected orderService: OrderService) {} 
+  constructor(protected orderService: OrderService) {}
+
   /**
-   * Create a Stripe Payment Intent.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam repoIds - An array of IDs of the Repos to purchase.
+   * @createPaymentIntent
+   * @description Create a Stripe Payment Intent for purchasing code repositories.
+   * @requestBody {
+   *   "repoIds": ["repo1", "repo2", "repo3"]
+   * }
+   * @responseBody 200 - {
+   *   "clientSecret": "pi_3N2XuXXXXXXXXXXX_secret_XXXXXXXX"
+   * }
+   * @responseBody 400 - { "error": "Invalid repoIds provided" }
+   * @responseBody 404 - { "error": "No repos found for the provided IDs" }
+   * @responseBody 500 - { "error": "Error creating payment intent" }
    */
   public async createPaymentIntent({ request, response }: HttpContext) {
     const { repoIds } = request.body();
@@ -32,7 +38,6 @@ export default class PaymentController {
       return response.status(400).send({ error: 'Invalid repoIds provided' });
     }
 
-    // Retrieve the repos from the database
     const repos = await prisma.codeRepo.findMany({
       where: { id: { in: repoIds } },
     });
@@ -41,11 +46,9 @@ export default class PaymentController {
       return response.status(404).send({ error: 'No repos found for the provided IDs' });
     }
 
-    // Calculate the total amount for the payment intent
     const amount = repos.reduce((total, repo) => total + repo.price, 0);
 
     try {
-      // Create a Payment Intent
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: 'usd',
@@ -65,10 +68,11 @@ export default class PaymentController {
   }
 
   /**
-   * Retrieve a Stripe Payment Intent.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
+   * @getPaymentIntent
+   * @description Retrieve a Stripe Payment Intent.
    * @paramParam paymentIntentId - The ID of the Stripe Payment Intent.
+   * @responseBody 200 - Stripe PaymentIntent object
+   * @responseBody 500 - { "error": "Error retrieving payment intent" }
    */
   public async getPaymentIntent({ params, response }: HttpContext) {
     const { paymentIntentId } = params;
@@ -83,35 +87,41 @@ export default class PaymentController {
   }
 
   /**
-   * Submit a Stripe Payment Intent and create an order.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam paymentIntentId - The ID of the Stripe Payment Intent.
-   * @bodyParam userId - The ID of the user making the payment.
+   * @submitPaymentIntent
+   * @description Submit a Stripe Payment Intent and create an order.
+   * @requestBody {
+   *   "paymentIntentId": "pi_3N2XuXXXXXXXXXXX",
+   *   "userId": "user123"
+   * }
+   * @responseBody 200 - { "success": true }
+   * @responseBody 400 - { "error": "Payment not completed" }
+   * @responseBody 500 - { "error": "Error confirming payment intent" }
    */
   public async submitPaymentIntent({ request, response }: HttpContext) {
     const { paymentIntentId, userId } = request.body();
 
     try {
-      // Confirm the Payment Intent
       const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId);
 
       if (paymentIntent.status === 'succeeded') {
         const repoIds = paymentIntent.metadata.repoIds.split(',');
 
-        // Retrieve the repos from the database
         const repos = await prisma.codeRepo.findMany({
           where: { id: { in: repoIds } },
         });
 
-        // Create orders for each repo
-        for (const repo of repos) {
-          await this.orderService.createOrder({
-            userId,
-            codeRepoId: repo.id,
-            totalAmount: repo.price,
-          });
-        }
+        await prisma.$transaction(async (p) => {
+          for (const repo of repos) {
+            await p.order.create({
+              data: {
+                userId,
+                codeRepoId: repo.id,
+                totalAmount: repo.price,
+                status: OrderStatus.pending,
+              },
+            });
+          }
+        });
 
         return response.send({ success: true });
       } else {
@@ -123,4 +133,3 @@ export default class PaymentController {
     }
   }
 }
-

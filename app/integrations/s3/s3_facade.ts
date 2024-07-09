@@ -33,7 +33,6 @@ export class S3Facade {
     tx: any
   ): Promise<{ media: any; signedUrl: string }> {
     const fileKey = `${randomUUID()}-${Date.now()}`;
-    console.log(this.s3Client)
     const putObjectCommand = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: fileKey,
