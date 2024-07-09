@@ -24,6 +24,7 @@ const CodeCheckController = () => import('#controllers/code_checks_controller')
 const HealthChecksController = () => import('#controllers/health_checks_controller')
 const ReviewController = () => import('#controllers/reviews_controller')
 const CommentController = () => import('#controllers/comments_controller')
+const ProfileController = () => import('#controllers/profile_controller')
 
 router.get('/', async () => {
   const users = await prisma.user.findMany()
@@ -46,6 +47,8 @@ router
         router.post('/verify-email', [AuthController, 'verifyEmail']);
         router.post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser']).use(middleware.auth({ role: 'USER' }));
         router.get('/me', [AuthController, 'me'])
+
+        router.put('/profile', [ProfileController, 'updateProfile']).use(middleware.auth({ role: 'USER' }));
 
         // Support routes
         router.post('/support/ticket', [SupportController, 'createTicket']);

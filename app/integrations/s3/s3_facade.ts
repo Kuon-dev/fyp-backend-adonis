@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { prisma } from '#services/prisma_service';
 import { randomUUID } from 'crypto';
+import env from "#start/env"
 
 export class S3Facade {
   private s3Client: S3Client;
@@ -9,13 +9,14 @@ export class S3Facade {
 
   constructor() {
     this.s3Client = new S3Client({
-      region: process.env.AWS_REGION,
+      region: env.get('AWS_REGION'),
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: env.get('AWS_ACCESS_KEY_ID')!,
+        secretAccessKey: env.get("AWS_SECRET_ACCESS_KEY")!,
+        sessionToken: env.get("AWS_SESSION_TOKEN"),
       },
     });
-    this.bucketName = process.env.AWS_S3_BUCKET_NAME!;
+    this.bucketName = env.get("AWS_S3_BUCKET_NAME")!;
   }
 
   /**
@@ -32,6 +33,7 @@ export class S3Facade {
     tx: any
   ): Promise<{ media: any; signedUrl: string }> {
     const fileKey = `${randomUUID()}-${Date.now()}`;
+    console.log(this.s3Client)
     const putObjectCommand = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: fileKey,
@@ -71,4 +73,4 @@ export class S3Facade {
   }
 }
 
-epnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presignerxport const s3Facade = new S3Facade();
+export const s3Facade = new S3Facade();

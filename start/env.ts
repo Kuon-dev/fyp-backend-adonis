@@ -47,10 +47,17 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   OpenAI_API_KEY: Env.schema.string(),
 
+  AWS_REGION: Env.schema.string(),
+  AWS_ACCESS_KEY_ID: Env.schema.string(),
+  AWS_SECRET_ACCESS_KEY: Env.schema.string(),
+  AWS_S3_BUCKET_NAME: Env.schema.string(),
+  AWS_SESSION_TOKEN: Env.schema.string(),
+
   /*
   |----------------------------------------------------------
   | Variables for configuring the limiter package
   |----------------------------------------------------------
   */
   LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const)
+
 })

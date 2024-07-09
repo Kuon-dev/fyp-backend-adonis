@@ -4,6 +4,7 @@ import {
   // lemonSqueezySetup,
 } from "@lemonsqueezy/lemonsqueezy.js";
 import env from "#start/env"
+//import { Disk } from '@adonisjs/drive'
 
 export default class AppProvider {
   constructor(protected app: ApplicationService) {}
