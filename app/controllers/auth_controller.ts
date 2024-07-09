@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import AuthService from '#services/auth_service';
-import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy } from "#validators/auth";
+import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy, EmptyFieldAuthStrategy } from "#validators/auth";
 import { inject } from '@adonisjs/core';
 import lucia from '#services/lucia_service';
 import { Exception } from '@adonisjs/core/exceptions';
@@ -35,10 +35,12 @@ export default class AuthController {
     const loginValidator = new AuthValidator();
     loginValidator.addStrategy(new ZodLoginAuthStrategy());
     loginValidator.addStrategy(new PrismaEmailExistsAuthStrategy());
+    loginValidator.addStrategy(new EmptyFieldAuthStrategy());
 
     try {
       await loginValidator.validate({ email, password });
     } catch (e: Error | any) {
+      console.log(e)
       return response.abort({ message: e.message }, 400);
     }
 

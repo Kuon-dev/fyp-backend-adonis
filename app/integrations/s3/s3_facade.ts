@@ -30,12 +30,13 @@ export class S3Facade {
   async uploadFile(
     file: Buffer,
     fileType: string,
-    tx: any
+    tx: any,
+    path?: string
   ): Promise<{ media: any; signedUrl: string }> {
     const fileKey = `${randomUUID()}-${Date.now()}`;
     const putObjectCommand = new PutObjectCommand({
       Bucket: this.bucketName,
-      Key: fileKey,
+      Key:`${path ? path + '/' : ''}${fileKey}`,
       Body: file,
       ContentType: fileType,
     });

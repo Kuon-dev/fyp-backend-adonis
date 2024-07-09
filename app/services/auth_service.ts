@@ -44,7 +44,7 @@ export default class AuthService {
     });
 
     if (!validPassword) {
-      throw new Exception("Invalid password", { status: 400 });
+      throw new Exception("Invalid credentials", { status: 400 });
     }
 
     const session = await lucia.createSession(user.id.toString(), {});

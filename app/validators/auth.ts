@@ -163,6 +163,14 @@ export class PrismaEmailExistsAuthStrategy implements AuthStrategy {
   }
 }
 
+export class EmptyFieldAuthStrategy implements AuthStrategy {
+  async validate(data: { email: string; password: string; fullname: string }): Promise<void> {
+    if (!data.email || !data.password) {
+      throw new Error('Emtpy fields on request body');
+    }
+  }
+}
+
 /**
  * Class for validating data using multiple authentication strategies.
  */

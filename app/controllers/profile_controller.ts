@@ -122,7 +122,7 @@ export default class ProfileController {
           const fileType = part.headers['content-type']
 
           await prisma.$transaction(async (tx) => {
-            const { media } = await this.s3Facade.uploadFile(buffer, fileType, tx)
+            const { media } = await this.s3Facade.uploadFile(buffer, fileType, tx, 'profile-images')
             await tx.profile.upsert({
               where: { userId },
               update: { name, phoneNumber, profileImg: media.url },
