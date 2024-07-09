@@ -2,41 +2,18 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import CodeCheckService from '#services/code_check_service'
 import { codeCheckRequestSchema, type CodeCheckRequest } from '#validators/code_check'
+import { prisma } from '#services/prisma_service'
 
-/**
- * Controller class for handling Code Check operations.
- */
 @inject()
 export default class CodeCheckController {
-  constructor(protected codeCheckService: CodeCheckService) {}
+  constructor(
+    protected codeCheckService: CodeCheckService,
+  ) {}
 
-  /**
-   * @checkCode
-   * @description Perform a code check and provide quality analysis.
-   * @requestBody {
-   *   "code": "function example() { return 'Hello, World!' }",
-   *   "language": "javascript",
-   * }
-   * @responseBody 200 - {
-   *   "score": 7,
-   *   "description": "The code is simple and straightforward...",
-   *   "suggestion": "Consider adding error handling...",
-   *   "securityScore": 8,
-   *   "maintainabilityScore": 7,
-   *   "readabilityScore": 9,
-   *   "securitySuggestion": "No major security issues found...",
-   *   "maintainabilitySuggestion": "Add comments to explain the function's purpose...",
-   *   "readabilitySuggestion": "The code is already quite readable...",
-   *   "eslintResults": [{ "ruleId": "semi", "message": "Missing semicolon." }]
-   * }
-   * @responseBody 400 - { "message": "Invalid input. Code and language are required." }
-   * @responseBody 500 - { "message": "An error occurred while processing the request." }
-   */
-  public async checkCode({ request, response }: HttpContext) {
+  public async publicCheckCode({ request, response }: HttpContext) {
     try {
       const data = request.only(['code', 'language'])
       const validatedData = codeCheckRequestSchema.parse(data) as CodeCheckRequest
-
       const result = await this.codeCheckService.performCodeCheck(
         validatedData.code,
         validatedData.language,
@@ -44,13 +21,65 @@ export default class CodeCheckController {
       
       return response.status(200).json(result)
     } catch (error) {
-      if (error.messages) {
-        // This is a validation error
-        return response.status(400).json({ message: "Invalid input", errors: error.messages })
+      if (error.code === 'P2002') {
+        return response.status(400).json({ message: "Invalid input", errors: error.message })
       }
       
       console.error('Code check error:', error)
       return response.status(500).json({ message: 'An error occurred while processing the request.' })
+    }
+  }
+
+  public async checkAndStoreCode({ request, response }: HttpContext) {
+    try {
+      const data = request.only(['code', 'language', 'repoId'])
+      const validatedData = codeCheckRequestSchema.parse(data) as CodeCheckRequest & { repoId: string }
+
+      const repoExists = await prisma.codeRepo.findUnique({
+        where: { id: validatedData.repoId },
+      })
+      if (!repoExists) {
+        return response.status(404).json({ message: "Repository not found." })
+      }
+      
+      const result = await this.codeCheckService.performAndStoreCodeCheck(
+        validatedData.repoId,
+        validatedData.code,
+        validatedData.language
+      )
+      
+      return response.status(200).json(result)
+    } catch (error) {
+      if (error.code === 'P2002') {
+        return response.status(400).json({ message: "Invalid input", errors: error.message })
+      }
+      
+      console.error('Code check error:', error)
+      return response.status(500).json({ message: 'An error occurred while processing the request.' })
+    }
+  }
+
+  public async getCodeCheck({ params, response }: HttpContext) {
+    try {
+      const { repoId } = params
+
+      const repoExists = await prisma.codeRepo.findUnique({
+        where: { id: repoId },
+      })
+      if (!repoExists) {
+        return response.status(404).json({ message: "Repository not found." })
+      }
+
+      const result = await this.codeCheckService.getLatestCodeCheck(repoId)
+      
+      if (!result) {
+        return response.status(404).json({ message: "No code check result found for this repository." })
+      }
+      
+      return response.status(200).json(result)
+    } catch (error) {
+      console.error('Error retrieving code check result:', error)
+      return response.status(500).json({ message: 'An error occurred while retrieving the code check result.' })
     }
   }
 }

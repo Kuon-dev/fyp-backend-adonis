@@ -93,7 +93,9 @@ router
         router.post('/checkout', [CheckoutController, 'createPaymentIntent']);
         router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent']);
 
-        router.post('/code-check', [CodeCheckController, 'checkCode']);
+        router.post('/code-analysis/public', [CodeCheckController, 'publicCheckCode']);
+        router.post('/code-analysis', [CodeCheckController, 'checkAndStoreCode']).use(middleware.auth({ role: 'USER' }));
+        router.get('/code-analysis/{id}', [CodeCheckController, 'getCodeCheck']);
 
         // Health Check routes
         router.get('/health', [HealthChecksController])

@@ -9,9 +9,15 @@ import type { Role, CodeRepoStatus, Visibility, Language, OrderStatus, SupportTi
 export type CodeCheck = {
     id: string;
     repoId: string;
-    score: number;
-    message: string;
-    description: string;
+    securityScore: number;
+    maintainabilityScore: number;
+    readabilityScore: number;
+    securitySuggestion: string;
+    maintainabilitySuggestion: string;
+    readabilitySuggestion: string;
+    overallDescription: string;
+    eslintErrorCount: number;
+    eslintFatalErrorCount: number;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
 };

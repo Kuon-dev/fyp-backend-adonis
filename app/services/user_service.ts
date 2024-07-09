@@ -168,7 +168,7 @@ export class UserService {
       case "ADMIN":
         const updatedUser = await prisma.user.update({
           where: { email },
-          data: { email: data.email, passwordHash: data.password ? await hash(data.password) : undefined }
+          data: { passwordHash: data.password ? await hash(data.password) : undefined }
         });
 
         await prisma.profile.update({

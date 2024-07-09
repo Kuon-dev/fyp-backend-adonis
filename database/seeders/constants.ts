@@ -258,8 +258,8 @@ const Counter = (props: Props) => {
       <p className="text-white font-bold text-xl bg-darkslateblue p-2 rounded">
         Count: {count}
       </p>
-      <button 
-        onClick={() => setCount(count + 1)} 
+      <button
+        onClick={() => setCount(count + 1)}
         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
         Increment
       </button>
@@ -284,8 +284,8 @@ const ToggleText = (props: Props) => {
 
   return (
     <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <button 
-        onClick={() => setVisible(!visible)} 
+      <button
+        onClick={() => setVisible(!visible)}
         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
         Toggle Text
       </button>
@@ -317,8 +317,8 @@ const AlertButton = (props: Props) => {
 
   return (
     <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <button 
-        onClick={() => showAlert.current()} 
+      <button
+        onClick={() => showAlert.current()}
         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
         Show Alert
       </button>
@@ -328,3 +328,4 @@ const AlertButton = (props: Props) => {
 
 render(<AlertButton message="This is an alert message!" />);
 `;
+

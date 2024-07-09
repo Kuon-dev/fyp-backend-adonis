@@ -181,14 +181,20 @@ model SearchHistory {
 }
 
 model CodeCheck {
-  id          String   @id @default(cuid())
-  repoId      String
-  score       Int
-  message     String
-  description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  Repo        CodeRepo @relation(fields: [repoId], references: [id])
+  id                    String   @id @default(cuid())
+  repoId                String
+  securityScore         Int
+  maintainabilityScore  Int
+  readabilityScore      Int
+  securitySuggestion    String   @db.Text
+  maintainabilitySuggestion String @db.Text
+  readabilitySuggestion String   @db.Text
+  overallDescription    String   @db.Text
+  eslintErrorCount      Int
+  eslintFatalErrorCount Int
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  Repo                  CodeRepo @relation(fields: [repoId], references: [id])
 }
 
 model Order {

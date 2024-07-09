@@ -7,6 +7,7 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { codeCheckSchema } from "#validators/code_check";
 import logger from "@adonisjs/core/services/logger";
 import { pdfDocReader } from "../integrations/langchain/document_reader.js";
+import { prisma } from "#services/prisma_service";
 import { openaiModel } from "../integrations/langchain/openai.js";
 import { ESLint } from "eslint";
 
@@ -18,7 +19,8 @@ interface CodeCheckResult {
   maintainabilitySuggestion: string;
   readabilitySuggestion: string;
   overallDescription: string;
-  eslintResults?: ESLint.LintResult[];
+  eslintErrorCount: number;
+  eslintFatalErrorCount: number;
 }
 
 export default class CodeCheckService {
@@ -39,21 +41,21 @@ export default class CodeCheckService {
       Based on the following context and code, provide a comprehensive analysis:
       Context: {context}
       Code: {question}
-      
+
       1. Overall Description: Summarize the code quality, considering security, maintainability, and readability in one or two sentences.
-      
+
       2. Security Analysis:
          - Score the code's security on a scale of 0 to 100, where 0 is extremely insecure and 100 is highly secure.
          - Provide specific suggestions for improving security.
-      
+
       3. Maintainability Analysis:
          - Score the code's maintainability on a scale of 0 to 100, where 0 is very difficult to maintain and 100 is easily maintainable.
          - Provide specific suggestions for improving maintainability.
-      
+
       4. Readability Analysis:
          - Score the code's readability on a scale of 0 to 100, where 0 is very difficult to read and 100 is easily readable.
          - Provide specific suggestions for improving readability.
-      
+
       Please ensure all suggestions are based solely on the given code, and ensure all fields mentioned above are fulfilled.
     `);
 
@@ -135,15 +137,19 @@ export default class CodeCheckService {
       .join("\n");
   }
 
-  private async lintCode(code: string, language: 'JSX' | 'TSX'): Promise<ESLint.LintResult[]> {
+  private async lintCode(code: string, language: 'JSX' | 'TSX'): Promise<{errorCount: number, fatalErrorCount: number}> {
     const extension = language === 'JSX' ? '.jsx' : '.tsx';
-    return await this.eslint.lintText(code, { filePath: `temp${extension}` });
+    const results = await this.eslint.lintText(code, { filePath: `temp${extension}` });
+    return {
+      errorCount: results[0].errorCount,
+      fatalErrorCount: results[0].fatalErrorCount
+    };
   }
 
   public async performCodeCheck(code: string, language: 'JSX' | 'TSX'): Promise<CodeCheckResult> {
     try {
       await this.initializeVectorStore();
-      
+
       if (!this.vectorStore) {
         throw new Error("Vector store initialization failed");
       }
@@ -167,14 +173,15 @@ export default class CodeCheckService {
         chat_history: [],
       });
 
-      const eslintResults = await this.lintCode(code, language);
-      
-      logger.info({ message: "Code check result", result })
-      logger.info({ message: "ESLint results", eslintResults })
+      const { errorCount, fatalErrorCount } = await this.lintCode(code, language);
+
+      logger.info({ message: "Code check result", result });
+      logger.info({ message: "ESLint error counts", errorCount, fatalErrorCount });
 
       const finalResult: CodeCheckResult = {
         ...codeCheckSchema.parse(result),
-        eslintResults,
+        eslintErrorCount: errorCount,
+        eslintFatalErrorCount: fatalErrorCount,
       };
 
       logger.info({ message: "Code check completed", result: finalResult });
@@ -182,6 +189,71 @@ export default class CodeCheckService {
     } catch (error) {
       logger.error({ message: "Error performing code check", error });
       throw new Error(`Code check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  public async performAndStoreCodeCheck(repoId: string, code: string, language: 'JSX' | 'TSX'): Promise<CodeCheckResult> {
+    try {
+      const result = await this.performCodeCheck(code, language);
+      
+      await this.storeCodeCheckResult(repoId, result);
+      
+      return result;
+    } catch (error) {
+      logger.error({ message: "Error performing and storing code check", error, repoId });
+      throw new Error(`Code check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async storeCodeCheckResult(repoId: string, result: CodeCheckResult): Promise<void> {
+    try {
+      await prisma.codeCheck.create({
+        data: {
+          repoId,
+          securityScore: result.securityScore,
+          maintainabilityScore: result.maintainabilityScore,
+          readabilityScore: result.readabilityScore,
+          securitySuggestion: result.securitySuggestion,
+          maintainabilitySuggestion: result.maintainabilitySuggestion,
+          readabilitySuggestion: result.readabilitySuggestion,
+          overallDescription: result.overallDescription,
+          eslintErrorCount: result.eslintErrorCount,
+          eslintFatalErrorCount: result.eslintFatalErrorCount,
+        },
+      });
+
+      logger.info({ message: "Code check result stored successfully", repoId });
+    } catch (error) {
+      logger.error({ message: "Error storing code check result", error, repoId });
+      throw new Error(`Failed to store code check result: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  public async getLatestCodeCheck(repoId: string): Promise<CodeCheckResult | null> {
+    try {
+      const latestCodeCheck = await prisma.codeCheck.findFirst({
+        where: { repoId },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (!latestCodeCheck) {
+        return null;
+      }
+
+      return {
+        securityScore: latestCodeCheck.securityScore,
+        maintainabilityScore: latestCodeCheck.maintainabilityScore,
+        readabilityScore: latestCodeCheck.readabilityScore,
+        securitySuggestion: latestCodeCheck.securitySuggestion,
+        maintainabilitySuggestion: latestCodeCheck.maintainabilitySuggestion,
+        readabilitySuggestion: latestCodeCheck.readabilitySuggestion,
+        overallDescription: latestCodeCheck.overallDescription,
+        eslintErrorCount: latestCodeCheck.eslintErrorCount,
+        eslintFatalErrorCount: latestCodeCheck.eslintFatalErrorCount,
+      };
+    } catch (error) {
+      logger.error({ message: "Error retrieving latest code check", error, repoId });
+      throw new Error(`Failed to retrieve latest code check: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
