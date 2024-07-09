@@ -66,6 +66,8 @@
     "@adonisjs/limiter": "^2.3.1",
     "@adonisjs/lucid": "^20.6.0",
     "@adonisjs/mail": "^9.2.1",
+    "@aws-sdk/client-s3": "^3.609.0",
+    "@aws-sdk/s3-request-presigner": "^3.609.0",
     "@langchain/community": "^0.2.9",
     "@langchain/core": "^0.2.6",
     "@langchain/openai": "^0.1.2",

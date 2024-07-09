@@ -7,20 +7,17 @@ declare module '@adonisjs/core/http' {
     user: User | null
     //setUser(u: User | null): void
     session: Session | null
+    token: string
   }
 }
 
-//Request.macro('user', Request.user) 
+//Request.macro('user', Request.user)
 //Request.macro('setUser', function (this: Request, user: User | null) {
 //  this.user = user
 //})
 
-Request.macro('user', function (this: Request) {
-  return this.user
-})
+Request.macro('user', null as User | null)
 
-Request.macro('session', function (this: Request) {
-  return this.session
-})
+Request.macro('session', null as Session | null)
 
 
