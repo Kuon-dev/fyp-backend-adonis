@@ -6,6 +6,9 @@ import { prisma } from '#services/prisma_service'
 import { S3Facade } from '#integrations/s3/s3_facade'
 import { updateProfileSchema } from '#validators/profile';
 import { Multipart } from '@adonisjs/core/bodyparser';
+import { ZodError } from 'zod';
+import InvalidImageException from '#exceptions/invalid_image_exception';
+import logger from '@adonisjs/core/services/logger';
 
 @inject()
 export default class ProfileController {
@@ -84,7 +87,17 @@ export default class ProfileController {
         status: 'success',
       })
     } catch (error) {
-      console.error('Profile update error:', error)
+      if (error instanceof ZodError) {
+        return response.status(400).json({
+          message: 'Validation failed'
+          })
+      }
+      if (error instanceof InvalidImageException) {
+        return response.status(400).json({ message: 'Invalid image format' })
+      }
+      else {
+        logger.error('Profile update failed:', error)
+      }
       return response.status(500).json({ message: 'Profile update failed' })
     }
   }
@@ -101,6 +114,10 @@ export default class ProfileController {
     return new Promise((resolve, reject) => {
       multipart.onFile('profileImg', {}, async (part) => {
         try {
+          // validate if it is an image
+          if (!part.headers['content-type']?.startsWith('image/')) {
+            return reject(new InvalidImageException())
+          }
           const buffer = await this.readFileBuffer(part)
           const fileType = part.headers['content-type']
 
