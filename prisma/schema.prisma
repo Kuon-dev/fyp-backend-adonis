@@ -141,8 +141,8 @@ model CodeRepo {
   codeChecks  CodeCheck[]
 
   orders          Order[]
-  stripeProductId String?
-  stripePriceId   String?
+  // stripeProductId String?
+  // stripePriceId   String?
 }
 
 enum CodeRepoStatus {

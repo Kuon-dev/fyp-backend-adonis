@@ -26,10 +26,10 @@ export default class RepoController {
    */
     public async create({ request, response }: HttpContext) {
       if (!request.user) throw new UnAuthorizedException('User not found in request object');
-      
+
       try {
         const data = createRepoSchema.parse(request.body());
-        
+
         const repo = await this.repoService.createRepo({
           userId: request.user.id,
           ...data,
@@ -55,8 +55,32 @@ export default class RepoController {
   public async getById({ params, request, response }: HttpContext) {
     const { id } = params;
 
+    console.log(request.user)
     try {
       const repo = await this.repoService.getRepoById(id, request.user?.id ?? null);
+      const repoCodeCheck = await prisma.codeCheck.findFirst({
+        where: {
+          repoId: id,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      return response.status(200).json({
+        repo: repo,
+        repoCodeCheck: repoCodeCheck ?? null
+      });
+    } catch (error) {
+      return response.abort({ message: error.message }, 400);
+    }
+  }
+
+
+  public async getByIdPublic({ params, response }: HttpContext) {
+    const { id } = params;
+    try {
+      console.log(id)
+      const repo = await this.repoService.getRepoByIdPublic(id);
       const repoCodeCheck = await prisma.codeCheck.findFirst({
         where: {
           repoId: id,
@@ -83,10 +107,10 @@ export default class RepoController {
    */
 public async update({ params, request, response }: HttpContext) {
   const { id } = params;
-  
+
   try {
     const data = updateRepoSchema.parse(request.body());
-    
+
     const repo = await this.repoService.updateRepo(id, data);
 
     if (data.sourceJs) {
@@ -97,9 +121,19 @@ public async update({ params, request, response }: HttpContext) {
       await prisma.codeCheck.create({
         data: {
           repoId: id,
-          score: codeCheckResult.score,
-          message: codeCheckResult.suggestion,
-          description: codeCheckResult.description,
+          securityScore: codeCheckResult.securityScore,
+          maintainabilityScore: codeCheckResult.maintainabilityScore,
+          readabilityScore: codeCheckResult.readabilityScore,
+          overallDescription: codeCheckResult.overallDescription,
+          securitySuggestion: codeCheckResult.securitySuggestion,
+          maintainabilitySuggestion: codeCheckResult.maintainabilitySuggestion,
+          readabilitySuggestion: codeCheckResult.readabilitySuggestion,
+
+          eslintErrorCount: codeCheckResult.eslintErrorCount,
+          eslintFatalErrorCount: codeCheckResult.eslintFatalErrorCount,
+          //score: codeCheckResult.score,
+          //message: codeCheckResult.suggestion,
+          //description: codeCheckResult.description,
         },
       });
     }

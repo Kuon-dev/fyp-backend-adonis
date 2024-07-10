@@ -21,19 +21,19 @@ export const generateCodeRepos = async (users: User[], count: number = 10) => {
     const userId = users[Math.floor(Math.random() * users.length)].id;
 
     // Create a Stripe product
-    const product = await stripe.products.create({
-      name: faker.company.name(),
-      description: faker.lorem.sentence(),
-    });
+    //const product = await stripe.products.create({
+    //  name: faker.company.name(),
+    //  description: faker.lorem.sentence(),
+    //});
 
     const priceAmount = Math.floor(parseFloat(faker.commerce.price({ min: 100, max: 10000, dec: 2 })))
 
     // Create a Stripe price
-    const price = await stripe.prices.create({
-      product: product.id,
-      unit_amount: priceAmount,
-      currency: 'myr',
-    });
+    //const price = await stripe.prices.create({
+    //  product: product.id,
+    //  unit_amount: priceAmount,
+    //  currency: 'myr',
+    //});
 
     const codeRepo: CodeRepo = {
       id: generateIdFromEntropySize(32),
@@ -51,13 +51,13 @@ export const generateCodeRepos = async (users: User[], count: number = 10) => {
       deletedAt: weightedRandomDelete(),
       visibility: randomBoolean() ? "public" : "private",
       status: faker.helpers.arrayElement(["pending", "active", "rejected"]),
-      name: product.name,
-      description: product.description!,
+      name: faker.company.name(),
+      description: faker.lorem.sentences(),
       language: faker.helpers.arrayElement(["JSX", "TSX"]),
       price: priceAmount,
       // tags: faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 })),
-      stripeProductId: product.id,
-      stripePriceId: price.id,
+      //stripeProductId: product.id,
+      //stripePriceId: price.id,
     };
 
     codeRepos.push({

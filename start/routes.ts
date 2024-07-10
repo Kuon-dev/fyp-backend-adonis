@@ -64,9 +64,10 @@ router
         // Repo routes
         router.post('/repos', [RepoController, 'create'])
         router.get('/repo/:id', [RepoController, 'getById']);
+        router.get('/repo/:id/public', [RepoController, 'getByIdPublic']);
 
-        router.put('/repos/:id', [RepoController, 'update']);
-        router.delete('/repos/:id', [RepoController, 'delete']);
+        router.put('/repo/:id', [RepoController, 'update']);
+        router.delete('/repo/:id', [RepoController, 'delete']);
         router.get('/repos', [RepoController, 'getPaginated'])
         router.get('/repos/search', [RepoController, 'search'])
         router.get('/repos/user/:userId', [RepoController, 'getByUser']);

@@ -11,6 +11,7 @@ import { generateSellerProfiles } from "./seller-profile-factory.js";
 import { CodeRepo } from "@prisma/client";
 
 async function main() {
+
   const { users, profiles } = await generateUsers(100);
   await prisma.user.createMany({
     data: users,

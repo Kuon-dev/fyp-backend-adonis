@@ -128,6 +128,17 @@ export default class RepoService {
     return count > 0;
   }
 
+  public async getRepoByIdPublic(id: string): Promise<PartialCodeRepo | null> {
+    const repo = await prisma.codeRepo.findUnique({
+      where: { id },
+      include: {
+        tags: true,
+      },
+    });
+
+    return repo;
+  }
+
   /**
    * Update a Repo.
    *
