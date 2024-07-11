@@ -10,7 +10,7 @@ export default defineConfig({
   | will be scanned automatically from the "./commands" directory.
   |
   */
-  commands: [() => import('@adonisjs/core/commands'), () => import('@adonisjs/mail/commands')],
+  commands: [() => import('@adonisjs/core/commands'), () => import('@adonisjs/mail/commands'), () => import('@rlanz/bull-queue/commands')],
 
   /*
   |--------------------------------------------------------------------------
@@ -33,7 +33,8 @@ export default defineConfig({
     // () => import('#providers/prisma_provider'),
     () => import('#providers/app_provider'),
     () => import('@adonisjs/mail/mail_provider'),
-    () => import('@adonisjs/limiter/limiter_provider')
+    () => import('@adonisjs/limiter/limiter_provider'),
+    () => import('@rlanz/bull-queue/queue_provider')
   ],
 
   /*

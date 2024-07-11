@@ -1,8 +1,6 @@
 import type { ApplicationService } from '@adonisjs/core/types'
-import {
-  // getAuthenticatedUser,
-  // lemonSqueezySetup,
-} from "@lemonsqueezy/lemonsqueezy.js";
+import app from '@adonisjs/core/services/app'
+import RabbitMQService from '#integrations/rabbitmq/rabbitmq_service'
 import env from "#start/env"
 //import { Disk } from '@adonisjs/drive'
 
@@ -12,7 +10,13 @@ export default class AppProvider {
   /**
    * Register bindings to the container
    */
-  register() {}
+  register() {
+
+    app.container.singleton('te', () => {
+      const rabbitmqService = new RabbitMQService()
+      return rabbitmqService
+    })
+  }
 
   /**
    *
@@ -38,7 +42,16 @@ export default class AppProvider {
   /**
    * The application has been booted
    */
-  async start() {}
+  async start() {
+    const rabbitmqService = app.container.make('rabbitmq') as RabbitMQService
+    await rabbitmqService.init()
+
+    // Start the code check worker
+    const codeCheckWorker = new CodeCheckWorker(rabbitmqService, app.container.make('code_check_service'))
+    await codeCheckWorker.start()
+
+    console.log('RabbitMQ service and Code Check Worker initialized')
+  }
 
   /**
    * The process has been started
@@ -48,5 +61,9 @@ export default class AppProvider {
   /**
    * Preparing to shutdown the app
    */
-  async shutdown() {}
+  async shutdown() {
+    const rabbitmqService = this.app.container.make('rabbitmq') as RabbitMQService
+    await rabbitmqService.close()
+  }
 }
+

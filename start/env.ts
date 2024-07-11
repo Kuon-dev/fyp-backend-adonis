@@ -46,6 +46,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   // STRIPE_WEBHOOK_SECRET: Env.schema.string(),
 
   OpenAI_API_KEY: Env.schema.string(),
+  RABBITMQ_URL: Env.schema.string(),
 
   AWS_REGION: Env.schema.string(),
   AWS_ACCESS_KEY_ID: Env.schema.string(),
@@ -58,6 +59,14 @@ export default await Env.create(new URL('../', import.meta.url), {
   | Variables for configuring the limiter package
   |----------------------------------------------------------
   */
-  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const)
+  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
 
+  /*
+  |----------------------------------------------------------
+  | Variables for @rlanz/bull-queue
+  |----------------------------------------------------------
+  */
+  QUEUE_REDIS_HOST: Env.schema.string({ format: 'host' }),
+  QUEUE_REDIS_PORT: Env.schema.number(),
+  QUEUE_REDIS_PASSWORD: Env.schema.string.optional()
 })
