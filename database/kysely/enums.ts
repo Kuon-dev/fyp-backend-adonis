@@ -5,6 +5,12 @@ export const Role = {
     SELLER: "SELLER"
 } as const;
 export type Role = (typeof Role)[keyof typeof Role];
+export const SellerVerificationStatus = {
+    PENDING: "PENDING",
+    APPROVED: "APPROVED",
+    REJECTED: "REJECTED"
+} as const;
+export type SellerVerificationStatus = (typeof SellerVerificationStatus)[keyof typeof SellerVerificationStatus];
 export const CodeRepoStatus = {
     pending: "pending",
     active: "active",

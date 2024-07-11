@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { Role, CodeRepoStatus, Visibility, Language, OrderStatus, SupportTicketStatus, SupportTicketType } from "./enums";
+import type { Role, SellerVerificationStatus, CodeRepoStatus, Visibility, Language, OrderStatus, SupportTicketStatus, SupportTicketType } from "./enums";
 
 export type CodeCheck = {
     id: string;
@@ -121,17 +121,13 @@ export type SellerProfile = {
     businessEmail: string;
     identityDoc: string | null;
     verificationDate: Timestamp | null;
+    stripeAccountId: string | null;
+    verificationStatus: Generated<SellerVerificationStatus>;
 };
 export type Session = {
     id: string;
     userId: string;
     expiresAt: Timestamp;
-};
-export type StripeCustomer = {
-    id: string;
-    userId: string;
-    stripeCustomerId: string;
-    stripePriceId: string;
 };
 export type SupportTicket = {
     id: string;
@@ -161,7 +157,6 @@ export type User = {
     deletedAt: Timestamp | null;
     bannedUntil: Timestamp | null;
     role: Generated<Role>;
-    isSellerVerified: Generated<boolean>;
 };
 export type DB = {
     CodeCheck: CodeCheck;
@@ -177,7 +172,6 @@ export type DB = {
     SearchHistory: SearchHistory;
     SellerProfile: SellerProfile;
     Session: Session;
-    StripeCustomer: StripeCustomer;
     SupportTicket: SupportTicket;
     Tag: Tag;
     User: User;

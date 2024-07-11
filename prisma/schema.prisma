@@ -61,12 +61,10 @@ model User {
 
   bannedUntil DateTime?
 
-  role             Role    @default(USER)
-  isSellerVerified Boolean @default(false)
+  role Role @default(USER)
 
-  sellerProfile  SellerProfile?
-  profile        Profile?
-  stripeCustomer StripeCustomer?
+  sellerProfile SellerProfile?
+  profile       Profile?
 
   Review         Review[]
   Comment        Comment[]
@@ -84,24 +82,24 @@ model Profile {
 }
 
 model SellerProfile {
-  id               String    @id @default(cuid())
-  user             User      @relation(fields: [userId], references: [id])
-  userId           String    @unique
-  profileImg       String?
-  businessName     String
-  businessAddress  String
-  businessPhone    String
-  businessEmail    String
-  identityDoc      String? // file path
-  verificationDate DateTime?
+  id                 String                   @id @default(cuid())
+  user               User                     @relation(fields: [userId], references: [id])
+  userId             String                   @unique
+  profileImg         String?
+  businessName       String
+  businessAddress    String
+  businessPhone      String
+  businessEmail      String
+  identityDoc        String? // file path
+  verificationDate   DateTime?
+  stripeAccountId    String?
+  verificationStatus SellerVerificationStatus @default(PENDING)
 }
 
-model StripeCustomer {
-  id               String @id
-  userId           String @unique
-  user             User   @relation(fields: [userId], references: [id])
-  stripeCustomerId String
-  stripePriceId    String
+enum SellerVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Session {
