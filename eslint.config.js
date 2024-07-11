@@ -13,7 +13,7 @@ export default [
       {
         extends: [
           // "plugin:@typescript-eslint/recommended",
-          "plugin:import/recommended",
+          'plugin:import/recommended',
           // "plugin:import/typescript",
         ],
         rules: {
@@ -26,11 +26,10 @@ export default [
           'prefer-const': 'error',
           '@typescript-eslint/no-unused-vars': 'warn',
           '@typescippt-eslint/no-explicit-any': 'warn',
-
         },
-      }
-    ]
+      },
+    ],
   },
   pluginJs.configs.recommended,
   // ...tseslint.configs.recommended,
-];
+]

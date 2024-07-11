@@ -1,15 +1,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import Stripe from 'stripe';
-import { prisma } from '#services/prisma_service';
-import env from "#start/env";
+import Stripe from 'stripe'
+import { prisma } from '#services/prisma_service'
+import env from '#start/env'
 import logger from '@adonisjs/core/services/logger'
-import { OrderService } from '#services/order_service';
-import { OrderStatus } from '@prisma/client';
-import { inject } from '@adonisjs/core';
+import { OrderService } from '#services/order_service'
+import { OrderStatus } from '@prisma/client'
+import { inject } from '@adonisjs/core'
 
-const stripe = new Stripe(env.get("STRIPE_SECRET_KEY"), {
+const stripe = new Stripe(env.get('STRIPE_SECRET_KEY'), {
   apiVersion: '2024-04-10',
-});
+})
 
 /**
  * Controller class for handling Payment operations.
@@ -32,21 +32,21 @@ export default class PaymentController {
    * @responseBody 500 - { "error": "Error creating payment intent" }
    */
   public async createPaymentIntent({ request, response }: HttpContext) {
-    const { repoIds } = request.body();
+    const { repoIds } = request.body()
 
     if (!Array.isArray(repoIds) || repoIds.length === 0) {
-      return response.status(400).send({ error: 'Invalid repoIds provided' });
+      return response.status(400).send({ error: 'Invalid repoIds provided' })
     }
 
     const repos = await prisma.codeRepo.findMany({
       where: { id: { in: repoIds } },
-    });
+    })
 
     if (repos.length === 0) {
-      return response.status(404).send({ error: 'No repos found for the provided IDs' });
+      return response.status(404).send({ error: 'No repos found for the provided IDs' })
     }
 
-    const amount = repos.reduce((total, repo) => total + repo.price, 0);
+    const amount = repos.reduce((total, repo) => total + repo.price, 0)
 
     try {
       const paymentIntent = await stripe.paymentIntents.create({
@@ -58,12 +58,12 @@ export default class PaymentController {
         metadata: {
           repoIds: repoIds.join(','),
         },
-      });
+      })
 
-      return response.send({ clientSecret: paymentIntent.client_secret });
+      return response.send({ clientSecret: paymentIntent.client_secret })
     } catch (error) {
-      logger.error(error);
-      return response.status(500).send({ error: 'Error creating payment intent' });
+      logger.error(error)
+      return response.status(500).send({ error: 'Error creating payment intent' })
     }
   }
 
@@ -75,14 +75,14 @@ export default class PaymentController {
    * @responseBody 500 - { "error": "Error retrieving payment intent" }
    */
   public async getPaymentIntent({ params, response }: HttpContext) {
-    const { paymentIntentId } = params;
+    const { paymentIntentId } = params
 
     try {
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      return response.send(paymentIntent);
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+      return response.send(paymentIntent)
     } catch (error) {
-      logger.error(error);
-      return response.status(500).send({ error: 'Error retrieving payment intent' });
+      logger.error(error)
+      return response.status(500).send({ error: 'Error retrieving payment intent' })
     }
   }
 
@@ -98,17 +98,17 @@ export default class PaymentController {
    * @responseBody 500 - { "error": "Error confirming payment intent" }
    */
   public async submitPaymentIntent({ request, response }: HttpContext) {
-    const { paymentIntentId, userId } = request.body();
+    const { paymentIntentId, userId } = request.body()
 
     try {
-      const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId);
+      const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId)
 
       if (paymentIntent.status === 'succeeded') {
-        const repoIds = paymentIntent.metadata.repoIds.split(',');
+        const repoIds = paymentIntent.metadata.repoIds.split(',')
 
         const repos = await prisma.codeRepo.findMany({
           where: { id: { in: repoIds } },
-        });
+        })
 
         await prisma.$transaction(async (p) => {
           for (const repo of repos) {
@@ -119,17 +119,17 @@ export default class PaymentController {
                 totalAmount: repo.price,
                 status: OrderStatus.pending,
               },
-            });
+            })
           }
-        });
+        })
 
-        return response.send({ success: true });
+        return response.send({ success: true })
       } else {
-        return response.status(400).send({ error: 'Payment not completed' });
+        return response.status(400).send({ error: 'Payment not completed' })
       }
     } catch (error) {
-      logger.error(error);
-      return response.status(500).send({ error: 'Error confirming payment intent' });
+      logger.error(error)
+      return response.status(500).send({ error: 'Error confirming payment intent' })
     }
   }
 }

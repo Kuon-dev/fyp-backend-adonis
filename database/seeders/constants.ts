@@ -1,149 +1,143 @@
 export const REPO_TAGS = [
-  "react",
-  "typescript",
-  "tailwindcss",
-  "react-hooks",
-  "redux",
-  "react-router",
-  "nextjs",
-  "gatsby",
-  "create-react-app",
-  "react-context",
-  "redux-toolkit",
-  "react-redux",
-  "graphql",
-  "apollo-client",
-  "react-testing-library",
-  "jest",
-  "formik",
-  "react-query",
-  "material-ui",
-  "chakra-ui",
-  "ant-design",
-  "emotion",
-  "styled-components",
-  "css-in-js",
-  "eslint",
-  "prettier",
-  "vite",
-  "webpack",
-  "babel",
-  "storybook",
-  "react-spring",
-  "framer-motion",
-  "react-native",
-  "expo",
-  "react-navigation",
-  "react-i18next",
-  "react-dnd",
-  "react-beautiful-dnd",
-  "react-final-form",
-  "react-hook-form",
-  "react-snapshot",
-  "react-window",
-  "react-virtualized",
-  "react-table",
-  "react-data-grid",
-  "react-icons",
-  "react-select",
-  "react-autosuggest",
-  "react-dropzone",
-  "react-toastify",
-  "react-error-boundary",
-  "react-hot-toast",
-  "react-infinite-scroll",
-  "react-intersection-observer",
-  "react-use",
-  "react-swipeable",
-  "react-player",
-  "react-helmet",
-  "react-ga",
-  "react-markdown",
-  "react-slick",
-  "react-stripe-js",
-  "react-use-gesture",
-  "react-three-fiber",
-  "zustand",
-  "recoil",
-  "jotai",
-  "react-query-devtools",
-  "msw",
-  "react-apexcharts",
-  "react-chartjs-2",
-  "nivo",
-  "react-sparklines",
-  "react-leaflet",
-  "react-google-maps",
-  "react-map-gl",
-  "react-geosuggest",
-  "react-rnd",
-  "react-split-pane",
-  "react-pdf",
-  "react-move",
-  "react-use-measure",
-  "react-gsap",
-  "react-icons-kit",
-  "react-vertical-timeline",
-  "react-parallax",
-  "react-transition-group",
-  "react-motion",
-  "react-flip-move",
-  "react-responsive",
-  "react-dates",
-  "react-moment",
-  "react-intl",
-  "react-spring-lightbox",
-  "react-popper",
-  "react-tooltip",
-  "react-lottie",
-  "react-smooth-dnd",
-  "react-slider",
-  "react-datetime",
-  "react-collapse",
-  "react-photo-gallery"
-];
+  'react',
+  'typescript',
+  'tailwindcss',
+  'react-hooks',
+  'redux',
+  'react-router',
+  'nextjs',
+  'gatsby',
+  'create-react-app',
+  'react-context',
+  'redux-toolkit',
+  'react-redux',
+  'graphql',
+  'apollo-client',
+  'react-testing-library',
+  'jest',
+  'formik',
+  'react-query',
+  'material-ui',
+  'chakra-ui',
+  'ant-design',
+  'emotion',
+  'styled-components',
+  'css-in-js',
+  'eslint',
+  'prettier',
+  'vite',
+  'webpack',
+  'babel',
+  'storybook',
+  'react-spring',
+  'framer-motion',
+  'react-native',
+  'expo',
+  'react-navigation',
+  'react-i18next',
+  'react-dnd',
+  'react-beautiful-dnd',
+  'react-final-form',
+  'react-hook-form',
+  'react-snapshot',
+  'react-window',
+  'react-virtualized',
+  'react-table',
+  'react-data-grid',
+  'react-icons',
+  'react-select',
+  'react-autosuggest',
+  'react-dropzone',
+  'react-toastify',
+  'react-error-boundary',
+  'react-hot-toast',
+  'react-infinite-scroll',
+  'react-intersection-observer',
+  'react-use',
+  'react-swipeable',
+  'react-player',
+  'react-helmet',
+  'react-ga',
+  'react-markdown',
+  'react-slick',
+  'react-stripe-js',
+  'react-use-gesture',
+  'react-three-fiber',
+  'zustand',
+  'recoil',
+  'jotai',
+  'react-query-devtools',
+  'msw',
+  'react-apexcharts',
+  'react-chartjs-2',
+  'nivo',
+  'react-sparklines',
+  'react-leaflet',
+  'react-google-maps',
+  'react-map-gl',
+  'react-geosuggest',
+  'react-rnd',
+  'react-split-pane',
+  'react-pdf',
+  'react-move',
+  'react-use-measure',
+  'react-gsap',
+  'react-icons-kit',
+  'react-vertical-timeline',
+  'react-parallax',
+  'react-transition-group',
+  'react-motion',
+  'react-flip-move',
+  'react-responsive',
+  'react-dates',
+  'react-moment',
+  'react-intl',
+  'react-spring-lightbox',
+  'react-popper',
+  'react-tooltip',
+  'react-lottie',
+  'react-smooth-dnd',
+  'react-slider',
+  'react-datetime',
+  'react-collapse',
+  'react-photo-gallery',
+]
 
-export const ENABLED_LANGUAGES: string[] = [
-  "html",
-  "markdown",
-  "javascript",
-  "typescript",
-];
+export const ENABLED_LANGUAGES: string[] = ['html', 'markdown', 'javascript', 'typescript']
 
 export const SELF_CLOSING_TAGS: string[] = [
-  "area",
-  "base",
-  "br",
-  "col",
-  "command",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "keygen",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr",
-  "circle",
-  "ellipse",
-  "line",
-  "path",
-  "polygon",
-  "polyline",
-  "rect",
-  "stop",
-  "use",
-];
-
+  'area',
+  'base',
+  'br',
+  'col',
+  'command',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'keygen',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+  'circle',
+  'ellipse',
+  'line',
+  'path',
+  'polygon',
+  'polyline',
+  'rect',
+  'stop',
+  'use',
+]
 
 export const DEFAULT_CSS_MONACO = `
 .custom-class {
   color: red;
 }
-`;
+`
 
 export const TYPESCRIPT_VARIANT_1 = `
 import * as React from 'react';
@@ -171,7 +165,7 @@ const Greeting = (props: Props) => {
 };
 
 render(<Greeting name="World" />);
-`;
+`
 
 export const TYPESCRIPT_VARIANT_2 = `
 import * as React from 'react';
@@ -203,7 +197,7 @@ const ItemList = (props: Props) => {
 };
 
 render(<ItemList items={['Apple', 'Banana', 'Cherry']} />);
-`;
+`
 
 export const TYPESCRIPT_VARIANT_3 = `
 import * as React from 'react';
@@ -236,7 +230,7 @@ const Counter = (props: Props) => {
 };
 
 render(<Counter initialCount={0} />);
-`;
+`
 
 export const TYPESCRIPT_VARIANT_4 = `
 import * as React from 'react';
@@ -267,7 +261,7 @@ const ToggleText = (props: Props) => {
 };
 
 render(<ToggleText text="Hello, toggle me!" />);
-`;
+`
 
 export const TYPESCRIPT_VARIANT_5 = `
 import * as React from 'react';
@@ -295,5 +289,4 @@ const AlertButton = (props: Props) => {
 };
 
 render(<AlertButton message="This is an alert message!" />);
-`;
-
+`

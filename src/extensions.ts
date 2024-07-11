@@ -1,6 +1,6 @@
 import { Request } from '@adonisjs/core/http'
 // import { User } from '@prisma/client'
-import type { User, Session } from "lucia";
+import type { User, Session } from 'lucia'
 
 declare module '@adonisjs/core/http' {
   interface Request {
@@ -19,5 +19,3 @@ declare module '@adonisjs/core/http' {
 Request.macro('user', null as User | null)
 
 Request.macro('session', null as Session | null)
-
-

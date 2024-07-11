@@ -1,25 +1,25 @@
-import { Lucia } from "lucia";
-import { PrismaAdapter } from "@lucia-auth/adapter-prisma";
-import { Role } from "@prisma/client";
-import { prisma } from "./prisma_service.js";
+import { Lucia } from 'lucia'
+import { PrismaAdapter } from '@lucia-auth/adapter-prisma'
+import { Role } from '@prisma/client'
+import { prisma } from './prisma_service.js'
 
 import {
   HttpContext,
   // Response,
 } from '@adonisjs/core/http'
-import logger from "@adonisjs/core/services/logger";
+import logger from '@adonisjs/core/services/logger'
 
 // import type { Session, User } from 'lucia'
 
-const client = prisma;
-const adapter = new PrismaAdapter(client.session, client.user);
+const client = prisma
+const adapter = new PrismaAdapter(client.session, client.user)
 
-const env = process.env.NODE_ENV;
+const env = process.env.NODE_ENV
 
 export const lucia = new Lucia(adapter, {
   sessionCookie: {
     attributes: {
-      secure: env === "PRODUCTION", // set `Secure` flag in HTTPS
+      secure: env === 'PRODUCTION', // set `Secure` flag in HTTPS
     },
   },
   getUserAttributes: (attributes) => {
@@ -31,42 +31,42 @@ export const lucia = new Lucia(adapter, {
       role: attributes.role,
       bannedUntil: attributes.bannedUntil,
       deletedAt: attributes.deletedAt,
-    };
+    }
   },
-});
+})
 
 export const validateRequestFromMiddleware = async (ctx: HttpContext) => {
-  const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
+  const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? '')
   if (!sessionId)
     return {
       user: null,
       session: null,
-    };
+    }
 
-  const result = await lucia.validateSession(sessionId);
+  const result = await lucia.validateSession(sessionId)
   try {
     if (result.session && result.session.fresh) {
-      const sessionCookie = lucia.createSessionCookie(result.session.id);
+      const sessionCookie = lucia.createSessionCookie(result.session.id)
       ctx.request.headers().SetCookie = sessionCookie.serialize()
     }
   } catch (error) {
-    logger.error(error);
+    logger.error(error)
   }
-  return result;
-};
+  return result
+}
 
-declare module "lucia" {
+declare module 'lucia' {
   interface Register {
-    Lucia: typeof lucia;
+    Lucia: typeof lucia
     DatabaseUserAttributes: {
-      email: string;
-      avatar: string;
-      emailVerified: boolean;
-      role: Role;
-      bannedUntil?: Date | null;
-      deletedAt?: Date | null;
-    };
+      email: string
+      avatar: string
+      emailVerified: boolean
+      role: Role
+      bannedUntil?: Date | null
+      deletedAt?: Date | null
+    }
   }
 }
 
-export default lucia;
+export default lucia

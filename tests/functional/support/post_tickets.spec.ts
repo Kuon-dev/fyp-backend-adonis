@@ -11,7 +11,7 @@ test.group('Support Controller - POST Operations', (group) => {
   async function loginAsAdmin(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
-      password: 'adminpassword'
+      password: 'adminpassword',
     })
     return response.headers()['set-cookie'][0]
   }
@@ -21,7 +21,7 @@ test.group('Support Controller - POST Operations', (group) => {
       email: 'user@example.com',
       subject: 'Test Ticket',
       message: 'This is a test ticket',
-      type: 'general'
+      type: 'general',
     })
 
     response.assertStatus(201)
@@ -43,7 +43,7 @@ test.group('Support Controller - POST Operations', (group) => {
       .post('/api/v1/support/send-email')
       .header('Cookie', adminToken)
       .json({
-        email: 'user@example.com'
+        email: 'user@example.com',
       })
 
     response.assertStatus(200)
@@ -51,11 +51,9 @@ test.group('Support Controller - POST Operations', (group) => {
   })
 
   test('unauthenticated user cannot send default email notification', async ({ assert }) => {
-    const response = await client
-      .post('/api/v1/support/send-email')
-      .json({
-        email: 'user@example.com'
-      })
+    const response = await client.post('/api/v1/support/send-email').json({
+      email: 'user@example.com',
+    })
 
     response.assertStatus(401)
     assert.properties(response.body(), ['message'])

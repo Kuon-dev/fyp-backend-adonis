@@ -1,4 +1,4 @@
-import UnAuthorizedException from '#exceptions/un_authorized_exception';
+import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import lucia from '#services/lucia_service'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
@@ -8,43 +8,36 @@ export default class GetUserSessionMiddleware {
     /**
      * Middleware logic goes here (before the next call)
      */
-    const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? "");
+    const sessionId = lucia.readSessionCookie(ctx.request.headers().cookie ?? '')
     if (!sessionId) {
       //console.log('no session')
-      ctx.request.user = null;
-      ctx.request.session = null;
+      ctx.request.user = null
+      ctx.request.session = null
       const output = await next()
       return output
-    }
-    else {
-      const { session, user } = await lucia.validateSession(sessionId);
+    } else {
+      const { session, user } = await lucia.validateSession(sessionId)
       if (session && session.fresh) {
-        ctx.response.header(
-          "Set-Cookie",
-          lucia.createSessionCookie(session.id).serialize()
-        );
+        ctx.response.header('Set-Cookie', lucia.createSessionCookie(session.id).serialize())
       }
 
       if (!session) {
-        ctx.response.header(
-          "Set-Cookie",
-          lucia.createBlankSessionCookie().serialize()
-        );
+        ctx.response.header('Set-Cookie', lucia.createBlankSessionCookie().serialize())
       }
       // if there is no user found but a role prop exist
       if (!user) {
-        throw new UnAuthorizedException();
+        throw new UnAuthorizedException()
       }
 
       if (user.bannedUntil && user.bannedUntil > new Date()) {
-        throw new UnAuthorizedException('User is banned');
+        throw new UnAuthorizedException('User is banned')
       }
 
       if (user.deletedAt) {
-        throw new UnAuthorizedException('User account is deleted');
+        throw new UnAuthorizedException('User account is deleted')
       }
-      ctx.request.user = user;
-      ctx.request.session = session;
+      ctx.request.user = user
+      ctx.request.session = session
 
       /**
        * Call next method in the pipeline and return its output

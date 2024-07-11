@@ -1,6 +1,6 @@
-import type { HttpContext } from '@adonisjs/core/http';
-import { inject } from '@adonisjs/core';
-import { ReviewService } from '#services/ReviewService';
+import type { HttpContext } from '@adonisjs/core/http'
+import { inject } from '@adonisjs/core'
+import { ReviewService } from '#services/ReviewService'
 
 /**
  * Controller class for handling Review operations.
@@ -14,13 +14,13 @@ export default class ReviewController {
    * @param {HttpContext} ctx - The HTTP context object.
    */
   public async create({ request, response }: HttpContext) {
-    const data = request.only(['content', 'userId', 'repoId', 'rating']);
+    const data = request.only(['content', 'userId', 'repoId', 'rating'])
 
     try {
-      const review = await this.reviewService.createReview(data);
-      return response.status(201).json(review);
+      const review = await this.reviewService.createReview(data)
+      return response.status(201).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -30,13 +30,13 @@ export default class ReviewController {
    * @paramParam id - The ID of the review.
    */
   public async getById({ params, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
 
     try {
-      const review = await this.reviewService.getReviewById(id);
-      return response.status(200).json(review);
+      const review = await this.reviewService.getReviewById(id)
+      return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -47,14 +47,14 @@ export default class ReviewController {
    * @bodyParam data - The data to update the review.
    */
   public async update({ params, request, response }: HttpContext) {
-    const { id } = params;
-    const data = request.only(['content', 'rating']);
+    const { id } = params
+    const data = request.only(['content', 'rating'])
 
     try {
-      const review = await this.reviewService.updateReview(id, data);
-      return response.status(200).json(review);
+      const review = await this.reviewService.updateReview(id, data)
+      return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -64,13 +64,13 @@ export default class ReviewController {
    * @paramParam id - The ID of the review.
    */
   public async delete({ params, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
 
     try {
-      const review = await this.reviewService.deleteReview(id);
-      return response.status(200).json({ message: 'Review deleted successfully', review });
+      const review = await this.reviewService.deleteReview(id)
+      return response.status(200).json({ message: 'Review deleted successfully', review })
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -80,10 +80,10 @@ export default class ReviewController {
    */
   public async getAll({ response }: HttpContext) {
     try {
-      const reviews = await this.reviewService.getAllReviews();
-      return response.status(200).json(reviews);
+      const reviews = await this.reviewService.getAllReviews()
+      return response.status(200).json(reviews)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -93,13 +93,13 @@ export default class ReviewController {
    * @paramParam id - The ID of the review.
    */
   public async upvote({ params, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
 
     try {
-      const review = await this.reviewService.upvoteReview(id);
-      return response.status(200).json(review);
+      const review = await this.reviewService.upvoteReview(id)
+      return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -109,13 +109,13 @@ export default class ReviewController {
    * @paramParam id - The ID of the review.
    */
   public async downvote({ params, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
 
     try {
-      const review = await this.reviewService.downvoteReview(id);
-      return response.status(200).json(review);
+      const review = await this.reviewService.downvoteReview(id)
+      return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 }

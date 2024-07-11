@@ -17,7 +17,7 @@ import env from '#start/env'
 export const plugins: Config['plugins'] = [
   assert(),
   apiClient({
-    baseURL: `http://${env.get('HOST')}:${env.get('PORT')}`
+    baseURL: `http://${env.get('HOST')}:${env.get('PORT')}`,
   }),
   pluginAdonisJS(app),
 ]

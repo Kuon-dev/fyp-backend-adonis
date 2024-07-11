@@ -1,18 +1,21 @@
 // controllers/ProfileController.ts
 import { HttpContext } from '@adonisjs/core/http'
 import { ProfileService } from '#services/profile_service'
-import { inject } from '@adonisjs/core';
+import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
 import { S3Facade } from '#integrations/s3/s3_facade'
-import { updateProfileSchema } from '#validators/profile';
-import { Multipart } from '@adonisjs/core/bodyparser';
-import { ZodError } from 'zod';
-import InvalidImageException from '#exceptions/invalid_image_exception';
-import logger from '@adonisjs/core/services/logger';
+import { updateProfileSchema } from '#validators/profile'
+import { Multipart } from '@adonisjs/core/bodyparser'
+import { ZodError } from 'zod'
+import InvalidImageException from '#exceptions/invalid_image_exception'
+import logger from '@adonisjs/core/services/logger'
 
 @inject()
 export default class ProfileController {
-  constructor(protected profileService: ProfileService, protected s3Facade: S3Facade) {}
+  constructor(
+    protected profileService: ProfileService,
+    protected s3Facade: S3Facade
+  ) {}
 
   /**
    * @createProfile
@@ -31,7 +34,7 @@ export default class ProfileController {
       const userId = request.user!.id
       const { name, phoneNumber } = request.only(['name', 'phoneNumber'])
 
-      let profileData: {name?: string, phoneNumber?: string } = { name, phoneNumber }
+      let profileData: { name?: string; phoneNumber?: string } = { name, phoneNumber }
       const result = await this.profileService.createProfile(userId, profileData)
       return response.created(result)
     } catch (error) {
@@ -89,13 +92,12 @@ export default class ProfileController {
     } catch (error) {
       if (error instanceof ZodError) {
         return response.status(400).json({
-          message: 'Validation failed'
-          })
+          message: 'Validation failed',
+        })
       }
       if (error instanceof InvalidImageException) {
         return response.status(400).json({ message: 'Invalid image format' })
-      }
-      else {
+      } else {
         logger.error('Profile update failed:', error)
       }
       return response.status(500).json({ message: 'Profile update failed' })
@@ -106,11 +108,16 @@ export default class ProfileController {
     await prisma.profile.upsert({
       where: { userId },
       update: { name, phoneNumber },
-      create: { name, phoneNumber, userId }
+      create: { name, phoneNumber, userId },
     })
   }
 
-  private updateProfileWithImage(userId: string, name: string, phoneNumber: string, multipart: Multipart): Promise<void> {
+  private updateProfileWithImage(
+    userId: string,
+    name: string,
+    phoneNumber: string,
+    multipart: Multipart
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       multipart.onFile('profileImg', {}, async (part) => {
         try {
@@ -126,7 +133,7 @@ export default class ProfileController {
             await tx.profile.upsert({
               where: { userId },
               update: { name, phoneNumber, profileImg: media.url },
-              create: { userId, name, phoneNumber, profileImg: media.url }
+              create: { userId, name, phoneNumber, profileImg: media.url },
             })
           })
 

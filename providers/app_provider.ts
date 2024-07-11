@@ -1,7 +1,7 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 import app from '@adonisjs/core/services/app'
 import RabbitMQService from '#integrations/rabbitmq/rabbitmq_service'
-import env from "#start/env"
+import env from '#start/env'
 //import { Disk } from '@adonisjs/drive'
 
 export default class AppProvider {
@@ -11,7 +11,6 @@ export default class AppProvider {
    * Register bindings to the container
    */
   register() {
-
     app.container.singleton('te', () => {
       const rabbitmqService = new RabbitMQService()
       return rabbitmqService
@@ -47,7 +46,10 @@ export default class AppProvider {
     await rabbitmqService.init()
 
     // Start the code check worker
-    const codeCheckWorker = new CodeCheckWorker(rabbitmqService, app.container.make('code_check_service'))
+    const codeCheckWorker = new CodeCheckWorker(
+      rabbitmqService,
+      app.container.make('code_check_service')
+    )
     await codeCheckWorker.start()
 
     console.log('RabbitMQ service and Code Check Worker initialized')
@@ -66,4 +68,3 @@ export default class AppProvider {
     await rabbitmqService.close()
   }
 }
-

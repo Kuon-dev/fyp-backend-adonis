@@ -7,7 +7,9 @@ import { DateTime } from 'luxon'
 function generateDates() {
   const createdAt = faker.date.past()
   const updatedAt = faker.date.between({ from: createdAt, to: new Date() })
-  const deletedAt = faker.datatype.boolean(0.1) ? faker.date.between({ from: updatedAt, to: new Date() }) : null
+  const deletedAt = faker.datatype.boolean(0.1)
+    ? faker.date.between({ from: updatedAt, to: new Date() })
+    : null
   return { createdAt, updatedAt, deletedAt }
 }
 
@@ -48,7 +50,7 @@ export async function generateOrders(count: number = 100) {
   })
 
   // Update sales aggregates for completed orders
-  const completedOrders = orders.filter(order => order.status === 'COMPLETED')
+  const completedOrders = orders.filter((order) => order.status === 'COMPLETED')
 
   for (const order of completedOrders) {
     const aggregateDate = DateTime.fromJSDate(order.createdAt).startOf('month').toJSDate()
@@ -74,4 +76,4 @@ export async function generateOrders(count: number = 100) {
   }
 
   console.log('Seeded orders and updated sales aggregates')
-};
+}

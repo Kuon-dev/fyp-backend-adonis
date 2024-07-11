@@ -1,25 +1,25 @@
 // user_service.ts
-import { prisma } from "#services/prisma_service";
-import { hash } from "@node-rs/argon2";
-import { UserFactory } from "../factories/user_factory.js";
-import type { Role, SellerProfile, Profile } from "@prisma/client";
-import type { User } from "lucia";
+import { prisma } from '#services/prisma_service'
+import { hash } from '@node-rs/argon2'
+import { UserFactory } from '../factories/user_factory.js'
+import type { Role, SellerProfile, Profile } from '@prisma/client'
+import type { User } from 'lucia'
 
 interface UserCreationData {
-  email: string;
-  password: string;
-  fullname: string;
+  email: string
+  password: string
+  fullname: string
   role: Role
 }
 
 interface UserProfileUpdateData {
-  email?: string;
-  password?: string;
-  fullname?: string;
-  businessName?: string;
-  businessAddress?: string;
-  businessPhone?: string;
-  businessEmail?: string;
+  email?: string
+  password?: string
+  fullname?: string
+  businessName?: string
+  businessAddress?: string
+  businessPhone?: string
+  businessEmail?: string
 }
 
 /**
@@ -34,18 +34,18 @@ export class UserService {
    * @throws {Error} - If an invalid role is provided.
    */
   async createUser(data: UserCreationData): Promise<User> {
-    const { role, ...userData } = data;
+    const { role, ...userData } = data
     switch (role) {
-      case "USER":
-        return (await UserFactory.createUser(userData)).user;
-      case "SELLER":
-        return (await UserFactory.createSeller(userData)).user;
-      case "MODERATOR":
-        return (await UserFactory.createModerator(userData)).user;
-      case "ADMIN":
-        return (await UserFactory.createAdmin(userData)).user;
+      case 'USER':
+        return (await UserFactory.createUser(userData)).user
+      case 'SELLER':
+        return (await UserFactory.createSeller(userData)).user
+      case 'MODERATOR':
+        return (await UserFactory.createModerator(userData)).user
+      case 'ADMIN':
+        return (await UserFactory.createAdmin(userData)).user
       default:
-        throw new Error(`Invalid role: ${role}`);
+        throw new Error(`Invalid role: ${role}`)
     }
   }
 
@@ -59,13 +59,13 @@ export class UserService {
   async getUserByEmail(email: string): Promise<User> {
     const user = await prisma.user.findUnique({
       where: { email, deletedAt: null },
-    });
+    })
 
     if (!user) {
-      throw new Error(`User with email ${email} not found.`);
+      throw new Error(`User with email ${email} not found.`)
     }
 
-    return user;
+    return user
   }
 
   /**
@@ -76,7 +76,7 @@ export class UserService {
   async getAllUsers(): Promise<User[]> {
     return prisma.user.findMany({
       where: { deletedAt: null },
-    });
+    })
   }
 
   /**
@@ -86,7 +86,10 @@ export class UserService {
    * @param {number} pageSize - The number of users per page.
    * @returns {Promise<{ users: User[], total: number }>} - The paginated users and total count.
    */
-  async getPaginatedUsers(page: number, pageSize: number): Promise<{ users: User[], total: number }> {
+  async getPaginatedUsers(
+    page: number,
+    pageSize: number
+  ): Promise<{ users: User[]; total: number }> {
     const [users, total] = await prisma.$transaction([
       prisma.user.findMany({
         where: { deletedAt: null },
@@ -96,9 +99,9 @@ export class UserService {
       prisma.user.count({
         where: { deletedAt: null },
       }),
-    ]);
+    ])
 
-    return { users, total };
+    return { users, total }
   }
 
   /*
@@ -108,28 +111,26 @@ export class UserService {
    * @returns {Promise<User>} - The user.
    * @throws {Error} - If the user is not found.
    *
- */
+   */
 
   async getUserProfileById(id: string): Promise<Profile | SellerProfile | null> {
     const user = await prisma.user.findUnique({
       where: { id },
-    });
+    })
     if (!user) {
-      throw new Error(`User with id ${id} not found.`);
+      throw new Error(`User with id ${id} not found.`)
     }
 
-    if (user.role === "SELLER") {
+    if (user.role === 'SELLER') {
       const profile = await prisma.sellerProfile.findFirst({
         where: { userId: id },
-      });
+      })
 
       return profile
-    }
-
-    else {
+    } else {
       const profile = await prisma.profile.findFirst({
         where: { userId: id },
-      });
+      })
 
       return profile ?? null
     }
@@ -146,9 +147,9 @@ export class UserService {
     const user = await prisma.user.update({
       where: { email, deletedAt: null },
       data,
-    });
+    })
 
-    return user;
+    return user
   }
 
   /**
@@ -160,25 +161,25 @@ export class UserService {
    * @throws {Error} - If the user is not found or the role is invalid.
    */
   async updateUserProfile(email: string, data: UserProfileUpdateData): Promise<User> {
-    const user = await this.getUserByEmail(email);
+    const user = await this.getUserByEmail(email)
 
     switch (user.role) {
-      case "USER":
-      case "MODERATOR":
-      case "ADMIN":
+      case 'USER':
+      case 'MODERATOR':
+      case 'ADMIN':
         const updatedUser = await prisma.user.update({
           where: { email },
-          data: { passwordHash: data.password ? await hash(data.password) : undefined }
-        });
+          data: { passwordHash: data.password ? await hash(data.password) : undefined },
+        })
 
         await prisma.profile.update({
           where: { userId: user.id },
-          data: { name: data.fullname }
-        });
+          data: { name: data.fullname },
+        })
 
-        return updatedUser;
+        return updatedUser
 
-      case "SELLER":
+      case 'SELLER':
         await prisma.sellerProfile.update({
           where: { userId: user.id },
           data: {
@@ -186,13 +187,13 @@ export class UserService {
             businessAddress: data.businessAddress,
             businessPhone: data.businessPhone,
             businessEmail: data.businessEmail,
-          }
-        });
+          },
+        })
 
-        return user;
+        return user
 
       default:
-        throw new Error(`Invalid role: ${user.role}`);
+        throw new Error(`Invalid role: ${user.role}`)
     }
   }
 
@@ -206,11 +207,10 @@ export class UserService {
     const user = await prisma.user.update({
       where: { email },
       data: { deletedAt: new Date() },
-    });
+    })
 
-    return user;
+    return user
   }
-
 
   /**
    * Bans a user by setting their status to 'banned' and recording the reason.
@@ -227,16 +227,15 @@ export class UserService {
         data: {
           bannedUntil: new Date(),
         },
-      });
+      })
 
       // Update all repositories owned by the user to 'bannedUser'
       await tx.codeRepo.updateMany({
         where: { userId: user.id },
         data: { status: 'bannedUser' },
-      });
+      })
 
-      return user;
-    });
+      return user
+    })
   }
 }
-

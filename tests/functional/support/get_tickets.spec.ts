@@ -11,7 +11,7 @@ test.group('Support Controller - GET Operations', (group) => {
   async function loginAsAdmin(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
-      password: 'password'
+      password: 'password',
     })
     return response.headers()['set-cookie'][0]
   }
@@ -19,7 +19,7 @@ test.group('Support Controller - GET Operations', (group) => {
   async function loginAsUser(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'user@example.com',
-      password: 'password'
+      password: 'password',
     })
     return response.headers()['set-cookie'][0]
   }
@@ -38,9 +38,7 @@ test.group('Support Controller - GET Operations', (group) => {
 
   test('admin can get all support tickets', async ({ assert }) => {
     const adminToken = await loginAsAdmin(client)
-    const response = await client
-      .get('/api/v1/support/tickets/all')
-      .header('Cookie', adminToken)
+    const response = await client.get('/api/v1/support/tickets/all').header('Cookie', adminToken)
 
     response.assertStatus(200)
     assert.properties(response.body(), ['tickets', 'status'])
@@ -50,9 +48,7 @@ test.group('Support Controller - GET Operations', (group) => {
 
   test('admin can get support ticket by ID', async ({ assert }) => {
     const adminToken = await loginAsAdmin(client)
-    const response = await client
-      .get('/api/v1/support/ticket/1')
-      .header('Cookie', adminToken)
+    const response = await client.get('/api/v1/support/ticket/1').header('Cookie', adminToken)
 
     response.assertStatus(200)
     assert.properties(response.body(), ['ticket'])
@@ -96,9 +92,7 @@ test.group('Support Controller - GET Operations', (group) => {
 
   test('non-admin user cannot access support tickets', async ({ assert }) => {
     const userToken = await loginAsUser(client)
-    const response = await client
-      .get('/api/v1/support/tickets')
-      .header('Cookie', userToken)
+    const response = await client.get('/api/v1/support/tickets').header('Cookie', userToken)
 
     response.assertStatus(403)
     assert.properties(response.body(), ['message'])

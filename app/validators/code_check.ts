@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { Language } from "@prisma/client";
+import { z } from 'zod'
+import { Language } from '@prisma/client'
 
 export const codeCheckSchema = z.object({
   // New fields
@@ -10,11 +10,11 @@ export const codeCheckSchema = z.object({
   maintainabilitySuggestion: z.string(),
   readabilitySuggestion: z.string(),
   overallDescription: z.string(),
-});
+})
 
 export const codeCheckRequestSchema = z.object({
-  code: z.string().min(1, "Code is required"),
+  code: z.string().min(1, 'Code is required'),
   language: z.enum([Language.JSX, Language.TSX]),
-});
+})
 
-export type CodeCheckRequest = z.infer<typeof codeCheckRequestSchema>;
+export type CodeCheckRequest = z.infer<typeof codeCheckRequestSchema>

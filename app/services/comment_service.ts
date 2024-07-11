@@ -1,18 +1,18 @@
-import { prisma } from '#services/prisma_service';
-import type { Comment } from '@prisma/client';
+import { prisma } from '#services/prisma_service'
+import type { Comment } from '@prisma/client'
 
 interface CommentCreationData {
-  content: string;
-  userId: string;
-  reviewId: string;
+  content: string
+  userId: string
+  reviewId: string
 }
 
 interface CommentUpdateData {
-  content?: string;
+  content?: string
 }
 
 export class CommentService {
-  private inappropriateWords: Set<string>;
+  private inappropriateWords: Set<string>
 
   constructor() {
     this.inappropriateWords = new Set([
@@ -20,7 +20,7 @@ export class CommentService {
       'badword2',
       'badword3',
       // Add more inappropriate words here
-    ]);
+    ])
   }
 
   /**
@@ -29,8 +29,8 @@ export class CommentService {
    * @returns True if inappropriate words are found, otherwise false.
    */
   private containsInappropriateWords(content: string): boolean {
-    const words = content.split(/\s+/).map(word => word.toLowerCase());
-    return words.some(word => this.inappropriateWords.has(word));
+    const words = content.split(/\s+/).map((word) => word.toLowerCase())
+    return words.some((word) => this.inappropriateWords.has(word))
   }
 
   /**
@@ -39,10 +39,10 @@ export class CommentService {
    * @returns The created comment.
    */
   async createComment(data: CommentCreationData): Promise<Comment> {
-    let flag = 0;
+    let flag = 0
 
     if (this.containsInappropriateWords(data.content)) {
-      flag = 2; // Flag for inappropriate words
+      flag = 2 // Flag for inappropriate words
     }
 
     return prisma.comment.create({
@@ -50,7 +50,7 @@ export class CommentService {
         ...data,
         flag,
       },
-    });
+    })
   }
 
   /**
@@ -59,7 +59,7 @@ export class CommentService {
    * @returns The retrieved comment.
    */
   async getCommentById(id: string): Promise<Comment | null> {
-    return prisma.comment.findUnique({ where: { id, deletedAt: null } });
+    return prisma.comment.findUnique({ where: { id, deletedAt: null } })
   }
 
   /**
@@ -69,7 +69,7 @@ export class CommentService {
    * @returns The updated comment.
    */
   async updateComment(id: string, data: CommentUpdateData): Promise<Comment> {
-    return prisma.comment.update({ where: { id, deletedAt: null }, data });
+    return prisma.comment.update({ where: { id, deletedAt: null }, data })
   }
 
   /**
@@ -81,7 +81,7 @@ export class CommentService {
     return prisma.comment.update({
       where: { id },
       data: { deletedAt: new Date() },
-    });
+    })
   }
 
   /**
@@ -89,7 +89,7 @@ export class CommentService {
    * @returns All comments.
    */
   async getAllComments(): Promise<Comment[]> {
-    return prisma.comment.findMany({ where: { deletedAt: null } });
+    return prisma.comment.findMany({ where: { deletedAt: null } })
   }
 
   /**
@@ -101,7 +101,7 @@ export class CommentService {
     return prisma.comment.update({
       where: { id, deletedAt: null },
       data: { upvotes: { increment: 1 } },
-    });
+    })
   }
 
   /**
@@ -113,6 +113,6 @@ export class CommentService {
     return prisma.comment.update({
       where: { id, deletedAt: null },
       data: { downvotes: { increment: 1 } },
-    });
+    })
   }
 }

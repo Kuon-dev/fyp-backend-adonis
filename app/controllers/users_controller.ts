@@ -1,9 +1,8 @@
-import type { HttpContext } from '@adonisjs/core/http';
+import type { HttpContext } from '@adonisjs/core/http'
 // import UserService from '#services/user_service';
-import { inject } from '@adonisjs/core';
+import { inject } from '@adonisjs/core'
 // import { Exception } from '@adonisjs/core/exceptions';
-import { UserService } from '#services/user_service';
-
+import { UserService } from '#services/user_service'
 
 /**
  * Controller class for handling User operations.
@@ -19,13 +18,13 @@ export default class UserController {
    * @bodyParam data - The data for the new User.
    */
   public async create({ request, response }: HttpContext) {
-    const data = request.only(['email', 'password', 'fullname', 'role']);
+    const data = request.only(['email', 'password', 'fullname', 'role'])
 
     try {
-      const user = await this.userService.createUser(data);
-      return response.status(201).json(user);
+      const user = await this.userService.createUser(data)
+      return response.status(201).json(user)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -36,13 +35,13 @@ export default class UserController {
    * @paramParam email - The email of the User.
    */
   public async getByEmail({ params, response }: HttpContext) {
-    const { email } = params;
+    const { email } = params
 
     try {
-      const user = await this.userService.getUserByEmail(email);
-      return response.status(200).json(user);
+      const user = await this.userService.getUserByEmail(email)
+      return response.status(200).json(user)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -54,14 +53,14 @@ export default class UserController {
    * @bodyParam data - The data to update the User.
    */
   public async update({ params, request, response }: HttpContext) {
-    const { email } = params;
-    const data = request.only(['email', 'password', 'fullname', 'role']);
+    const { email } = params
+    const data = request.only(['email', 'password', 'fullname', 'role'])
 
     try {
-      const user = await this.userService.updateUser(email, data);
-      return response.status(200).json(user);
+      const user = await this.userService.updateUser(email, data)
+      return response.status(200).json(user)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -72,13 +71,13 @@ export default class UserController {
    * @paramParam email - The email of the User.
    */
   public async delete({ params, response }: HttpContext) {
-    const { email } = params;
+    const { email } = params
 
     try {
-      const user = await this.userService.deleteUser(email);
-      return response.status(200).json({ message: 'User deleted successfully', user });
+      const user = await this.userService.deleteUser(email)
+      return response.status(200).json({ message: 'User deleted successfully', user })
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -89,10 +88,10 @@ export default class UserController {
    */
   public async getAll({ response }: HttpContext) {
     try {
-      const users = await this.userService.getAllUsers();
-      return response.status(200).json(users);
+      const users = await this.userService.getAllUsers()
+      return response.status(200).json(users)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -104,14 +103,14 @@ export default class UserController {
    * @queryParam limit - The number of items per page.
    */
   public async getPaginated({ request, response }: HttpContext) {
-    const page = request.input('page', 1);
-    const limit = request.input('limit', 10);
+    const page = request.input('page', 1)
+    const limit = request.input('limit', 10)
 
     try {
-      const { users, total } = await this.userService.getPaginatedUsers(page, limit);
-      return response.status(200).json({ users, total });
+      const { users, total } = await this.userService.getPaginatedUsers(page, limit)
+      return response.status(200).json({ users, total })
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -123,14 +122,20 @@ export default class UserController {
    * @bodyParam data - The profile data to update.
    */
   public async updateProfile({ params, request, response }: HttpContext) {
-    const { email } = params;
-    const data = request.only(['fullname', 'businessName', 'businessAddress', 'businessPhone', 'businessEmail']);
+    const { email } = params
+    const data = request.only([
+      'fullname',
+      'businessName',
+      'businessAddress',
+      'businessPhone',
+      'businessEmail',
+    ])
 
     try {
-      const user = await this.userService.updateUserProfile(email, data);
-      return response.status(200).json(user);
+      const user = await this.userService.updateUserProfile(email, data)
+      return response.status(200).json(user)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
@@ -141,15 +146,13 @@ export default class UserController {
    * @bodyParam email - The email of the user to ban.
    */
   public async ban({ request, response }: HttpContext) {
-    const { email } = request.only(['email']);
+    const { email } = request.only(['email'])
 
     try {
-      const user = await this.userService.banUser(email);
-      return response.status(200).json({ message: 'User banned successfully', user });
+      const user = await this.userService.banUser(email)
+      return response.status(200).json({ message: 'User banned successfully', user })
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message });
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
-
 }
-

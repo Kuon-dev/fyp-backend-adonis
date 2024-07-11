@@ -1,20 +1,18 @@
-import { faker } from "@faker-js/faker";
-import type { Review } from "@prisma/client";
-import { generateIdFromEntropySize } from "lucia";
-import { weightedRandomDelete } from "./utils.js";
+import { faker } from '@faker-js/faker'
+import type { Review } from '@prisma/client'
+import { generateIdFromEntropySize } from 'lucia'
+import { weightedRandomDelete } from './utils.js'
 
 export const generateReviews = async (
   existingUserIds: string[],
   existingRepoIds: string[],
-  count: number,
+  count: number
 ): Promise<Review[]> => {
-  const generatedReviews: Review[] = [];
+  const generatedReviews: Review[] = []
 
   for (let i = 0; i < count; i++) {
-    const randomUserId =
-      existingUserIds[Math.floor(Math.random() * existingUserIds.length)];
-    const randomRepoId =
-      existingRepoIds[Math.floor(Math.random() * existingRepoIds.length)];
+    const randomUserId = existingUserIds[Math.floor(Math.random() * existingUserIds.length)]
+    const randomRepoId = existingRepoIds[Math.floor(Math.random() * existingRepoIds.length)]
 
     const review: Review = {
       id: generateIdFromEntropySize(32),
@@ -28,10 +26,9 @@ export const generateReviews = async (
       upvotes: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
       downvotes: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
       flag: 0,
-    };
-    generatedReviews.push(review);
+    }
+    generatedReviews.push(review)
   }
 
-  return generatedReviews;
+  return generatedReviews
 }
-;

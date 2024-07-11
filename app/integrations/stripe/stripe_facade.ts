@@ -20,7 +20,11 @@ export default class StripeFacade {
    * @param businessType The type of the business ('individual' or 'company')
    * @returns An object containing the Stripe account ID and onboarding URL
    */
-  async createConnectAccount(email: string, businessName: string, businessType: 'individual' | 'company'): Promise<{ id: string; onboardingUrl: string }> {
+  async createConnectAccount(
+    email: string,
+    businessName: string,
+    businessType: 'individual' | 'company'
+  ): Promise<{ id: string; onboardingUrl: string }> {
     try {
       const account = await this.stripe.accounts.create({
         type: 'express',
@@ -48,7 +52,10 @@ export default class StripeFacade {
       }
     } catch (error) {
       console.error('Stripe account creation error:', error)
-      throw new Exception('Failed to create Stripe account', { code: 'E_STRIPE_ACCOUNT_CREATION', status: 500 })
+      throw new Exception('Failed to create Stripe account', {
+        code: 'E_STRIPE_ACCOUNT_CREATION',
+        status: 500,
+      })
     }
   }
 
@@ -63,7 +70,10 @@ export default class StripeFacade {
       return account
     } catch (error) {
       console.error('Stripe account status retrieval error:', error)
-      throw new Exception('Failed to retrieve Stripe account status', { code: 'E_STRIPE_ACCOUNT_STATUS', status: 500 })
+      throw new Exception('Failed to retrieve Stripe account status', {
+        code: 'E_STRIPE_ACCOUNT_STATUS',
+        status: 500,
+      })
     }
   }
 
@@ -97,7 +107,10 @@ export default class StripeFacade {
       return customer
     } catch (error) {
       console.error('Stripe customer creation error:', error)
-      throw new Exception('Failed to create Stripe customer', { code: 'E_STRIPE_CUSTOMER_CREATION', status: 500 })
+      throw new Exception('Failed to create Stripe customer', {
+        code: 'E_STRIPE_CUSTOMER_CREATION',
+        status: 500,
+      })
     }
   }
 
@@ -109,7 +122,12 @@ export default class StripeFacade {
    * @param accountId The Stripe Connect account ID to receive the funds
    * @returns The PaymentIntent object
    */
-  async createPaymentIntent(amount: number, currency: string, customerId: string, accountId: string): Promise<Stripe.PaymentIntent> {
+  async createPaymentIntent(
+    amount: number,
+    currency: string,
+    customerId: string,
+    accountId: string
+  ): Promise<Stripe.PaymentIntent> {
     try {
       const paymentIntent = await this.stripe.paymentIntents.create({
         amount,
@@ -122,7 +140,10 @@ export default class StripeFacade {
       return paymentIntent
     } catch (error) {
       console.error('Stripe payment intent creation error:', error)
-      throw new Exception('Failed to create payment intent', { code: 'E_STRIPE_PAYMENT_INTENT_CREATION', status: 500 })
+      throw new Exception('Failed to create payment intent', {
+        code: 'E_STRIPE_PAYMENT_INTENT_CREATION',
+        status: 500,
+      })
     }
   }
 }

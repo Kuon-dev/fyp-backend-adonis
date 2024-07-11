@@ -26,7 +26,7 @@ export default class SellerOnboardingController {
     const userId = request.user?.id
 
     if (!userId) {
-      throw new UnAuthorizedException();
+      throw new UnAuthorizedException()
     }
 
     try {
@@ -34,7 +34,7 @@ export default class SellerOnboardingController {
       return response.ok({ onboardingUrl })
     } catch (error) {
       if (error instanceof UnAuthorizedException) {
-        return response.unauthorized({ message: error.message });
+        return response.unauthorized({ message: error.message })
       }
       return response.internalServerError({
         message: 'An error occurred while creating the Stripe account.',
@@ -82,11 +82,10 @@ export default class SellerOnboardingController {
     const userId = request.user?.id
 
     if (!userId) {
-      throw new UnAuthorizedException();
+      throw new UnAuthorizedException()
     }
 
     try {
-
       const status = await this.sellerOnboardingService.verifyAccountStatus(userId)
       return response.ok(status)
     } catch (error) {
@@ -111,7 +110,7 @@ export default class SellerOnboardingController {
     const userId = request.user?.id
 
     if (!userId) {
-      throw new UnAuthorizedException();
+      throw new UnAuthorizedException()
     }
 
     try {

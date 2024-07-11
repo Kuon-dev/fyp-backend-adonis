@@ -1,18 +1,18 @@
 // File: services/ReviewService.ts
 
-import { prisma } from '#services/prisma_service';
-import type { Review } from '@prisma/client';
+import { prisma } from '#services/prisma_service'
+import type { Review } from '@prisma/client'
 
 interface ReviewCreationData {
-  content: string;
-  userId: string;
-  repoId: string;
-  rating: number;
+  content: string
+  userId: string
+  repoId: string
+  rating: number
 }
 
 interface ReviewUpdateData {
-  content?: string;
-  rating?: number;
+  content?: string
+  rating?: number
 }
 
 export class ReviewService {
@@ -24,7 +24,7 @@ export class ReviewService {
   async createReview(data: ReviewCreationData): Promise<Review> {
     return prisma.review.create({
       data,
-    });
+    })
   }
 
   /**
@@ -33,7 +33,7 @@ export class ReviewService {
    * @returns The retrieved review.
    */
   async getReviewById(id: string): Promise<Review | null> {
-    return prisma.review.findUnique({ where: { id, deletedAt: null } });
+    return prisma.review.findUnique({ where: { id, deletedAt: null } })
   }
 
   /**
@@ -43,7 +43,7 @@ export class ReviewService {
    * @returns The updated review.
    */
   async updateReview(id: string, data: ReviewUpdateData): Promise<Review> {
-    return prisma.review.update({ where: { id, deletedAt: null }, data });
+    return prisma.review.update({ where: { id, deletedAt: null }, data })
   }
 
   /**
@@ -55,7 +55,7 @@ export class ReviewService {
     return prisma.review.update({
       where: { id },
       data: { deletedAt: new Date() },
-    });
+    })
   }
 
   /**
@@ -63,7 +63,7 @@ export class ReviewService {
    * @returns All reviews.
    */
   async getAllReviews(): Promise<Review[]> {
-    return prisma.review.findMany({ where: { deletedAt: null } });
+    return prisma.review.findMany({ where: { deletedAt: null } })
   }
 
   /**
@@ -75,7 +75,7 @@ export class ReviewService {
     return prisma.review.update({
       where: { id, deletedAt: null },
       data: { upvotes: { increment: 1 } },
-    });
+    })
   }
 
   /**
@@ -87,6 +87,6 @@ export class ReviewService {
     return prisma.review.update({
       where: { id, deletedAt: null },
       data: { downvotes: { increment: 1 } },
-    });
+    })
   }
 }

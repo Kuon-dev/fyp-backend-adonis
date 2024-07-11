@@ -1,13 +1,13 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 // Enum for Language
-const LanguageEnum = z.enum(['JSX', 'TSX']);
+const LanguageEnum = z.enum(['JSX', 'TSX'])
 
 // Enum for Visibility
-const VisibilityEnum = z.enum(['public', 'private']);
+const VisibilityEnum = z.enum(['public', 'private'])
 
 // Enum for CodeRepoStatus
-const CodeRepoStatusEnum = z.enum(['pending', 'active', 'rejected', 'bannedUser']);
+const CodeRepoStatusEnum = z.enum(['pending', 'active', 'rejected', 'bannedUser'])
 
 // Schema for creating a new repo
 export const createRepoSchema = z.object({
@@ -19,7 +19,7 @@ export const createRepoSchema = z.object({
   visibility: VisibilityEnum.default('public'),
   //sourceJs: z.string(),
   //sourceCss: z.string(),
-});
+})
 
 // Schema for updating a repo
 export const updateRepoSchema = z.object({
@@ -34,4 +34,4 @@ export const updateRepoSchema = z.object({
   sourceCss: z.string().optional(),
   //stripeProductId: z.string().nullable().optional(),
   //stripePriceId: z.string().nullable().optional(),
-});
+})

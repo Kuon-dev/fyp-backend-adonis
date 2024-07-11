@@ -11,7 +11,7 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
   async function loginAsAdmin(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
-      password: 'adminpassword'
+      password: 'adminpassword',
     })
     return response.headers()['set-cookie'][0]
   }
@@ -19,7 +19,7 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
   async function loginAsUser(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'user@example.com',
-      password: 'userpassword'
+      password: 'userpassword',
     })
     return response.headers()['set-cookie'][0]
   }
@@ -30,7 +30,7 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
       .put('/api/v1/support/ticket/1')
       .header('Cookie', adminToken)
       .json({
-        status: 'closed'
+        status: 'closed',
       })
 
     response.assertStatus(200)
@@ -44,7 +44,7 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
       .put('/api/v1/support/ticket/1')
       .header('Cookie', adminToken)
       .json({
-        status: 'invalid_status'
+        status: 'invalid_status',
       })
 
     response.assertStatus(400)
@@ -53,12 +53,9 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
 
   test('non-admin user cannot update support ticket', async ({ assert }) => {
     const userToken = await loginAsUser(client)
-    const response = await client
-      .put('/api/v1/support/ticket/1')
-      .header('Cookie', userToken)
-      .json({
-        status: 'closed'
-      })
+    const response = await client.put('/api/v1/support/ticket/1').header('Cookie', userToken).json({
+      status: 'closed',
+    })
 
     response.assertStatus(403)
     assert.properties(response.body(), ['message'])
@@ -66,11 +63,9 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
   })
 
   test('unauthenticated user cannot update support ticket', async ({ assert }) => {
-    const response = await client
-      .put('/api/v1/support/ticket/1')
-      .json({
-        status: 'closed'
-      })
+    const response = await client.put('/api/v1/support/ticket/1').json({
+      status: 'closed',
+    })
 
     response.assertStatus(401)
     assert.properties(response.body(), ['message'])
@@ -80,9 +75,7 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
   // Assuming there's a DELETE operation, we can add tests for it here
   test('admin can delete support ticket', async ({ assert }) => {
     const adminToken = await loginAsAdmin(client)
-    const response = await client
-      .delete('/api/v1/support/ticket/1')
-      .header('Cookie', adminToken)
+    const response = await client.delete('/api/v1/support/ticket/1').header('Cookie', adminToken)
 
     response.assertStatus(200)
     assert.properties(response.body(), ['message'])
@@ -91,9 +84,7 @@ test.group('Support Controller - PUT and DELETE Operations', (group) => {
 
   test('non-admin user cannot delete support ticket', async ({ assert }) => {
     const userToken = await loginAsUser(client)
-    const response = await client
-      .delete('/api/v1/support/ticket/1')
-      .header('Cookie', userToken)
+    const response = await client.delete('/api/v1/support/ticket/1').header('Cookie', userToken)
 
     response.assertStatus(403)
     assert.properties(response.body(), ['message'])

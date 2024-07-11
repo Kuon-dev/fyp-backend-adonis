@@ -1,25 +1,25 @@
-import { prisma } from '#services/prisma_service';
-import { Order, OrderStatus } from '@prisma/client';
-import { DateTime } from 'luxon';
+import { prisma } from '#services/prisma_service'
+import { Order, OrderStatus } from '@prisma/client'
+import { DateTime } from 'luxon'
 
 interface OrderCreationData {
-  userId: string;
-  codeRepoId: string;
-  totalAmount: number;
+  userId: string
+  codeRepoId: string
+  totalAmount: number
 }
 
 interface OrderUpdateData {
-  status?: OrderStatus;
-  totalAmount?: number;
+  status?: OrderStatus
+  totalAmount?: number
 }
 
 interface OrderSearchCriteria {
-  userId?: string;
-  status?: OrderStatus;
-  fromDate?: Date;
-  toDate?: Date;
-  minAmount?: number;
-  maxAmount?: number;
+  userId?: string
+  status?: OrderStatus
+  fromDate?: Date
+  toDate?: Date
+  minAmount?: number
+  maxAmount?: number
 }
 
 /**
@@ -38,7 +38,7 @@ export class OrderService {
         ...data,
         status: OrderStatus.PENDING, // Set initial status to pending
       },
-    });
+    })
   }
 
   /**
@@ -48,19 +48,19 @@ export class OrderService {
    * @param {number} limit - The number of items per page.
    * @returns {Promise<{ orders: Order[], total: number }>} - The paginated orders and total count.
    */
-  async getAllOrders(page: number, limit: number): Promise<{ orders: Order[], total: number }> {
+  async getAllOrders(page: number, limit: number): Promise<{ orders: Order[]; total: number }> {
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
         skip: (page - 1) * limit,
         take: limit,
-        where: { deletedAt: null }
+        where: { deletedAt: null },
       }),
       prisma.order.count({
-        where: { deletedAt: null }
+        where: { deletedAt: null },
       }),
-    ]);
+    ])
 
-    return { orders, total };
+    return { orders, total }
   }
 
   /**
@@ -72,13 +72,13 @@ export class OrderService {
   async getOrderById(id: string): Promise<Order> {
     const order = await prisma.order.findUnique({
       where: { id, deletedAt: null },
-    });
+    })
 
     if (!order) {
-      throw new Error(`Order with ID ${id} not found.`);
+      throw new Error(`Order with ID ${id} not found.`)
     }
 
-    return order;
+    return order
   }
 
   /**
@@ -89,7 +89,11 @@ export class OrderService {
    * @param {number} limit - The number of items per page.
    * @returns {Promise<{ orders: Order[], total: number }>} - The paginated orders and total count.
    */
-  async getOrdersByUser(userId: string, page: number, limit: number): Promise<{ orders: Order[], total: number }> {
+  async getOrdersByUser(
+    userId: string,
+    page: number,
+    limit: number
+  ): Promise<{ orders: Order[]; total: number }> {
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
         where: { userId, deletedAt: null },
@@ -99,9 +103,9 @@ export class OrderService {
       prisma.order.count({
         where: { userId, deletedAt: null },
       }),
-    ]);
+    ])
 
-    return { orders, total };
+    return { orders, total }
   }
 
   /**
@@ -115,7 +119,7 @@ export class OrderService {
     return prisma.order.update({
       where: { id, deletedAt: null },
       data,
-    });
+    })
   }
 
   /**
@@ -128,7 +132,7 @@ export class OrderService {
     return prisma.order.update({
       where: { id },
       data: { deletedAt: new Date() },
-    });
+    })
   }
 
   /**
@@ -139,7 +143,11 @@ export class OrderService {
    * @param {number} limit - The number of items per page.
    * @returns {Promise<{ orders: Order[], total: number }>} - The paginated orders and total count.
    */
-  async getOrdersByStatus(status: OrderStatus, page: number, limit: number): Promise<{ orders: Order[], total: number }> {
+  async getOrdersByStatus(
+    status: OrderStatus,
+    page: number,
+    limit: number
+  ): Promise<{ orders: Order[]; total: number }> {
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
         where: { status, deletedAt: null },
@@ -149,9 +157,9 @@ export class OrderService {
       prisma.order.count({
         where: { status, deletedAt: null },
       }),
-    ]);
+    ])
 
-    return { orders, total };
+    return { orders, total }
   }
 
   /**
@@ -163,7 +171,12 @@ export class OrderService {
    * @param {number} limit - The number of items per page.
    * @returns {Promise<{ orders: Order[], total: number }>} - The paginated orders and total count.
    */
-  async getUserOrdersByStatus(userId: string, status: OrderStatus, page: number, limit: number): Promise<{ orders: Order[], total: number }> {
+  async getUserOrdersByStatus(
+    userId: string,
+    status: OrderStatus,
+    page: number,
+    limit: number
+  ): Promise<{ orders: Order[]; total: number }> {
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
         where: { userId, status, deletedAt: null },
@@ -173,9 +186,9 @@ export class OrderService {
       prisma.order.count({
         where: { userId, status, deletedAt: null },
       }),
-    ]);
+    ])
 
-    return { orders, total };
+    return { orders, total }
   }
 
   /**
@@ -186,8 +199,12 @@ export class OrderService {
    * @param {number} limit - The number of items per page.
    * @returns {Promise<{ orders: Order[], total: number }>} - The search results and total count.
    */
-  async searchOrders(criteria: OrderSearchCriteria, page: number, limit: number): Promise<{ orders: Order[], total: number }> {
-    const { userId, status, fromDate, toDate, minAmount, maxAmount } = criteria;
+  async searchOrders(
+    criteria: OrderSearchCriteria,
+    page: number,
+    limit: number
+  ): Promise<{ orders: Order[]; total: number }> {
+    const { userId, status, fromDate, toDate, minAmount, maxAmount } = criteria
 
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
@@ -222,9 +239,9 @@ export class OrderService {
           },
         },
       }),
-    ]);
+    ])
 
-    return { orders, total };
+    return { orders, total }
   }
 
   /**
@@ -236,25 +253,25 @@ export class OrderService {
       const order = await trx.order.findUnique({
         where: { id: orderId },
         include: { codeRepo: true },
-      });
+      })
 
       if (!order) {
-        throw new Error('Order not found');
+        throw new Error('Order not found')
       }
 
       if (order.status === OrderStatus.COMPLETED) {
-        throw new Error('Order is already completed');
+        throw new Error('Order is already completed')
       }
 
       // Update order status
       const updatedOrder = await trx.order.update({
         where: { id: orderId },
-        data: { status: OrderStatus.COMPLETED }
-      });
+        data: { status: OrderStatus.COMPLETED },
+      })
 
-      const sellerId = order.codeRepo.userId;
-      const orderDate = DateTime.fromJSDate(order.createdAt);
-      const aggregateDate = orderDate.startOf('month').toJSDate();
+      const sellerId = order.codeRepo.userId
+      const orderDate = DateTime.fromJSDate(order.createdAt)
+      const aggregateDate = orderDate.startOf('month').toJSDate()
 
       // Update or create SalesAggregate
       await trx.salesAggregate.upsert({
@@ -274,10 +291,10 @@ export class OrderService {
           revenue: order.totalAmount,
           salesCount: 1,
         },
-      });
+      })
 
-      return updatedOrder;
-    });
+      return updatedOrder
+    })
   }
 
   /**
@@ -290,6 +307,6 @@ export class OrderService {
         codeRepoId,
         status: OrderStatus.COMPLETED,
       },
-    });
+    })
   }
 }

@@ -1,14 +1,21 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import AuthService from '#services/auth_service';
-import { AuthValidator, ZodLoginAuthStrategy, PrismaEmailExistsAuthStrategy, ZodRegistrationAuthStrategy, PrismaEmailUniqueAuthStrategy, EmptyFieldAuthStrategy } from "#validators/auth";
-import { inject } from '@adonisjs/core';
-import lucia from '#services/lucia_service';
-import { Exception } from '@adonisjs/core/exceptions';
-import type { Cookie } from 'lucia';
-import { UserService } from '#services/user_service';
-import { prisma } from '#services/prisma_service';
-import InvalidSessionIdException from '#exceptions/invalid_session_id_exception';
-import UnAuthorizedException from '#exceptions/un_authorized_exception';
+import AuthService from '#services/auth_service'
+import {
+  AuthValidator,
+  ZodLoginAuthStrategy,
+  PrismaEmailExistsAuthStrategy,
+  ZodRegistrationAuthStrategy,
+  PrismaEmailUniqueAuthStrategy,
+  EmptyFieldAuthStrategy,
+} from '#validators/auth'
+import { inject } from '@adonisjs/core'
+import lucia from '#services/lucia_service'
+import { Exception } from '@adonisjs/core/exceptions'
+import type { Cookie } from 'lucia'
+import { UserService } from '#services/user_service'
+import { prisma } from '#services/prisma_service'
+import InvalidSessionIdException from '#exceptions/invalid_session_id_exception'
+import UnAuthorizedException from '#exceptions/un_authorized_exception'
 
 /**
  * Controller class for handling user authentication operations.
@@ -20,7 +27,10 @@ export default class AuthController {
    *
    * @param authService - The authentication service.
    */
-  constructor(protected authService: AuthService, protected userService: UserService) {}
+  constructor(
+    protected authService: AuthService,
+    protected userService: UserService
+  ) {}
 
   /**
    * @login
@@ -30,34 +40,34 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Invalid credentials" }
    */
   async login({ request, response }: HttpContext) {
-    const { email, password } = request.only(['email', 'password']);
+    const { email, password } = request.only(['email', 'password'])
 
-    const loginValidator = new AuthValidator();
-    loginValidator.addStrategy(new ZodLoginAuthStrategy());
-    loginValidator.addStrategy(new PrismaEmailExistsAuthStrategy());
-    loginValidator.addStrategy(new EmptyFieldAuthStrategy());
+    const loginValidator = new AuthValidator()
+    loginValidator.addStrategy(new ZodLoginAuthStrategy())
+    loginValidator.addStrategy(new PrismaEmailExistsAuthStrategy())
+    loginValidator.addStrategy(new EmptyFieldAuthStrategy())
 
     try {
-      await loginValidator.validate({ email, password });
+      await loginValidator.validate({ email, password })
     } catch (e: Error | any) {
       console.log(e)
-      return response.abort({ message: e.message }, 400);
+      return response.abort({ message: e.message }, 400)
     }
 
     try {
-      const sessionCookie: Cookie | Response  = await this.authService.handleLogin(email, password);
+      const sessionCookie: Cookie | Response = await this.authService.handleLogin(email, password)
       if (sessionCookie instanceof Response) {
-        throw new Error('Invalid credentials');
+        throw new Error('Invalid credentials')
       }
 
-      const c = sessionCookie.serialize();
-      const sid = lucia.readSessionCookie(c);
-      const { user } = await lucia.validateSession(sid ?? "");
-      if (!user) throw new InvalidSessionIdException();
+      const c = sessionCookie.serialize()
+      const sid = lucia.readSessionCookie(c)
+      const { user } = await lucia.validateSession(sid ?? '')
+      if (!user) throw new InvalidSessionIdException()
 
-      return response.header('Set-Cookie', c).status(200).json({ message: 'Login successful' });
+      return response.header('Set-Cookie', c).status(200).json({ message: 'Login successful' })
     } catch (error) {
-      return response.abort({ message: error.message }, error.status ?? 400);
+      return response.abort({ message: error.message }, error.status ?? 400)
     }
   }
 
@@ -72,29 +82,32 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Registration failed" }
    */
   async register({ request, response }: HttpContext) {
-    const { email, password, fullname } = request.only(['email', 'password', 'fullname']);
-    const registrationValidator = new AuthValidator();
-    registrationValidator.addStrategy(new ZodRegistrationAuthStrategy());
-    registrationValidator.addStrategy(new PrismaEmailUniqueAuthStrategy());
+    const { email, password, fullname } = request.only(['email', 'password', 'fullname'])
+    const registrationValidator = new AuthValidator()
+    registrationValidator.addStrategy(new ZodRegistrationAuthStrategy())
+    registrationValidator.addStrategy(new PrismaEmailUniqueAuthStrategy())
 
     try {
-      await registrationValidator.validate({ email, password, fullname });
+      await registrationValidator.validate({ email, password, fullname })
     } catch (e: Error | any) {
       if (Array.isArray(e)) {
-        return response.abort({ message: e}, 400);
+        return response.abort({ message: e }, 400)
       } else {
-        return response.abort({ message: e.message }, 400);
+        return response.abort({ message: e.message }, 400)
       }
     }
 
     try {
-      const sessionCookie = await this.authService.handleRegistration(email, password, fullname);
+      const sessionCookie = await this.authService.handleRegistration(email, password, fullname)
       if (sessionCookie instanceof Response) {
-        throw new Error('Registration failed');
+        throw new Error('Registration failed')
       }
-      return response.cookie('session', sessionCookie).status(201).json({ message: 'Registration successful' });
+      return response
+        .cookie('session', sessionCookie)
+        .status(201)
+        .json({ message: 'Registration successful' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -105,12 +118,12 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Logout failed" }
    */
   async logout({ request, response }: HttpContext) {
-    const sessionId = request.cookie('session');
+    const sessionId = request.cookie('session')
     try {
-      await this.authService.handleLogout(sessionId);
-      return response.clearCookie('session').status(200).json({ message: 'Logout successful' });
+      await this.authService.handleLogout(sessionId)
+      return response.clearCookie('session').status(200).json({ message: 'Logout successful' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -122,19 +135,22 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Email verification failed" }
    */
   async verifyEmail({ request, response }: HttpContext) {
-    const { code } = request.only([ 'code']);
+    const { code } = request.only(['code'])
     try {
-      const sessionId = lucia.readSessionCookie(request.headers().cookie ?? "");
+      const sessionId = lucia.readSessionCookie(request.headers().cookie ?? '')
       if (!sessionId) {
-        throw new InvalidSessionIdException();
+        throw new InvalidSessionIdException()
       }
-      const sessionCookie = await this.authService.handleVerifyEmail(sessionId, code);
+      const sessionCookie = await this.authService.handleVerifyEmail(sessionId, code)
       if (sessionCookie instanceof Response) {
-        throw new Error('Email verification failed');
+        throw new Error('Email verification failed')
       }
-      return response.cookie('session', sessionCookie).status(200).json({ message: 'Email verification successful' });
+      return response
+        .cookie('session', sessionCookie)
+        .status(200)
+        .json({ message: 'Email verification successful' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -146,15 +162,15 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Password reset token creation failed" }
    */
   async createPasswordResetToken({ request, response }: HttpContext) {
-    const { userId } = request.only(['userId']);
+    const { userId } = request.only(['userId'])
     try {
-      const token = await this.authService.handleCreatePasswordResetToken(userId);
+      const token = await this.authService.handleCreatePasswordResetToken(userId)
       if (token instanceof Response) {
-        throw new Error('Password reset token creation failed');
+        throw new Error('Password reset token creation failed')
       }
-      return response.status(200).json({ token });
+      return response.status(200).json({ token })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -166,15 +182,18 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Password reset failed" }
    */
   async resetPassword({ request, response }: HttpContext) {
-    const { token, password } = request.only(['token', 'password']);
+    const { token, password } = request.only(['token', 'password'])
     try {
-      const sessionCookie = await this.authService.handlePasswordReset(token, password);
+      const sessionCookie = await this.authService.handlePasswordReset(token, password)
       if (sessionCookie instanceof Response) {
-        throw new Error('Password reset failed');
+        throw new Error('Password reset failed')
       }
-      return response.cookie('session', sessionCookie).status(200).json({ message: 'Password reset successful' });
+      return response
+        .cookie('session', sessionCookie)
+        .status(200)
+        .json({ message: 'Password reset successful' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -186,12 +205,12 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Verification failed" }
    */
   async verifyUserExistAndEmailVerified({ request, response }: HttpContext) {
-    const { email } = request.only(['email']);
+    const { email } = request.only(['email'])
     try {
-      const exists = await this.authService.handleVerifyUserExistAndEmailVerified(email);
-      return response.status(200).json({ exists });
+      const exists = await this.authService.handleVerifyUserExistAndEmailVerified(email)
+      return response.status(200).json({ exists })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -202,12 +221,12 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Sending verification email failed" }
    */
   async sendVerifyEmailCodeFromUser({ request, response }: HttpContext) {
-    if (request.user === null) throw new UnAuthorizedException('User not found in request object');
+    if (request.user === null) throw new UnAuthorizedException('User not found in request object')
     try {
-      await this.authService.sendVerifyEmailCode(request.user);
-      return response.status(200).json({ message: 'Verification email sent' });
+      await this.authService.sendVerifyEmailCode(request.user)
+      return response.status(200).json({ message: 'Verification email sent' })
     } catch (error) {
-      return response.abort({ message: error.message }, error.status ?? 400);
+      return response.abort({ message: error.message }, error.status ?? 400)
     }
   }
 
@@ -219,15 +238,14 @@ export default class AuthController {
    */
   async me({ request, response }: HttpContext) {
     try {
-      if (request.user === null) throw new Exception('No cookie session found', { status: 204 });
+      if (request.user === null) throw new Exception('No cookie session found', { status: 204 })
       const [user, profile] = await Promise.all([
         this.userService.getUserByEmail(request.user.email),
-        prisma.profile.findFirst({ where: { userId: request.user.id } })
-      ]);
-      return response.status(200).json({ user, profile });
+        prisma.profile.findFirst({ where: { userId: request.user.id } }),
+      ])
+      return response.status(200).json({ user, profile })
     } catch (error) {
-      return response.abort({ message: error.message }, error.status ?? 400);
+      return response.abort({ message: error.message }, error.status ?? 400)
     }
   }
 }
-

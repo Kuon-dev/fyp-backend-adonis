@@ -10,7 +10,7 @@ test.group('Profile Update', () => {
   async function getAuthToken(client: ApiClient) {
     const loginResponse = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
-      password: 'password'
+      password: 'password',
     })
     return loginResponse.headers()['set-cookie'][0]
   }
@@ -44,7 +44,7 @@ test.group('Profile Update', () => {
       .header('Content-Type', 'application/json')
       .json({
         name: 'Jane Doe',
-        phoneNumber: '0987654321'
+        phoneNumber: '0987654321',
       })
 
     response.assertStatus(200)
@@ -64,7 +64,7 @@ test.group('Profile Update', () => {
       .header('Content-Type', 'application/json')
       .json({
         name: null,
-        phoneNumber: 'not-a-number'
+        phoneNumber: 'not-a-number',
       })
 
     response.assertStatus(400)
@@ -101,7 +101,7 @@ test.group('Profile Update', () => {
       .header('Content-Type', 'application/json')
       .json({
         name: 'John Doe',
-        phoneNumber: '1234567890'
+        phoneNumber: '1234567890',
       })
 
     response.assertStatus(401)

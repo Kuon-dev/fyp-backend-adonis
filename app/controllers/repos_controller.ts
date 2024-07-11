@@ -1,12 +1,18 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import RepoService, { LanguageSpecification, SearchSpecification, TagSpecification, UserSpecification, VisibilitySpecification } from '#services/repo_service';
-import { inject } from '@adonisjs/core';
-import { Exception } from '@adonisjs/core/exceptions';
-import CodeCheckService from '#services/code_check_service';
-import { prisma } from '#services/prisma_service';
-import UnAuthorizedException from '#exceptions/un_authorized_exception';
-import { z } from 'zod';
-import { createRepoSchema, updateRepoSchema } from '#validators/repo';
+import RepoService, {
+  LanguageSpecification,
+  SearchSpecification,
+  TagSpecification,
+  UserSpecification,
+  VisibilitySpecification,
+} from '#services/repo_service'
+import { inject } from '@adonisjs/core'
+import { Exception } from '@adonisjs/core/exceptions'
+import CodeCheckService from '#services/code_check_service'
+import { prisma } from '#services/prisma_service'
+import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import { z } from 'zod'
+import { createRepoSchema, updateRepoSchema } from '#validators/repo'
 
 /**
  * Controller class for handling Repo operations.
@@ -24,27 +30,27 @@ export default class RepoController {
    * @param {HttpContext} ctx - The HTTP context object.
    * @bodyParam data - The data for the new Repo.
    */
-    public async create({ request, response }: HttpContext) {
-      if (!request.user) throw new UnAuthorizedException('User not found in request object');
+  public async create({ request, response }: HttpContext) {
+    if (!request.user) throw new UnAuthorizedException('User not found in request object')
 
-      try {
-        const data = createRepoSchema.parse(request.body());
+    try {
+      const data = createRepoSchema.parse(request.body())
 
-        const repo = await this.repoService.createRepo({
-          userId: request.user.id,
-          ...data,
-          sourceJs: '',
-          sourceCss: '',
-          status: 'pending',
-        });
-        return response.status(201).json(repo);
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          return response.abort({ message: 'Validation error', errors: error.errors }, 400);
-        }
-        return response.abort({ message: error.message }, 400);
+      const repo = await this.repoService.createRepo({
+        userId: request.user.id,
+        ...data,
+        sourceJs: '',
+        sourceCss: '',
+        status: 'pending',
+      })
+      return response.status(201).json(repo)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return response.abort({ message: 'Validation error', errors: error.errors }, 400)
       }
+      return response.abort({ message: error.message }, 400)
     }
+  }
 
   /**
    * Retrieve a Repo by ID.
@@ -53,11 +59,11 @@ export default class RepoController {
    * @paramParam id - The ID of the Repo.
    */
   public async getById({ params, request, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
 
     console.log(request.user)
     try {
-      const repo = await this.repoService.getRepoById(id, request.user?.id ?? null);
+      const repo = await this.repoService.getRepoById(id, request.user?.id ?? null)
       const repoCodeCheck = await prisma.codeCheck.findFirst({
         where: {
           repoId: id,
@@ -65,22 +71,21 @@ export default class RepoController {
         orderBy: {
           createdAt: 'desc',
         },
-      });
+      })
       return response.status(200).json({
         repo: repo,
-        repoCodeCheck: repoCodeCheck ?? null
-      });
+        repoCodeCheck: repoCodeCheck ?? null,
+      })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
-
   public async getByIdPublic({ params, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
     try {
       console.log(id)
-      const repo = await this.repoService.getRepoByIdPublic(id);
+      const repo = await this.repoService.getRepoByIdPublic(id)
       const repoCodeCheck = await prisma.codeCheck.findFirst({
         where: {
           repoId: id,
@@ -88,13 +93,13 @@ export default class RepoController {
         orderBy: {
           createdAt: 'desc',
         },
-      });
+      })
       return response.status(200).json({
         repo: repo,
-        repoCodeCheck: repoCodeCheck ?? null
-      });
+        repoCodeCheck: repoCodeCheck ?? null,
+      })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -105,47 +110,53 @@ export default class RepoController {
    * @paramParam id - The ID of the Repo.
    * @bodyParam data - The data to update the Repo.
    */
-public async update({ params, request, response }: HttpContext) {
-  const { id } = params;
+  public async update({ params, request, response }: HttpContext) {
+    const { id } = params
 
-  try {
-    const data = updateRepoSchema.parse(request.body());
+    try {
+      const data = updateRepoSchema.parse(request.body())
 
-    const repo = await this.repoService.updateRepo(id, data);
+      const repo = await this.repoService.updateRepo(id, data)
 
-    if (data.sourceJs) {
-      const language = data.language || 'JSX'; // Default to JSX if not provided
-      const cleanedSource = data.sourceJs.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-      const codeCheckResult = await this.codeCheckService.performCodeCheck(cleanedSource, language);
+      if (data.sourceJs) {
+        const language = data.language || 'JSX' // Default to JSX if not provided
+        const cleanedSource = data.sourceJs.replace(
+          /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+          ''
+        )
+        const codeCheckResult = await this.codeCheckService.performCodeCheck(
+          cleanedSource,
+          language
+        )
 
-      await prisma.codeCheck.create({
-        data: {
-          repoId: id,
-          securityScore: codeCheckResult.securityScore,
-          maintainabilityScore: codeCheckResult.maintainabilityScore,
-          readabilityScore: codeCheckResult.readabilityScore,
-          overallDescription: codeCheckResult.overallDescription,
-          securitySuggestion: codeCheckResult.securitySuggestion,
-          maintainabilitySuggestion: codeCheckResult.maintainabilitySuggestion,
-          readabilitySuggestion: codeCheckResult.readabilitySuggestion,
+        await prisma.codeCheck.create({
+          data: {
+            repoId: id,
+            securityScore: codeCheckResult.securityScore,
+            maintainabilityScore: codeCheckResult.maintainabilityScore,
+            readabilityScore: codeCheckResult.readabilityScore,
+            overallDescription: codeCheckResult.overallDescription,
+            securitySuggestion: codeCheckResult.securitySuggestion,
+            maintainabilitySuggestion: codeCheckResult.maintainabilitySuggestion,
+            readabilitySuggestion: codeCheckResult.readabilitySuggestion,
 
-          eslintErrorCount: codeCheckResult.eslintErrorCount,
-          eslintFatalErrorCount: codeCheckResult.eslintFatalErrorCount,
-          //score: codeCheckResult.score,
-          //message: codeCheckResult.suggestion,
-          //description: codeCheckResult.description,
-        },
-      });
+            eslintErrorCount: codeCheckResult.eslintErrorCount,
+            eslintFatalErrorCount: codeCheckResult.eslintFatalErrorCount,
+            //score: codeCheckResult.score,
+            //message: codeCheckResult.suggestion,
+            //description: codeCheckResult.description,
+          },
+        })
+      }
+
+      return response.status(200).json(repo)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return response.abort({ message: 'Validation error', errors: error.errors }, 400)
+      }
+      return response.abort({ message: error.message }, 400)
     }
-
-    return response.status(200).json(repo);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return response.abort({ message: 'Validation error', errors: error.errors }, 400);
-    }
-    return response.abort({ message: error.message }, 400);
   }
-}
 
   /**
    * Delete a Repo by ID.
@@ -154,14 +165,14 @@ public async update({ params, request, response }: HttpContext) {
    * @paramParam id - The ID of the Repo.
    */
   public async delete({ request, params, response }: HttpContext) {
-    const { id } = params;
+    const { id } = params
     if (!request.user) throw new UnAuthorizedException('User not found in request object')
 
     try {
-      await this.repoService.deleteRepo(id);
-      return response.status(200).json({ message: 'Repo deleted successfully' });
+      await this.repoService.deleteRepo(id)
+      return response.status(200).json({ message: 'Repo deleted successfully' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -173,14 +184,14 @@ public async update({ params, request, response }: HttpContext) {
    * @queryParam limit - The number of items per page.
    */
   public async getPaginated({ request, response }: HttpContext) {
-    const page = request.input('page', 1);
-    const limit = request.input('limit', 10);
+    const page = request.input('page', 1)
+    const limit = request.input('limit', 10)
 
     try {
-      const repos = await this.repoService.getPaginatedRepos(page, limit, request.user?.id ?? '');
-      return response.status(200).json(repos);
+      const repos = await this.repoService.getPaginatedRepos(page, limit, request.user?.id ?? '')
+      return response.status(200).json(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -195,25 +206,25 @@ public async update({ params, request, response }: HttpContext) {
    */
   public async search({ request, response }: HttpContext) {
     // const visibility = request.input('visibility');
-    const tags = request.input('tags');
-    const language = request.input('language');
-    const userId = request.input('userId');
-    const query = request.input('query');
+    const tags = request.input('tags')
+    const language = request.input('language')
+    const userId = request.input('userId')
+    const query = request.input('query')
 
-    const specifications = [];
+    const specifications = []
 
     // force public visibility for all users except admin and mods
-    specifications.push(new VisibilitySpecification("public"));
-    if (tags) specifications.push(new TagSpecification(tags));
-    if (language) specifications.push(new LanguageSpecification(language));
-    if (userId) specifications.push(new UserSpecification(userId));
-    if (query) specifications.push(new SearchSpecification(query));
+    specifications.push(new VisibilitySpecification('public'))
+    if (tags) specifications.push(new TagSpecification(tags))
+    if (language) specifications.push(new LanguageSpecification(language))
+    if (userId) specifications.push(new UserSpecification(userId))
+    if (query) specifications.push(new SearchSpecification(query))
 
     try {
-      const repos = await this.repoService.searchRepos(specifications, request.user?.id ?? null);
-      return response.status(200).json(repos);
+      const repos = await this.repoService.searchRepos(specifications, request.user?.id ?? null)
+      return response.status(200).json(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
@@ -228,29 +239,28 @@ public async update({ params, request, response }: HttpContext) {
    * @queryParam query - Optional search query for title and description.
    */
   public async searchElevated({ request, response }: HttpContext) {
-    const visibility = request.input('visibility');
-    const tags = request.input('tags');
-    const language = request.input('language');
-    const userId = request.input('userId');
-    const query = request.input('query');
+    const visibility = request.input('visibility')
+    const tags = request.input('tags')
+    const language = request.input('language')
+    const userId = request.input('userId')
+    const query = request.input('query')
 
-    const specifications = [];
+    const specifications = []
 
     // force public visibility for all users except admin and mods
-    if (visibility) specifications.push(new VisibilitySpecification(visibility));
-    if (tags) specifications.push(new TagSpecification(tags));
-    if (language) specifications.push(new LanguageSpecification(language));
-    if (userId) specifications.push(new UserSpecification(userId));
-    if (query) specifications.push(new SearchSpecification(query));
+    if (visibility) specifications.push(new VisibilitySpecification(visibility))
+    if (tags) specifications.push(new TagSpecification(tags))
+    if (language) specifications.push(new LanguageSpecification(language))
+    if (userId) specifications.push(new UserSpecification(userId))
+    if (query) specifications.push(new SearchSpecification(query))
 
     try {
-      const repos = await this.repoService.searchRepos(specifications, request.user?.id ?? null);
-      return response.status(200).json(repos);
+      const repos = await this.repoService.searchRepos(specifications, request.user?.id ?? null)
+      return response.status(200).json(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
-
 
   /**
    * Retrieve Repos by user ID.
@@ -259,27 +269,27 @@ public async update({ params, request, response }: HttpContext) {
    * @paramParam userId - The user ID to filter by.
    */
   public async getByUser({ params, response }: HttpContext) {
-    const { userId } = params;
+    const { userId } = params
 
     try {
-      const repos = await this.repoService.getReposByUser(userId);
-      return response.status(200).json(repos);
+      const repos = await this.repoService.getReposByUser(userId)
+      return response.status(200).json(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 
   public async getByUserSession({ request, response }: HttpContext) {
     console.log(request.user)
-    if (!request.user) throw new Exception('User not found in request object');
+    if (!request.user) throw new Exception('User not found in request object')
 
     try {
-      const repos = await this.repoService.getReposByUser(request.user.id);
-      return response.status(200).json(repos);
+      const repos = await this.repoService.getReposByUser(request.user.id)
+      return response.status(200).json(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
-  };
+  }
 
   /**
    * Retrieve all Repos without filtering by visibility.
@@ -288,11 +298,10 @@ public async update({ params, request, response }: HttpContext) {
    */
   public async getAll({ response }: HttpContext) {
     try {
-      const repos = await this.repoService.getAllRepos();
-      return response.status(200).json(repos);
+      const repos = await this.repoService.getAllRepos()
+      return response.status(200).json(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400);
+      return response.abort({ message: error.message }, 400)
     }
   }
 }
-

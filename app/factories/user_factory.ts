@@ -1,16 +1,16 @@
 // user_factory.ts
-import { hash } from "@node-rs/argon2";
-import { prisma } from "#services/prisma_service";
-import { generateIdFromEntropySize } from "lucia";
-import { Role } from "@prisma/client";
+import { hash } from '@node-rs/argon2'
+import { prisma } from '#services/prisma_service'
+import { generateIdFromEntropySize } from 'lucia'
+import { Role } from '@prisma/client'
 
 /**
  * Interface defining the required data for creating a user
  */
 interface UserFactoryData {
-  email: string;
-  password: string;
-  fullname: string;
+  email: string
+  password: string
+  fullname: string
 }
 
 /**
@@ -23,7 +23,7 @@ export class UserFactory {
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
   static async createUser({ email, password, fullname }: UserFactoryData) {
-    return this.createBaseUser({ email, password, fullname, role: Role.USER });
+    return this.createBaseUser({ email, password, fullname, role: Role.USER })
   }
 
   /**
@@ -33,22 +33,22 @@ export class UserFactory {
    */
   static async createSeller({ email, password, fullname }: UserFactoryData) {
     return prisma.$transaction(async (prisma) => {
-      const passwordHash = await this.hashPassword(password);
-      const id = generateIdFromEntropySize(32);
+      const passwordHash = await this.hashPassword(password)
+      const id = generateIdFromEntropySize(32)
       const user = await prisma.user.create({
         data: { id, email, passwordHash, role: Role.SELLER },
-      });
+      })
       const sellerProfile = await prisma.sellerProfile.create({
         data: {
           userId: user.id,
           businessName: fullname,
-          businessAddress: "",
-          businessPhone: "",
+          businessAddress: '',
+          businessPhone: '',
           businessEmail: email,
-        }
-      });
-      return { user, sellerProfile };
-    });
+        },
+      })
+      return { user, sellerProfile }
+    })
   }
 
   /**
@@ -57,7 +57,7 @@ export class UserFactory {
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
   static async createModerator({ email, password, fullname }: UserFactoryData) {
-    return this.createBaseUser({ email, password, fullname, role: Role.MODERATOR });
+    return this.createBaseUser({ email, password, fullname, role: Role.MODERATOR })
   }
 
   /**
@@ -66,7 +66,7 @@ export class UserFactory {
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
   static async createAdmin({ email, password, fullname }: UserFactoryData) {
-    return this.createBaseUser({ email, password, fullname, role: Role.ADMIN });
+    return this.createBaseUser({ email, password, fullname, role: Role.ADMIN })
   }
 
   /**
@@ -74,18 +74,23 @@ export class UserFactory {
    * @param {UserFactoryData & { role: Role }} data - User data with role
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
-  private static async createBaseUser({ email, password, fullname, role }: UserFactoryData & { role: Role }) {
+  private static async createBaseUser({
+    email,
+    password,
+    fullname,
+    role,
+  }: UserFactoryData & { role: Role }) {
     return prisma.$transaction(async (prisma) => {
-      const passwordHash = await this.hashPassword(password);
-      const id = generateIdFromEntropySize(32);
+      const passwordHash = await this.hashPassword(password)
+      const id = generateIdFromEntropySize(32)
       const user = await prisma.user.create({
         data: { id, email, passwordHash, role },
-      });
+      })
       const profile = await prisma.profile.create({
         data: { userId: id, name: fullname },
-      });
-      return { user, profile };
-    });
+      })
+      return { user, profile }
+    })
   }
 
   /**
@@ -99,6 +104,6 @@ export class UserFactory {
       timeCost: 3,
       parallelism: 1,
       outputLen: 64,
-    });
+    })
   }
 }
