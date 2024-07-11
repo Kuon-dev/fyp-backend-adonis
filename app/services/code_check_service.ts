@@ -195,9 +195,9 @@ export default class CodeCheckService {
   public async performAndStoreCodeCheck(repoId: string, code: string, language: 'JSX' | 'TSX'): Promise<CodeCheckResult> {
     try {
       const result = await this.performCodeCheck(code, language);
-      
+
       await this.storeCodeCheckResult(repoId, result);
-      
+
       return result;
     } catch (error) {
       logger.error({ message: "Error performing and storing code check", error, repoId });

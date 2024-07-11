@@ -23,9 +23,9 @@ export const Language = {
 } as const;
 export type Language = (typeof Language)[keyof typeof Language];
 export const OrderStatus = {
-    pending: "pending",
-    completed: "completed",
-    cancelled: "cancelled"
+    PENDING: "PENDING",
+    COMPLETED: "COMPLETED",
+    CANCELLED: "CANCELLED"
 } as const;
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
 export const SupportTicketStatus = {

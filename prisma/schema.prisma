@@ -68,9 +68,10 @@ model User {
   profile        Profile?
   stripeCustomer StripeCustomer?
 
-  Review        Review[]
-  Comment       Comment[]
-  SearchHistory SearchHistory[]
+  Review         Review[]
+  Comment        Comment[]
+  SearchHistory  SearchHistory[]
+  SalesAggregate SalesAggregate[]
 }
 
 model Profile {
@@ -140,7 +141,7 @@ model CodeRepo {
   tags        Tag[]
   codeChecks  CodeCheck[]
 
-  orders          Order[]
+  orders Order[]
   // stripeProductId String?
   // stripePriceId   String?
 }
@@ -181,20 +182,20 @@ model SearchHistory {
 }
 
 model CodeCheck {
-  id                    String   @id @default(cuid())
-  repoId                String
-  securityScore         Int
-  maintainabilityScore  Int
-  readabilityScore      Int
-  securitySuggestion    String   @db.Text
-  maintainabilitySuggestion String @db.Text
-  readabilitySuggestion String   @db.Text
-  overallDescription    String   @db.Text
-  eslintErrorCount      Int
-  eslintFatalErrorCount Int
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  Repo                  CodeRepo @relation(fields: [repoId], references: [id])
+  id                        String   @id @default(cuid())
+  repoId                    String
+  securityScore             Int
+  maintainabilityScore      Int
+  readabilityScore          Int
+  securitySuggestion        String   @db.Text
+  maintainabilitySuggestion String   @db.Text
+  readabilitySuggestion     String   @db.Text
+  overallDescription        String   @db.Text
+  eslintErrorCount          Int
+  eslintFatalErrorCount     Int
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  Repo                      CodeRepo @relation(fields: [repoId], references: [id])
 }
 
 model Order {
@@ -206,14 +207,25 @@ model Order {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   deletedAt   DateTime?
-  status      OrderStatus @default(pending)
+  status      OrderStatus @default(PENDING)
   totalAmount Float
 }
 
 enum OrderStatus {
-  pending
-  completed
-  cancelled
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model SalesAggregate {
+  id         String   @id @default(cuid())
+  sellerId   String
+  seller     User     @relation(fields: [sellerId], references: [id])
+  date       DateTime
+  revenue    Float
+  salesCount Int
+
+  @@unique([sellerId, date])
 }
 
 // 0 - No Flag: The comment or review has no issues.

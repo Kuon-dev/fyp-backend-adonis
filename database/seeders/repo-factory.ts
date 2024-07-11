@@ -1,39 +1,19 @@
 import { faker } from "@faker-js/faker";
 import { generateIdFromEntropySize } from "lucia";
 import type { CodeRepo, User, Tag } from "@prisma/client";
-import { PrismaClient } from "@prisma/client";
-import Stripe from 'stripe';
-import { randomBoolean, weightedRandomDelete } from "./utils.js";
+import { prisma } from "#services/prisma_service";
+import { generateDates, randomBoolean, weightedRandomDelete } from "./utils.js";
 import { REPO_TAGS, TYPESCRIPT_VARIANT_1, TYPESCRIPT_VARIANT_2, TYPESCRIPT_VARIANT_3, TYPESCRIPT_VARIANT_4, TYPESCRIPT_VARIANT_5 } from "./constants.js";
 
-const prisma = new PrismaClient();
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-04-10',
-});
-
-export const generateCodeRepos = async (users: User[], count: number = 10) => {
+async function generateCodeRepos(count: number = 10) {
   const codeRepos: {repo: CodeRepo, tags: string[]}[] = [];
 
-  //const users: User[] = await prisma.user.findMany();
+  const users: User[] = await prisma.user.findMany();
 
   for (let i = 0; i < count; i++) {
-    const userId = users[Math.floor(Math.random() * users.length)].id;
-
-    // Create a Stripe product
-    //const product = await stripe.products.create({
-    //  name: faker.company.name(),
-    //  description: faker.lorem.sentence(),
-    //});
-
-    const priceAmount = Math.floor(parseFloat(faker.commerce.price({ min: 100, max: 10000, dec: 2 })))
-
-    // Create a Stripe price
-    //const price = await stripe.prices.create({
-    //  product: product.id,
-    //  unit_amount: priceAmount,
-    //  currency: 'myr',
-    //});
+    const userId = faker.helpers.arrayElement(users).id;
+    const priceAmount = Math.floor(parseFloat(faker.commerce.price({ min: 100, max: 10000, dec: 2 })));
+    const { createdAt, updatedAt, deletedAt } = generateDates();
 
     const codeRepo: CodeRepo = {
       id: generateIdFromEntropySize(32),
@@ -46,18 +26,15 @@ export const generateCodeRepos = async (users: User[], count: number = 10) => {
         TYPESCRIPT_VARIANT_5,
       ]),
       sourceCss: "/* CSS */",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: weightedRandomDelete(),
+      createdAt,
+      updatedAt,
+      deletedAt,
       visibility: randomBoolean() ? "public" : "private",
       status: faker.helpers.arrayElement(["pending", "active", "rejected"]),
       name: faker.company.name(),
       description: faker.lorem.sentences(),
       language: faker.helpers.arrayElement(["JSX", "TSX"]),
       price: priceAmount,
-      // tags: faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 })),
-      //stripeProductId: product.id,
-      //stripePriceId: price.id,
     };
 
     codeRepos.push({
@@ -65,9 +42,35 @@ export const generateCodeRepos = async (users: User[], count: number = 10) => {
       tags: faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 })),
     });
 
-    console.log('Generated code repo:', codeRepo.name)
+    console.log('Generated code repo:', codeRepo.name);
   }
 
   return codeRepos;
-};
+}
 
+export async function seedCodeRepos(count: number = 50) {
+  try {
+    const codeReposWithTags = await generateCodeRepos(count);
+
+    for (const { repo, tags } of codeReposWithTags) {
+      const createdRepo = await prisma.codeRepo.create({
+        data: {
+          ...repo,
+          tags: {
+            create: tags.map(tagName => ({
+              name: tagName
+            }))
+          }
+        },
+      });
+
+      console.log(`Created code repo: ${createdRepo.name} with ${tags.length} tags`);
+    }
+
+    console.log('Finished seeding code repos');
+  } catch (error) {
+    console.error('Error seeding code repos:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}

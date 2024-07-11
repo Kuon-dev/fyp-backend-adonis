@@ -1,5 +1,6 @@
 import { prisma } from '#services/prisma_service';
 import { Order, OrderStatus } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 interface OrderCreationData {
   userId: string;
@@ -33,7 +34,10 @@ export class OrderService {
    */
   async createOrder(data: OrderCreationData): Promise<Order> {
     return prisma.order.create({
-      data,
+      data: {
+        ...data,
+        status: OrderStatus.PENDING, // Set initial status to pending
+      },
     });
   }
 
@@ -222,5 +226,70 @@ export class OrderService {
 
     return { orders, total };
   }
-}
 
+  /**
+   * Complete an order and update sales aggregates
+   * @param orderId - The ID of the order to complete
+   */
+  async completeOrder(orderId: string): Promise<Order> {
+    return prisma.$transaction(async (trx) => {
+      const order = await trx.order.findUnique({
+        where: { id: orderId },
+        include: { codeRepo: true },
+      });
+
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      if (order.status === OrderStatus.COMPLETED) {
+        throw new Error('Order is already completed');
+      }
+
+      // Update order status
+      const updatedOrder = await trx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.COMPLETED }
+      });
+
+      const sellerId = order.codeRepo.userId;
+      const orderDate = DateTime.fromJSDate(order.createdAt);
+      const aggregateDate = orderDate.startOf('month').toJSDate();
+
+      // Update or create SalesAggregate
+      await trx.salesAggregate.upsert({
+        where: {
+          sellerId_date: {
+            sellerId,
+            date: aggregateDate,
+          },
+        },
+        update: {
+          revenue: { increment: order.totalAmount },
+          salesCount: { increment: 1 },
+        },
+        create: {
+          sellerId,
+          date: aggregateDate,
+          revenue: order.totalAmount,
+          salesCount: 1,
+        },
+      });
+
+      return updatedOrder;
+    });
+  }
+
+  /**
+   * Get the total sales count for a CodeRepo
+   * @param codeRepoId - The ID of the CodeRepo
+   */
+  async getCodeRepoSalesCount(codeRepoId: string): Promise<number> {
+    return prisma.order.count({
+      where: {
+        codeRepoId,
+        status: OrderStatus.COMPLETED,
+      },
+    });
+  }
+}

@@ -35,8 +35,6 @@ export type CodeRepo = {
     description: string | null;
     language: Language;
     price: Generated<number>;
-    stripeProductId: string | null;
-    stripePriceId: string | null;
 };
 export type Comment = {
     id: string;
@@ -99,6 +97,13 @@ export type Review = {
     flag: Generated<number | null>;
     upvotes: Generated<number>;
     downvotes: Generated<number>;
+};
+export type SalesAggregate = {
+    id: string;
+    sellerId: string;
+    date: Timestamp;
+    revenue: number;
+    salesCount: number;
 };
 export type SearchHistory = {
     id: string;
@@ -168,6 +173,7 @@ export type DB = {
     PasswordResetToken: PasswordResetToken;
     Profile: Profile;
     Review: Review;
+    SalesAggregate: SalesAggregate;
     SearchHistory: SearchHistory;
     SellerProfile: SellerProfile;
     Session: Session;
