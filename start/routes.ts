@@ -80,6 +80,7 @@ router
           .get('/repos/user', [RepoController, 'getByUserSession'])
           .use(middleware.auth({ role: 'USER' }))
         router.get('/repos/all', [RepoController, 'getAll'])
+        router.get('/repos/featured', [RepoController, 'getFeatured'])
 
         // User routes
         router.post('/users', [UserController, 'create'])

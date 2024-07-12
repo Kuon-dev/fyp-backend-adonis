@@ -11,6 +11,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import CodeCheckService from '#services/code_check_service'
 import { prisma } from '#services/prisma_service'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import type { CodeRepo } from '@prisma/client'
 import { z } from 'zod'
 import { createRepoSchema, updateRepoSchema } from '#validators/repo'
 
@@ -304,4 +305,28 @@ export default class RepoController {
       return response.abort({ message: error.message }, 400)
     }
   }
+
+  /**
+   * Retrieve featured repos.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @queryParam limit - The number of featured repos to return (default: 5).
+   */
+  public async getFeatured({ request, response }: HttpContext) {
+    const limit = request.input('limit', 5)
+
+    try {
+      const featuredRepos = await this.repoService.getFeaturedRepos(limit)
+      return response.status(200).json(featuredRepos)
+    } catch (error) {
+      return response.abort({ message: error.message }, 400)
+    }
+
+  /**
+   * Get featured repos based on various criteria
+   * @param {number} limit - The number of featured repos to return
+   * @returns {Promise<CodeRepo[]>} - A list of featured repos
+   */
+ }
+
 }

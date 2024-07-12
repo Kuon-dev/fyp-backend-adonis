@@ -2,14 +2,9 @@ import { SelectQueryBuilder, expressionBuilder, sql } from 'kysely'
 import type { CodeRepo, OrderStatus } from '@prisma/client'
 import { kyselyDb } from '#database/kysely'
 import { prisma } from './prisma_service.js'
-import env from '#start/env'
-import Stripe from 'stripe'
-import logger from '@adonisjs/core/services/logger'
-
-// Initialize Stripe with the secret key from environment variables
-const stripe = new Stripe(env.get('STRIPE_SECRET_KEY'), {
-  apiVersion: '2024-04-10',
-})
+//import env from '#start/env'
+//import Stripe from 'stripe'
+//import logger from '@adonisjs/core/services/logger'
 
 // Create a type that makes sourceJs and sourceCss optional
 type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss'> & {
@@ -34,24 +29,9 @@ export default class RepoService {
     > & { tags: string[] }
   ): Promise<CodeRepo> {
     // Create a product in Stripe
-    const product = await stripe.products.create({
-      name: data.name,
-      description: data.description || undefined,
-    })
-
-    // Create a price in Stripe
-    const price = await stripe.prices.create({
-      product: product.id,
-      unit_amount: data.price * 100, // converting to cents
-      currency: 'usd',
-    })
-
-    // Create the repo without tags first
     const repo = await prisma.codeRepo.create({
       data: {
         ...data,
-        stripeProductId: product.id,
-        stripePriceId: price.id,
         tags: undefined,
       },
     })
@@ -366,6 +346,41 @@ export default class RepoService {
         orders: true,
       },
     })
+  }
+
+  public async getFeaturedRepos(limit: number = 5): Promise<CodeRepo[]> {
+    const featuredRepos = await prisma.codeRepo.findMany({
+      where: {
+        visibility: 'public',
+        status: 'active',
+      },
+      include: {
+        reviews: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: true,
+          },
+        },
+      },
+      orderBy: [
+        { reviews: { _count: 'desc' } },
+        { updatedAt: 'desc' },
+      ],
+      take: limit,
+    })
+
+    // Calculate average rating for each repo
+    const reposWithRatings = featuredRepos.map(repo => {
+      const avgRating = repo.reviews.reduce((sum, review) => sum + review.rating, 0) / repo.reviews.length || 0
+      return { ...repo, avgRating }
+    })
+
+    // Sort by average rating and then by number of reviews
+    return reposWithRatings.sort((a, b) =>
+      b.avgRating - a.avgRating || b.reviews.length - a.reviews.length
+    )
   }
 }
 

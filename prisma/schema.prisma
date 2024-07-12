@@ -92,14 +92,60 @@ model SellerProfile {
   businessEmail      String
   identityDoc        String? // file path
   verificationDate   DateTime?
-  stripeAccountId    String?
   verificationStatus SellerVerificationStatus @default(PENDING)
+  // Payment preferences
+  // preferredPayoutFrequency PayoutFrequency @default(MONTHLY)
+  // minimumPayoutAmount Float @default(100)
+  // Relation to bank account
+  bankAccount        BankAccount?
+  Payout             Payout[]
 }
 
 enum SellerVerificationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model BankAccount {
+  id                String        @id @default(cuid())
+  sellerProfile     SellerProfile @relation(fields: [sellerProfileId], references: [id])
+  sellerProfileId   String        @unique
+  accountHolderName String
+  accountNumber     String
+  bankName          String
+  swiftCode         String
+  iban              String?
+  routingNumber     String?
+
+  // For added security, consider encrypting sensitive fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PayoutFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+model Payout {
+  id              String        @id @default(cuid())
+  sellerProfile   SellerProfile @relation(fields: [sellerProfileId], references: [id])
+  sellerProfileId String
+  amount          Float
+  currency        String
+  status          PayoutStatus  @default(PENDING)
+  stripePayoutId  String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model Session {
