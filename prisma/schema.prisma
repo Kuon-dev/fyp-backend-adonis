@@ -251,14 +251,20 @@ model Order {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   deletedAt   DateTime?
-  status      OrderStatus @default(PENDING)
+  status      OrderStatus @default(REQUIRESPAYMENTMETHOD)
   totalAmount Float
+  stripePaymentIntentId String?
+  stripePaymentMethodId String?
 }
 
 enum OrderStatus {
-  PENDING
-  COMPLETED
-  CANCELLED
+		REQUIRESPAYMENTMETHOD
+		REQUIRESCONFIRMATION
+		REQUIRESACTION
+		PROCESSING
+		REQUIRESCAPTURE
+		CANCELLED
+		SUCCEEDED
 }
 
 model SalesAggregate {

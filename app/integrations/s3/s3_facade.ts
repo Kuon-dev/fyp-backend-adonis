@@ -49,7 +49,7 @@ export class S3Facade {
 
     const media = await tx.media.create({
       data: {
-        url: `https://${this.bucketName}.s3.amazonaws.com/${fileKey}`,
+        url: `https://${this.bucketName}.s3.amazonaws.com/${path ? path + '/' : ''}${fileKey}`,
         type: fileType,
       },
     })

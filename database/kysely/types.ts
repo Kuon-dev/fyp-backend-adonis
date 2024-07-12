@@ -83,6 +83,8 @@ export type Order = {
     deletedAt: Timestamp | null;
     status: Generated<OrderStatus>;
     totalAmount: number;
+    stripePaymentIntentId: string | null;
+    stripePaymentMethodId: string | null;
 };
 export type PasswordResetToken = {
     id: Generated<number>;

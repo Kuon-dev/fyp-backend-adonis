@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker'
 import { prisma } from '#services/prisma_service'
-import { Role, User, Profile, SellerProfile } from '@prisma/client'
+import { Role, User, Profile, SellerProfile, SellerVerificationStatus } from '@prisma/client'
 import { UserFactory } from '#factories/user_factory'
 
 type UserWithProfile = {
@@ -114,20 +114,27 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
     email: 'verifiedSeller@example.com',
     password,
     fullname: 'Verified Seller',
+    businessName: faker.company.name(),
+    businessAddress: faker.location.streetAddress(),
+    businessPhone: faker.phone.number(),
+    bankAccount: {
+      accountHolderName: 'Verified Seller',
+      accountNumber: faker.finance.accountNumber(),
+      bankName: faker.company.name(),
+      swiftCode: faker.finance.bic(),
+    },
   })
   await prisma.user.update({
     where: { id: verifiedSeller.user.id },
     data: {
       emailVerified: true,
-      isSellerVerified: true,
     },
   })
   await prisma.sellerProfile.update({
     where: { userId: verifiedSeller.user.id },
     data: {
+      verificationStatus: SellerVerificationStatus.APPROVED,
       verificationDate: new Date(),
-      businessAddress: faker.location.streetAddress(),
-      businessPhone: faker.phone.number(),
     },
   })
   forcedUsers.push(verifiedSeller)
@@ -138,6 +145,9 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
       email: 'unverifiedSeller@example.com',
       password,
       fullname: 'Unverified Seller',
+      businessName: '',
+      businessAddress: '',
+      businessPhone: '',
     })
   )
 
@@ -191,29 +201,53 @@ async function createSellerWithSpecialCases(
   index: number,
   userData: { email: string; password: string; fullname: string }
 ): Promise<UserWithProfile> {
-  let userWithProfile: UserWithProfile
+  const sellerData = {
+    ...userData,
+    businessName: '',
+    businessAddress: '',
+    businessPhone: '',
+  }
+
+  let userWithProfile: UserWithProfile = await UserFactory.createSeller(sellerData)
 
   if (index % 3 === 0) {
     // Every 3rd seller is verified
-    userWithProfile = await UserFactory.createSeller(userData)
     await prisma.user.update({
       where: { id: userWithProfile.user.id },
       data: {
         emailVerified: true,
-        isSellerVerified: true,
       },
     })
     await prisma.sellerProfile.update({
       where: { userId: userWithProfile.user.id },
       data: {
+        verificationStatus: SellerVerificationStatus.APPROVED,
         verificationDate: new Date(),
+        businessName: faker.company.name(),
         businessAddress: faker.location.streetAddress(),
         businessPhone: faker.phone.number(),
       },
     })
-  } else {
-    userWithProfile = await UserFactory.createSeller(userData)
+    // Add bank account for verified sellers
+    await prisma.bankAccount.create({
+      data: {
+        sellerProfileId: userWithProfile.sellerProfile!.id,
+        accountHolderName: userData.fullname,
+        accountNumber: faker.finance.accountNumber(),
+        bankName: faker.company.name(),
+        swiftCode: faker.finance.bic(),
+      },
+    })
+  } else if (index % 5 === 0) {
+    // Every 5th seller is rejected
+    await prisma.sellerProfile.update({
+      where: { userId: userWithProfile.user.id },
+      data: {
+        verificationStatus: SellerVerificationStatus.REJECTED,
+      },
+    })
   }
+  // All other sellers remain in PENDING status
 
   return userWithProfile
 }

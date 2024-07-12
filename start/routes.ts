@@ -46,7 +46,6 @@ router
         router.post('/verify-email', [AuthController, 'verifyEmail'])
         router
           .post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser'])
-          .use(middleware.auth({ role: 'USER' }))
         router.get('/me', [AuthController, 'me'])
 
         router

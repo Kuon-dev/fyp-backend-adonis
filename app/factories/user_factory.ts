@@ -2,7 +2,7 @@
 import { hash } from '@node-rs/argon2'
 import { prisma } from '#services/prisma_service'
 import { generateIdFromEntropySize } from 'lucia'
-import { Role } from '@prisma/client'
+import { BankAccount, Role, SellerVerificationStatus } from '@prisma/client'
 
 /**
  * Interface defining the required data for creating a user
@@ -11,6 +11,24 @@ interface UserFactoryData {
   email: string
   password: string
   fullname: string
+}
+
+/**
+ * Interface defining the additional data for creating a seller
+ */
+interface SellerFactoryData extends UserFactoryData {
+  businessName: string
+  businessAddress: string
+  businessPhone: string
+  identityDoc?: string
+  bankAccount?: {
+    accountHolderName: string
+    accountNumber: string
+    bankName: string
+    swiftCode: string
+    iban?: string
+    routingNumber?: string
+  }
 }
 
 /**
@@ -27,24 +45,32 @@ export class UserFactory {
   }
 
   /**
-   * Create a seller user with associated seller profile
-   * @param {UserFactoryData} data - User data
-   * @returns {Promise<{user: User, sellerProfile: SellerProfile}>} Created user and seller profile
+   * Create a seller user with associated seller profile and optional bank account
+   * @param {SellerFactoryData} data - Seller data
+   * @returns {Promise<{user: User, sellerProfile: SellerProfile, bankAccount?: BankAccount}>} Created user, seller profile, and optional bank account
    */
-  static async createSeller({ email, password, fullname }: UserFactoryData) {
+  static async createSeller({
+    email,
+    password,
+    fullname,
+  }: SellerFactoryData) {
     return prisma.$transaction(async (prisma) => {
       const passwordHash = await this.hashPassword(password)
       const id = generateIdFromEntropySize(32)
+
       const user = await prisma.user.create({
         data: { id, email, passwordHash, role: Role.SELLER },
       })
+
       const sellerProfile = await prisma.sellerProfile.create({
         data: {
           userId: user.id,
-          businessName: fullname,
+          businessName: '',
           businessAddress: '',
           businessPhone: '',
           businessEmail: email,
+          identityDoc: null,
+          verificationStatus: SellerVerificationStatus.PENDING,
         },
       })
       return { user, sellerProfile }
@@ -83,12 +109,15 @@ export class UserFactory {
     return prisma.$transaction(async (prisma) => {
       const passwordHash = await this.hashPassword(password)
       const id = generateIdFromEntropySize(32)
+
       const user = await prisma.user.create({
         data: { id, email, passwordHash, role },
       })
+
       const profile = await prisma.profile.create({
         data: { userId: id, name: fullname },
       })
+
       return { user, profile }
     })
   }

@@ -103,92 +103,445 @@ export const REPO_TAGS = [
   'react-photo-gallery',
 ]
 
-export const ENABLED_LANGUAGES: string[] = ['html', 'markdown', 'javascript', 'typescript']
+export const QUIZ_APP_CSS = `
+.quiz-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
 
-export const SELF_CLOSING_TAGS: string[] = [
-  'area',
-  'base',
-  'br',
-  'col',
-  'command',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'keygen',
-  'link',
-  'meta',
-  'param',
-  'source',
-  'track',
-  'wbr',
-  'circle',
-  'ellipse',
-  'line',
-  'path',
-  'polygon',
-  'polyline',
-  'rect',
-  'stop',
-  'use',
-]
+h1 {
+  text-align: center;
+  color: #bb86fc;
+}
 
-export const DEFAULT_CSS_MONACO = `
-.custom-class {
-  color: red;
+h2 {
+  color: #03dac6;
+}
+
+.question {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.option-btn {
+  background-color: #3700b3;
+  color: #ffffff;
+  border: none;
+  padding: 10px;
+  font-size: 1em;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+.option-btn:hover {
+  background-color: #6200ee;
+}
+
+.option-btn.selected {
+  background-color: #018786;
+}
+
+.next-btn, .restart-btn {
+  background-color: #bb86fc;
+  color: #000000;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1em;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-top: 20px;
+  transition: background-color 0.3s;
+}
+
+.next-btn:hover, .restart-btn:hover {
+  background-color: #3700b3;
+  color: #ffffff;
+}
+
+.next-btn:disabled {
+  background-color: #4f4f4f;
+  cursor: not-allowed;
+}
+
+.score-section {
+  text-align: center;
+}
+
+.score-section p {
+  font-size: 1.2em;
+  margin-bottom: 20px;
 }
 `
 
-export const TYPESCRIPT_VARIANT_1 = `
-import * as React from 'react';
-import { render } from 'react-dom';
-import './index.css';
+export const QUIZ_APP = `
+interface Question {
+  id: number;
+  question: string;
+  options: string[];
+  correctAnswer: string;
+}
 
-type Props = {
-  name: string;
-};
+const QuizApp = () => {
+  const [questions, setQuestions] = React.useState<Question[]>([
+    {
+      id: 1,
+      question: "What is the capital of France?",
+      options: ["London", "Berlin", "Paris", "Madrid"],
+      correctAnswer: "Paris"
+    },
+    {
+      id: 2,
+      question: "Which planet is known as the Red Planet?",
+      options: ["Venus", "Mars", "Jupiter", "Saturn"],
+      correctAnswer: "Mars"
+    },
+    {
+      id: 3,
+      question: "Who painted the Mona Lisa?",
+      options: ["Vincent van Gogh", "Leonardo da Vinci", "Pablo Picasso", "Michelangelo"],
+      correctAnswer: "Leonardo da Vinci"
+    }
+  ]);
+  const [currentQuestion, setCurrentQuestion] = React.useState<number>(0);
+  const [score, setScore] = React.useState<number>(0);
+  const [showScore, setShowScore] = React.useState<boolean>(false);
+  const [selectedAnswer, setSelectedAnswer] = React.useState<string>("");
 
-const Greeting = (props: Props) => {
-  const [greeting, setGreeting] = React.useState<string>('');
+  const handleAnswerClick = (answer: string): void => {
+    setSelectedAnswer(answer);
+  };
 
-  React.useEffect(() => {
-    setGreeting(\`Hello, \${props.name}!\`);
-  }, [props.name]);
+  const handleNextQuestion = (): void => {
+    if (selectedAnswer === questions[currentQuestion].correctAnswer) {
+      setScore(prevScore => prevScore + 1);
+    }
+
+    const nextQuestion = currentQuestion + 1;
+    if (nextQuestion < questions.length) {
+      setCurrentQuestion(nextQuestion);
+      setSelectedAnswer("");
+    } else {
+      setShowScore(true);
+    }
+  };
+
+  const restartQuiz = (): void => {
+    setCurrentQuestion(0);
+    setScore(0);
+    setShowScore(false);
+    setSelectedAnswer("");
+  };
 
   return (
-    <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <h1 className="text-white font-bold text-xl bg-darkslateblue p-2 rounded">
-        {greeting}
-      </h1>
+    <div className="quiz-container">
+      <h1>Quiz App</h1>
+      {showScore ? (
+        <div className="score-section">
+          <h2>Quiz Completed!</h2>
+          <p>Your score: {score} out of {questions.length}</p>
+          <button onClick={restartQuiz} className="restart-btn">Restart Quiz</button>
+        </div>
+      ) : (
+        <div className="question-section">
+          <h2>Question {currentQuestion + 1}/{questions.length}</h2>
+          <p className="question">{questions[currentQuestion].question}</p>
+          <div className="options">
+            {questions[currentQuestion].options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerClick(option)}
+                className={\`option-btn \${selectedAnswer === option ? 'selected' : ''}\`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleNextQuestion}
+            disabled={!selectedAnswer}
+            className="next-btn"
+          >
+            {currentQuestion === questions.length - 1 ? 'Finish' : 'Next'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
-render(<Greeting name="World" />);
+render(<QuizApp />);
 `
 
-export const TYPESCRIPT_VARIANT_2 = `
-import * as React from 'react';
-import { render } from 'react-dom';
-import './index.css';
+// TSX Variant
 
-type Props = {
-  items: string[];
-};
+export const KANBAN = `
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  priority: 'Low' | 'Medium' | 'High';
+  status: 'To Do' | 'In Progress' | 'Done';
+  dueDate: string;
+}
 
-const ItemList = (props: Props) => {
-  const [items, setItems] = React.useState<string[]>(props.items);
+const KanbanBoard = () => {
+  const [tasks, setTasks] = React.useState<Task[]>([]);
+  const [newTask, setNewTask] = React.useState<Omit<Task, 'id' | 'status'>>({
+    title: '',
+    description: '',
+    priority: 'Medium',
+    dueDate: ''
+  });
 
-  React.useEffect(() => {
-    setItems(props.items);
-  }, [props.items]);
+  const addTask = () => {
+    if (newTask.title && newTask.description && newTask.dueDate) {
+      setTasks([...tasks, { ...newTask, id: Date.now(), status: 'To Do' }]);
+      setNewTask({ title: '', description: '', priority: 'Medium', dueDate: '' });
+    }
+  };
+
+  const moveTask = (taskId: number, newStatus: 'To Do' | 'In Progress' | 'Done') => {
+    setTasks(tasks.map(task =>
+      task.id === taskId ? { ...task, status: newStatus } : task
+    ));
+  };
+
+  const deleteTask = (id: number) => {
+    setTasks(tasks.filter(task => task.id !== id));
+  };
+
+  const getPriorityColor = (priority: 'Low' | 'Medium' | 'High') => {
+    switch (priority) {
+      case 'Low': return 'bg-green-600';
+      case 'Medium': return 'bg-yellow-600';
+      case 'High': return 'bg-red-600';
+    }
+  };
+
+  const renderTaskList = (status: 'To Do' | 'In Progress' | 'Done') => (
+    <div className="bg-gray-800 p-4 rounded-lg flex-1">
+      <h2 className="text-xl font-bold mb-4">{status}</h2>
+      {tasks.filter(task => task.status === status).map(task => (
+        <div key={task.id} className="bg-gray-700 p-3 rounded mb-2">
+          <h3 className="font-semibold">{task.title}</h3>
+          <p className="text-sm text-gray-400">{task.description}</p>
+          <div className="flex justify-between items-center mt-2">
+            <span className={\`px-2 py-1 rounded text-xs \${getPriorityColor(task.priority)}\`}>
+              {task.priority}
+            </span>
+            <span className="text-xs text-gray-500">{task.dueDate}</span>
+          </div>
+          <div className="mt-2 flex justify-between">
+            <select
+              value={task.status}
+              onChange={(e) => moveTask(task.id, e.target.value as 'To Do' | 'In Progress' | 'Done')}
+              className="p-1 bg-gray-600 rounded text-sm"
+            >
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Done">Done</option>
+            </select>
+            <button
+              onClick={() => deleteTask(task.id)}
+              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-sm"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <ul className="list-disc">
-        {items.map((item, index) => (
-          <li key={index} className="text-white font-bold text-xl bg-darkslateblue p-2 rounded m-1">
-            {item}
+    <div className="bg-gray-900 text-white p-8 rounded-xl shadow-2xl">
+      <h1 className="text-3xl font-bold mb-6">Kanban Board</h1>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <input
+          type="text"
+          value={newTask.title}
+          onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+          className="p-2 bg-gray-800 rounded"
+          placeholder="Task Title"
+        />
+        <input
+          type="date"
+          value={newTask.dueDate}
+          onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+          className="p-2 bg-gray-800 rounded"
+        />
+      </div>
+      <textarea
+        value={newTask.description}
+        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+        className="p-2 bg-gray-800 rounded w-full mb-4"
+        placeholder="Task Description"
+      />
+      <div className="flex justify-between items-center mb-4">
+        <select
+          value={newTask.priority}
+          onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as 'Low' | 'Medium' | 'High' })}
+          className="p-2 bg-gray-800 rounded"
+        >
+          <option value="Low">Low Priority</option>
+          <option value="Medium">Medium Priority</option>
+          <option value="High">High Priority</option>
+        </select>
+        <button
+          onClick={addTask}
+          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+        >
+          Add Task
+        </button>
+      </div>
+      <div className="flex space-x-4">
+        {renderTaskList('To Do')}
+        {renderTaskList('In Progress')}
+        {renderTaskList('Done')}
+      </div>
+    </div>
+  );
+};
+
+render(<KanbanBoard />);
+`;
+
+export const KANBAN_CSS = `
+/* No additional CSS needed as styles are handled by Tailwind */
+`;
+
+export const PROJECT_MANAGEMENT = `
+interface Project {
+  id: number;
+  name: string;
+  description: string;
+  status: 'To Do' | 'In Progress' | 'Completed';
+  dueDate: string;
+}
+
+const ProjectManagement = () => {
+  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [newProject, setNewProject] = React.useState<Omit<Project, 'id'>>({
+    name: '',
+    description: '',
+    status: 'To Do',
+    dueDate: ''
+  });
+  const [filter, setFilter] = React.useState<'To Do' | 'In Progress' | 'Completed' | 'All'>('All');
+
+  const addProject = () => {
+    if (newProject.name && newProject.description && newProject.dueDate) {
+      setProjects([...projects, { ...newProject, id: Date.now() }]);
+      setNewProject({ name: '', description: '', status: 'To Do', dueDate: '' });
+    }
+  };
+
+  const updateProjectStatus = (id: number, newStatus: 'To Do' | 'In Progress' | 'Completed') => {
+    setProjects(projects.map(project =>
+      project.id === id ? { ...project, status: newStatus } : project
+    ));
+  };
+
+  const deleteProject = (id: number) => {
+    setProjects(projects.filter(project => project.id !== id));
+  };
+
+  const filteredProjects = filter === 'All'
+    ? projects
+    : projects.filter(project => project.status === filter);
+
+  const getStatusColor = (status: 'To Do' | 'In Progress' | 'Completed') => {
+    switch (status) {
+      case 'To Do': return 'bg-yellow-600';
+      case 'In Progress': return 'bg-blue-600';
+      case 'Completed': return 'bg-green-600';
+    }
+  };
+
+  return (
+    <div className="bg-gray-900 text-white p-8 rounded-xl shadow-2xl">
+      <h1 className="text-3xl font-bold mb-6">Project Management</h1>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <input
+          type="text"
+          value={newProject.name}
+          onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+          className="p-2 bg-gray-800 rounded"
+          placeholder="Project Name"
+        />
+        <input
+          type="date"
+          value={newProject.dueDate}
+          onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
+          className="p-2 bg-gray-800 rounded"
+        />
+      </div>
+      <textarea
+        value={newProject.description}
+        onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+        className="p-2 bg-gray-800 rounded w-full mb-4"
+        placeholder="Project Description"
+      />
+      <button
+        onClick={addProject}
+        className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded mb-4"
+      >
+        Add Project
+      </button>
+      <div className="mb-4">
+        <label className="mr-2">Filter by Status:</label>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as 'To Do' | 'In Progress' | 'Completed' | 'All')}
+          className="p-2 bg-gray-800 rounded"
+        >
+          <option value="All">All</option>
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+      <ul>
+        {filteredProjects.map(project => (
+          <li key={project.id} className="mb-4 bg-gray-800 p-4 rounded">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">{project.name}</h3>
+              <span className={\`px-2 py-1 rounded \${getStatusColor(project.status)}\`}>
+                {project.status}
+              </span>
+            </div>
+            <p className="text-gray-400 mt-2">{project.description}</p>
+            <p className="mt-2"><strong>Due Date:</strong> {project.dueDate}</p>
+            <div className="mt-4">
+              <select
+                value={project.status}
+                onChange={(e) => updateProjectStatus(project.id, e.target.value as 'To Do' | 'In Progress' | 'Completed')}
+                className="p-2 bg-gray-700 rounded mr-2"
+              >
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <button
+                onClick={() => deleteProject(project.id)}
+                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+              >
+                Delete
+              </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -196,97 +549,9 @@ const ItemList = (props: Props) => {
   );
 };
 
-render(<ItemList items={['Apple', 'Banana', 'Cherry']} />);
+render(<ProjectManagement />);
 `
 
-export const TYPESCRIPT_VARIANT_3 = `
-import * as React from 'react';
-import { render } from 'react-dom';
-import './index.css';
-
-type Props = {
-  initialCount: number;
-};
-
-const Counter = (props: Props) => {
-  const [count, setCount] = React.useState<number>(props.initialCount);
-
-  React.useEffect(() => {
-    setCount(props.initialCount);
-  }, [props.initialCount]);
-
-  return (
-    <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <p className="text-white font-bold text-xl bg-darkslateblue p-2 rounded">
-        Count: {count}
-      </p>
-      <button
-        onClick={() => setCount(count + 1)}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-        Increment
-      </button>
-    </div>
-  );
-};
-
-render(<Counter initialCount={0} />);
-`
-
-export const TYPESCRIPT_VARIANT_4 = `
-import * as React from 'react';
-import { render } from 'react-dom';
-import './index.css';
-
-type Props = {
-  text: string;
-};
-
-const ToggleText = (props: Props) => {
-  const [visible, setVisible] = React.useState<boolean>(true);
-
-  return (
-    <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <button
-        onClick={() => setVisible(!visible)}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-        Toggle Text
-      </button>
-      {visible && (
-        <p className="text-white font-bold text-xl bg-darkslateblue p-2 rounded">
-          {props.text}
-        </p>
-      )}
-    </div>
-  );
-};
-
-render(<ToggleText text="Hello, toggle me!" />);
-`
-
-export const TYPESCRIPT_VARIANT_5 = `
-import * as React from 'react';
-import { render } from 'react-dom';
-import './index.css';
-
-type Props = {
-  message: string;
-};
-
-const AlertButton = (props: Props) => {
-  const showAlert = React.useRef(() => {
-    alert(props.message);
-  });
-
-  return (
-    <div className="flex flex-col items-center space-y-4 p-4 bg-gray-100 rounded shadow">
-      <button
-        onClick={() => showAlert.current()}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-        Show Alert
-      </button>
-    </div>
-  );
-};
-
-render(<AlertButton message="This is an alert message!" />);
+export const PROJECT_MANAGEMENT_CSS = `
+/* No additional CSS needed as styles are handled by Tailwind */
 `

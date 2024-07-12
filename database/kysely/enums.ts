@@ -42,9 +42,13 @@ export const Language = {
 } as const;
 export type Language = (typeof Language)[keyof typeof Language];
 export const OrderStatus = {
-    PENDING: "PENDING",
-    COMPLETED: "COMPLETED",
-    CANCELLED: "CANCELLED"
+    REQUIRESPAYMENTMETHOD: "REQUIRESPAYMENTMETHOD",
+    REQUIRESCONFIRMATION: "REQUIRESCONFIRMATION",
+    REQUIRESACTION: "REQUIRESACTION",
+    PROCESSING: "PROCESSING",
+    REQUIRESCAPTURE: "REQUIRESCAPTURE",
+    CANCELLED: "CANCELLED",
+    SUCCEEDED: "SUCCEEDED"
 } as const;
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
 export const SupportTicketStatus = {

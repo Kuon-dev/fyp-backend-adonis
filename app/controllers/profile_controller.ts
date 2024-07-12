@@ -74,6 +74,7 @@ export default class ProfileController {
    */
   async updateProfile({ request, response }: HttpContext) {
     const user = request.user!
+    console.log(request.headers())
 
     try {
       const { name, phoneNumber } = request.only(['name', 'phoneNumber'])

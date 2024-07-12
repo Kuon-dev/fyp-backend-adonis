@@ -25,15 +25,16 @@ export default class GetUserSessionMiddleware {
         ctx.response.header('Set-Cookie', lucia.createBlankSessionCookie().serialize())
       }
       // if there is no user found but a role prop exist
-      if (!user) {
-        throw new UnAuthorizedException()
-      }
+      //if (!user) {
+      //  console.log('no user')
+      //  throw new UnAuthorizedException()
+      //}
 
-      if (user.bannedUntil && user.bannedUntil > new Date()) {
+      if (user?.bannedUntil && user?.bannedUntil > new Date()) {
         throw new UnAuthorizedException('User is banned')
       }
 
-      if (user.deletedAt) {
+      if (user?.deletedAt) {
         throw new UnAuthorizedException('User account is deleted')
       }
       ctx.request.user = user

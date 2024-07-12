@@ -42,7 +42,7 @@ const bodyParserConfig = defineConfig({
     autoProcess: false,
     convertEmptyStringsToNull: true,
     processManually: [],
-
+    encoding: 'utf-8',
     /**
      * Maximum limit of data to parse including all files
      * and fields

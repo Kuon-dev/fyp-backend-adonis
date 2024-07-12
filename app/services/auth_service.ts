@@ -206,6 +206,9 @@ export default class AuthService {
   }
 
   public async sendVerifyEmailCode(user: User) {
+    if (!user.email) {
+      throw new Exception('User does not have an email in the system', { status: 400 })
+    }
     logger.info('sending email verification code to ' + user.email)
     if (user.emailVerified) {
       throw new Exception('Email already verified', { status: 400 })
