@@ -3,7 +3,7 @@ import { PrismaTransactionalClient, prisma } from '#services/prisma_service'
 import { generateIdFromEntropySize } from 'lucia'
 import { BankAccount, Role, SellerVerificationStatus, User, Profile, SellerProfile, Prisma, PrismaClient } from '@prisma/client'
 import { z } from 'zod'
-import logger from '@adonisjs/core/services/logger'
+//import logger from '@adonisjs/core/services/logger'
 import { PrismaPromise } from '@prisma/client/runtime/library'
 //import { logger } from '#services/logger_service'
 
@@ -15,9 +15,9 @@ const userSchema = z.object({
 })
 
 const sellerSchema = userSchema.extend({
-  businessName: z.string().min(1),
-  businessAddress: z.string().min(1),
-  businessPhone: z.string().min(1),
+  businessName: z.string().optional(),
+  businessAddress: z.string().optional(),
+  businessPhone: z.string().optional(),
   identityDoc: z.string().optional(),
 })
 
@@ -45,7 +45,7 @@ export class UserFactory {
       const validatedData = userSchema.parse(data)
       return this.createBaseUser({ ...validatedData, role: Role.USER })
     } catch (error) {
-      logger.error('Error creating user', { error })
+      //logger.error('Error creating user', { error })
       throw new Error('Failed to create user')
     }
   }
@@ -63,10 +63,10 @@ export class UserFactory {
         const sellerProfile = await tx.sellerProfile.create({
           data: {
             userId: user.id,
-            businessName: validatedData.businessName,
-            businessAddress: validatedData.businessAddress,
-            businessPhone: validatedData.businessPhone,
-            businessEmail: validatedData.email,
+            businessName: validatedData.businessName ?? '',
+            businessAddress: validatedData.businessAddress ?? '',
+            businessPhone: validatedData.businessPhone ?? '',
+            businessEmail: validatedData.email ?? '',
             identityDoc: validatedData.identityDoc,
             verificationStatus: SellerVerificationStatus.PENDING,
           },
@@ -74,7 +74,8 @@ export class UserFactory {
         return { user, profile, sellerProfile }
       })
     } catch (error) {
-      logger.error('Error creating seller', { error })
+      console.log(error)
+      //logger.error('Error creating seller', { error })
       throw new Error('Failed to create seller')
     }
   }
@@ -101,7 +102,7 @@ export class UserFactory {
         })
       })
     } catch (error) {
-      logger.error('Error adding bank account', { error, sellerId })
+      //logger.error('Error adding bank account', { error, sellerId })
       throw new Error('Failed to add bank account')
     }
   }
@@ -116,7 +117,7 @@ export class UserFactory {
       const validatedData = userSchema.parse(data)
       return this.createBaseUser({ ...validatedData, role: Role.MODERATOR })
     } catch (error) {
-      logger.error('Error creating moderator', { error })
+      //logger.error('Error creating moderator', { error })
       throw new Error('Failed to create moderator')
     }
   }
@@ -131,7 +132,7 @@ export class UserFactory {
       const validatedData = userSchema.parse(data)
       return this.createBaseUser({ ...validatedData, role: Role.ADMIN })
     } catch (error) {
-      logger.error('Error creating admin', { error })
+      //logger.error('Error creating admin', { error })
       throw new Error('Failed to create admin')
     }
   }
@@ -144,23 +145,43 @@ export class UserFactory {
    */
   private static async createBaseUser(
     data: UserFactoryData & { role: Role },
-    tx?: any
+    tx?: PrismaTransactionalClient,
   ): Promise<{ user: User; profile: Profile }> {
-    const prismaClient = tx || prisma
-    return prismaClient.$transaction(async (prisma: PrismaTransactionalClient) => {
-      const passwordHash = await this.hashPassword(data.password)
-      const id = generateIdFromEntropySize(32)
+      const existingUser = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
 
-      const user = await prisma.user.create({
-        data: { id, email: data.email, passwordHash, role: data.role },
+      if (existingUser) {
+        throw new Error(`User with email ${data.email} already exists`);
+      }
+
+      if (tx) {
+        const passwordHash = await this.hashPassword(data.password)
+        const id = generateIdFromEntropySize(32)
+
+        const user = await tx.user.create({
+          data: { id, email: data.email, passwordHash, role: data.role },
+        })
+
+        const profile = await tx.profile.create({
+          data: { userId: id, name: data.fullname },
+        })
+
+        return { user, profile }
+      }
+      else return prisma.$transaction(async (ptx: PrismaTransactionalClient) => {
+        const passwordHash = await this.hashPassword(data.password)
+        const id = generateIdFromEntropySize(32)
+
+        const user = await ptx.user.create({
+          data: { id, email: data.email, passwordHash, role: data.role },
+        })
+        const profile = await ptx.profile.create({
+          data: { userId: id, name: data.fullname },
+        })
+
+        return { user, profile }
       })
-
-      const profile = await prisma.profile.create({
-        data: { userId: id, name: data.fullname },
-      })
-
-      return { user, profile }
-    })
   }
 
   /**

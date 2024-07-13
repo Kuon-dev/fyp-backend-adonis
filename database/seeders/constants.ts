@@ -187,6 +187,10 @@ h2 {
 `
 
 export const QUIZ_APP = `
+
+import React from "react"
+import render from "react-dom"
+
 interface Question {
   id: number;
   question: string;
@@ -288,6 +292,10 @@ render(<QuizApp />);
 // TSX Variant
 
 export const KANBAN = `
+import React from "react"
+import render from "react-dom"
+
+
 interface Task {
   id: number;
   title: string;
@@ -424,6 +432,10 @@ export const KANBAN_CSS = `
 `;
 
 export const PROJECT_MANAGEMENT = `
+import React from "react"
+import render from "react-dom"
+
+
 interface Project {
   id: number;
   name: string;
