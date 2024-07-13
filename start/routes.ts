@@ -25,6 +25,8 @@ const ReviewController = () => import('#controllers/reviews_controller')
 const CommentController = () => import('#controllers/comments_controller')
 const ProfileController = () => import('#controllers/profile_controller')
 
+const AdminController = () => import('#controllers/admin_controller')
+
 const PayoutRequestController = () => import('#controllers/payout_request_controller')
 
 router.get('/', async () => {
@@ -80,8 +82,16 @@ router
         router
           .get('/repos/user', [RepoController, 'getByUserSession'])
           .use(middleware.auth({ role: 'USER' }))
+
         router.get('/repos/all', [RepoController, 'getAll'])
         router.get('/repos/featured', [RepoController, 'getFeatured'])
+
+        // admin routes
+        router.put('/admin/seller-profile/:email', [AdminController, 'updateSellerProfile']).use(middleware.auth({ role: 'ADMIN' }))
+        router.post('/admin/:email/ban', [AdminController, 'banUser']).use(middleware.auth({ role: 'ADMIN' }))
+        router.post('/admin/:email/unban', [AdminController, 'unbanUser']).use(middleware.auth({ role: 'ADMIN' }))
+        router.delete('/admin/:email', [UserController, 'delete'])
+
 
         // User routes
         router.post('/users', [UserController, 'create'])

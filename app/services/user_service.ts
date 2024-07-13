@@ -59,7 +59,16 @@ export class UserService {
   async getUserByEmail(email: string): Promise<User> {
     const user = await prisma.user.findUnique({
       where: { email, deletedAt: null },
+      include: {
+        profile: true,
+        sellerProfile: {
+          include: {
+            bankAccount: true,
+          }
+        },
+      }
     })
+
 
     if (!user) {
       throw new Error(`User with email ${email} not found.`)
@@ -80,6 +89,7 @@ export class UserService {
       select: {
         id: true,
         email: true,
+        bannedUntil: true,
         //fullname: true,
         role: true
       }
