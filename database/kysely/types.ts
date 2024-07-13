@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { Role, SellerVerificationStatus, PayoutRequestStatus, PayoutStatus, CodeRepoStatus, Visibility, Language, OrderStatus, ReviewFlag, SupportTicketStatus, SupportTicketType } from "./enums";
+import type { Role, SellerVerificationStatus, PayoutRequestStatus, PayoutStatus, CodeRepoStatus, Visibility, Language, OrderStatus, UserCommentFlag, SupportTicketStatus, SupportTicketType } from "./enums";
 
 export type BankAccount = {
     id: string;
@@ -56,7 +56,7 @@ export type Comment = {
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
-    flag: Generated<number | null>;
+    flag: Generated<UserCommentFlag>;
     upvotes: Generated<number>;
     downvotes: Generated<number>;
 };
@@ -130,7 +130,7 @@ export type Review = {
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
-    flag: Generated<ReviewFlag>;
+    flag: Generated<UserCommentFlag>;
     upvotes: Generated<number>;
     downvotes: Generated<number>;
 };

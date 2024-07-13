@@ -52,7 +52,7 @@ export const OrderStatus = {
     SUCCEEDED: "SUCCEEDED"
 } as const;
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
-export const ReviewFlag = {
+export const UserCommentFlag = {
     NONE: "NONE",
     SPAM: "SPAM",
     INAPPROPRIATE_LANGUAGE: "INAPPROPRIATE_LANGUAGE",
@@ -61,7 +61,7 @@ export const ReviewFlag = {
     FALSE_INFORMATION: "FALSE_INFORMATION",
     OTHER: "OTHER"
 } as const;
-export type ReviewFlag = (typeof ReviewFlag)[keyof typeof ReviewFlag];
+export type UserCommentFlag = (typeof UserCommentFlag)[keyof typeof UserCommentFlag];
 export const SupportTicketStatus = {
     inProgress: "inProgress",
     todo: "todo",

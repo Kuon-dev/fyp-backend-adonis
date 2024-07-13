@@ -278,7 +278,7 @@ model SalesAggregate {
   @@unique([sellerId, date])
 }
 
-enum ReviewFlag {
+enum UserCommentFlag {
   NONE
   SPAM
   INAPPROPRIATE_LANGUAGE
@@ -299,7 +299,7 @@ model Review {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   comments  Comment[]
-  flag     ReviewFlag @default(NONE)
+  flag     UserCommentFlag @default(NONE)
   upvotes   Int       @default(0)
   downvotes Int       @default(0)
 }
@@ -314,7 +314,7 @@ model Comment {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  flag      Int?      @default(0)
+  flag     UserCommentFlag @default(NONE)
   upvotes   Int       @default(0)
   downvotes Int       @default(0)
 }

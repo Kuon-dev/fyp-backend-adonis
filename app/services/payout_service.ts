@@ -12,7 +12,9 @@ export default class PayoutService {
   public async createPayout(data: { sellerProfileId: string; amount: number; currency: string }) {
     return prisma.payout.create({
       data: {
-        ...data,
+        sellerProfileId: data.sellerProfileId,
+        totalAmount: data.amount,
+        currency: data.currency,
         status: PayoutStatus.PENDING,
       },
     })
@@ -82,7 +84,7 @@ export default class PayoutService {
           data: {
             sellerProfileId: payoutRequest.sellerProfileId,
             payoutRequestId: payoutRequest.id,
-            amount: payoutRequest.totalAmount,
+            totalAmount: payoutRequest.totalAmount,
             currency: 'USD', // Assuming USD, adjust as needed
             status: PayoutStatus.PROCESSING,
           },

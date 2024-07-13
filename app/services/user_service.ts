@@ -73,9 +73,17 @@ export class UserService {
    *
    * @returns {Promise<User[]>} - All users.
    */
-  async getAllUsers(): Promise<User[]> {
+  async getAllUsers(): Promise<{id: string, email: string, role: Role}[]> {
+    // only return the ncessary data
     return prisma.user.findMany({
       where: { deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        //fullname: true,
+        role: true
+      }
+
     })
   }
 
