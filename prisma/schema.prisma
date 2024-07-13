@@ -1,31 +1,21 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-// generator client {
-//   provider = "prisma-client-js"
-// }
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
 generator kysely {
-  provider = "prisma-kysely"
-
+  provider     = "prisma-kysely"
   output       = "../database//kysely/"
   fileName     = "types.ts"
-  // Optionally generate runtime enums to a separate file
   enumFileName = "enums.ts"
 }
 
-// prisma/schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // url      = env("DATABASE_LOCAL_URL")
 }
 
 model emailVerificationCode {
@@ -90,15 +80,14 @@ model SellerProfile {
   businessAddress    String
   businessPhone      String
   businessEmail      String
-  identityDoc        String? // file path
+  identityDoc        String?
   verificationDate   DateTime?
   verificationStatus SellerVerificationStatus @default(PENDING)
-  // Payment preferences
-  // preferredPayoutFrequency PayoutFrequency @default(MONTHLY)
-  // minimumPayoutAmount Float @default(100)
-  // Relation to bank account
   bankAccount        BankAccount?
   Payout             Payout[]
+  balance            Float                    @default(0)
+  PayoutRequest      PayoutRequest[]
+  lastPayoutDate     DateTime?                // New field
 }
 
 enum SellerVerificationStatus {
@@ -117,23 +106,38 @@ model BankAccount {
   swiftCode         String
   iban              String?
   routingNumber     String?
-
-  // For added security, consider encrypting sensitive fields
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
 
-enum PayoutFrequency {
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
+model PayoutRequest {
+  id              String              @id @default(cuid())
+  sellerProfile   SellerProfile       @relation(fields: [sellerProfileId], references: [id])
+  sellerProfileId String
+  totalAmount     Float               // Updated field
+  status          PayoutRequestStatus @default(PENDING)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  processedAt     DateTime?
+  payout          Payout?
+  lastPayoutDate  DateTime?           // New field
+  orders          Order[]             // New relation
+}
+
+enum PayoutRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSED
 }
 
 model Payout {
   id              String        @id @default(cuid())
   sellerProfile   SellerProfile @relation(fields: [sellerProfileId], references: [id])
   sellerProfileId String
-  amount          Float
+  payoutRequest   PayoutRequest @relation(fields: [payoutRequestId], references: [id])
+  payoutRequestId String        @unique
+  totalAmount     Float         // Updated field
   currency        String
   status          PayoutStatus  @default(PENDING)
   stripePayoutId  String?
@@ -164,30 +168,24 @@ model PasswordResetToken {
 }
 
 model CodeRepo {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  sourceJs  String @db.Text
-  sourceCss String @db.Text
-
-  reviews    Review[]
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  deletedAt  DateTime?
-  visibility Visibility     @default(public)
-  status     CodeRepoStatus @default(pending)
-
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  sourceJs    String         @db.Text
+  sourceCss   String         @db.Text
+  reviews     Review[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+  visibility  Visibility     @default(public)
+  status      CodeRepoStatus @default(pending)
   name        String
   description String?
   language    Language
-  price       Float       @default(0.0)
+  price       Float          @default(0.0)
   tags        Tag[]
   codeChecks  CodeCheck[]
-
-  orders Order[]
-  // stripeProductId String?
-  // stripePriceId   String?
+  orders      Order[]
 }
 
 enum CodeRepoStatus {
@@ -243,28 +241,30 @@ model CodeCheck {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  codeRepoId  String
-  codeRepo    CodeRepo    @relation(fields: [codeRepoId], references: [id])
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  deletedAt   DateTime?
-  status      OrderStatus @default(REQUIRESPAYMENTMETHOD)
-  totalAmount Float
+  id                    String         @id @default(cuid())
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id])
+  codeRepoId            String
+  codeRepo              CodeRepo       @relation(fields: [codeRepoId], references: [id])
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  deletedAt             DateTime?
+  status                OrderStatus    @default(REQUIRESPAYMENTMETHOD)
+  totalAmount           Float
   stripePaymentIntentId String?
   stripePaymentMethodId String?
+  payoutRequest         PayoutRequest? @relation(fields: [payoutRequestId], references: [id])
+  payoutRequestId       String?        // New field
 }
 
 enum OrderStatus {
-		REQUIRESPAYMENTMETHOD
-		REQUIRESCONFIRMATION
-		REQUIRESACTION
-		PROCESSING
-		REQUIRESCAPTURE
-		CANCELLED
-		SUCCEEDED
+  REQUIRESPAYMENTMETHOD
+  REQUIRESCONFIRMATION
+  REQUIRESACTION
+  PROCESSING
+  REQUIRESCAPTURE
+  CANCELLED
+  SUCCEEDED
 }
 
 model SalesAggregate {
@@ -278,15 +278,15 @@ model SalesAggregate {
   @@unique([sellerId, date])
 }
 
-// 0 - No Flag: The comment or review has no issues.
-// 1 - Spam: The comment or review is flagged as spam.
-// 2 - Inappropriate Language: The comment or review contains inappropriate language.
-// 3 - Harassment: The comment or review contains harassment or abusive content.
-// 4 - Off-topic: The comment or review is off-topic or irrelevant.
-// 5 - False Information: The comment or review contains false or misleading information.
-// 6 - Plagiarism: The comment or review is flagged for plagiarism.
-// 7 - Other: The comment or review is flagged for other reasons not specified above.
-
+enum ReviewFlag {
+  NONE
+  SPAM
+  INAPPROPRIATE_LANGUAGE
+  HARASSMENT
+  OFF_TOPIC
+  FALSE_INFORMATION
+  OTHER
+}
 model Review {
   id        String    @id @default(cuid())
   content   String
@@ -298,10 +298,10 @@ model Review {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  comments  Comment[] // New relation to the Comment model
-  flag      Int?      @default(0) // Flag field to indicate different issues
-  upvotes   Int       @default(0) // New field for upvotes
-  downvotes Int       @default(0) // New field for downvotes
+  comments  Comment[]
+  flag     ReviewFlag @default(NONE)
+  upvotes   Int       @default(0)
+  downvotes Int       @default(0)
 }
 
 model Comment {
@@ -314,27 +314,20 @@ model Comment {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  flag      Int?      @default(0) // Flag field to indicate different issues
-  upvotes   Int       @default(0) // New field for upvotes
-  downvotes Int       @default(0) // New field for downvotes
+  flag      Int?      @default(0)
+  upvotes   Int       @default(0)
+  downvotes Int       @default(0)
 }
 
-// each repo can have many tags
-// support tickets
 model SupportTicket {
   id        String              @id @default(cuid())
-  // userId    String
-  // user      User              @relation(fields: [userId], references: [id])
   email     String
   title     String
   content   String
   status    SupportTicketStatus @default(todo)
-  // enmu for type
   type      SupportTicketType   @default(general)
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
-  // User      User?               @relation(fields: [userId], references: [id])
-  // userId    String?
 }
 
 enum SupportTicketStatus {
@@ -350,7 +343,6 @@ enum SupportTicketType {
   payment
 }
 
-// images or media files
 model Media {
   id        String   @id @default(cuid())
   url       String

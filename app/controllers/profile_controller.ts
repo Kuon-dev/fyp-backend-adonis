@@ -4,7 +4,7 @@ import { ProfileService } from '#services/profile_service'
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
 import { S3Facade } from '#integrations/s3/s3_facade'
-import { updateProfileSchema } from '#validators/profile'
+import { updateProfileSchema, updateSellerProfileSchema } from '#validators/profile'
 import { Multipart } from '@adonisjs/core/bodyparser'
 import { ZodError } from 'zod'
 import InvalidImageException from '#exceptions/invalid_image_exception'
@@ -58,6 +58,103 @@ export default class ProfileController {
       return response.notFound({ message: 'Profile not found' })
     }
     return response.ok(profile)
+  }
+
+  /**
+   * @updateSellerProfile
+   * @description Update seller profile information including bank account details
+   * @requestBody {
+   *   "businessName": "My Business",
+   *   "businessAddress": "123 Business St",
+   *   "businessPhone": "+1234567890",
+   *   "businessEmail": "business@example.com",
+   *   "accountHolderName": "John Doe",
+   *   "accountNumber": "1234567890",
+   *   "bankName": "Example Bank",
+   *   "swiftCode": "EXAMPLECODE",
+   *   "iban": "GB29NWBK60161331926819",
+   *   "routingNumber": "11122233"
+   * }
+   * @responseBody 200 - { "message": "Seller profile updated successfully", "status": "success" }
+   * @responseBody 400 - { "message": "Invalid input data" }
+   * @responseBody 500 - { "message": "Seller profile update failed" }
+   */
+  async updateSellerProfile({ request, response }: HttpContext) {
+    const user = request.user!
+
+    try {
+      const sellerProfileData = request.only([
+        'businessName',
+        'businessAddress',
+        'businessPhone',
+        'businessEmail',
+        'accountHolderName',
+        'accountNumber',
+        'bankName',
+        'swiftCode',
+        'iban',
+        'routingNumber'
+      ])
+
+      const validatedData = updateSellerProfileSchema.parse(sellerProfileData)
+
+      await prisma.$transaction(async (tx) => {
+        // Update or create SellerProfile
+        const updatedSellerProfile = await tx.sellerProfile.upsert({
+          where: { userId: user.id },
+          update: {
+            businessName: validatedData.businessName,
+            businessAddress: validatedData.businessAddress,
+            businessPhone: validatedData.businessPhone,
+            businessEmail: validatedData.businessEmail,
+          },
+          create: {
+            userId: user.id,
+            businessName: validatedData.businessName,
+            businessAddress: validatedData.businessAddress,
+            businessPhone: validatedData.businessPhone,
+            businessEmail: validatedData.businessEmail,
+          },
+        })
+
+        // Update or create BankAccount
+        await tx.bankAccount.upsert({
+          where: { sellerProfileId: updatedSellerProfile.id },
+          update: {
+            accountHolderName: validatedData.accountHolderName,
+            accountNumber: validatedData.accountNumber,
+            bankName: validatedData.bankName,
+            swiftCode: validatedData.swiftCode,
+            iban: validatedData.iban,
+            routingNumber: validatedData.routingNumber,
+          },
+          create: {
+            sellerProfileId: updatedSellerProfile.id,
+            accountHolderName: validatedData.accountHolderName,
+            accountNumber: validatedData.accountNumber,
+            bankName: validatedData.bankName,
+            swiftCode: validatedData.swiftCode,
+            iban: validatedData.iban,
+            routingNumber: validatedData.routingNumber,
+          },
+        })
+      })
+
+      return response.status(200).json({
+        message: 'Seller profile updated successfully',
+        status: 'success',
+      })
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return response.status(400).json({
+          message: 'Validation failed',
+          errors: error.errors,
+        })
+      } else {
+        logger.error('Seller profile update failed:', error)
+        return response.status(500).json({ message: 'Seller profile update failed' })
+      }
+    }
   }
 
   /*  /**

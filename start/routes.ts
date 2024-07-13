@@ -25,6 +25,8 @@ const ReviewController = () => import('#controllers/reviews_controller')
 const CommentController = () => import('#controllers/comments_controller')
 const ProfileController = () => import('#controllers/profile_controller')
 
+const PayoutRequestController = () => import('#controllers/payout_request_controller')
+
 router.get('/', async () => {
   const users = await prisma.user.findMany()
   return {
@@ -103,6 +105,20 @@ router
           'getUserOrdersByStatus',
         ])
         router.get('/orders/search', [OrderController, 'searchOrders'])
+
+      router
+        .group(() => {
+          router.post('/', [PayoutRequestController, 'create'])
+          router.get('/:id', [PayoutRequestController, 'getById'])
+          router.put('/:id', [PayoutRequestController, 'update'])
+          router.delete('/:id', [PayoutRequestController, 'delete'])
+          router.get('/', [PayoutRequestController, 'getPaginated'])
+          router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
+          router.post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])
+            .use(middleware.auth({ role: 'ADMIN' }))
+        })
+        .prefix('/payout-requests')
+        .use(middleware.auth({ role: 'USER' }))
 
         router.post('/checkout', [CheckoutController, 'createPaymentIntent'])
         router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent'])

@@ -117,13 +117,16 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
     businessName: faker.company.name(),
     businessAddress: faker.location.streetAddress(),
     businessPhone: faker.phone.number(),
-    bankAccount: {
-      accountHolderName: 'Verified Seller',
-      accountNumber: faker.finance.accountNumber(),
-      bankName: faker.company.name(),
-      swiftCode: faker.finance.bic(),
-    },
   })
+
+  await UserFactory.addBankAccount(verifiedSeller.sellerProfile.id, {
+    bankName: faker.finance.accountName(),
+    accountHolderName: '',
+    accountNumber: faker.finance.accountNumber(),
+    routingNumber: faker.finance.routingNumber(),
+    swiftCode: faker.finance.bic(),
+  })
+
   await prisma.user.update({
     where: { id: verifiedSeller.user.id },
     data: {

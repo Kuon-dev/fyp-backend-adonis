@@ -1,128 +1,154 @@
-import { HttpContext } from '@adonisjs/core/http'
-import { PayoutService } from '#services/payout_service'
-import { DateTime } from 'luxon'
-import { z } from 'zod'
+import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
+import PayoutService from '#services/payout_service'
+import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import { createPayoutSchema, updatePayoutSchema } from '#validators/payout'
 
 @inject()
-export default class PayoutsController {
-  private payoutService: PayoutService
-
-  constructor() {
-    this.payoutService = new PayoutService()
-  }
+export default class PayoutController {
+  constructor(protected payoutService: PayoutService) {}
 
   /**
    * @createPayout
-   * @description Create a payout for the authenticated seller
+   * @description Create a new payout for a seller.
    * @requestBody {
-   *   "startDate": "2023-01-01",
-   *   "endDate": "2023-01-31"
+   *   "sellerProfileId": "seller123",
+   *   "amount": 1000,
+   *   "currency": "USD"
    * }
-   * @responseBody 200 - {
-   *   "message": "Payout created successfully",
-   *   "payout": {
-   *     "id": "cuid",
-   *     "amount": 1000,
-   *     "currency": "USD",
-   *     "status": "PROCESSING",
-   *     "createdAt": "2023-02-01T00:00:00.000Z"
-   *   }
+   * @responseBody 201 - {
+   *   "id": "payout123",
+   *   "sellerProfileId": "seller123",
+   *   "amount": 1000,
+   *   "currency": "USD",
+   *   "status": "PENDING"
    * }
-   * @responseBody 400 - { "message": "Invalid input. Start date and end date are required." }
-   * @responseBody 500 - { "message": "An error occurred while processing the payout." }
+   * @responseBody 400 - { "error": "Invalid input data" }
+   * @responseBody 404 - { "error": "Seller profile not found" }
+   * @responseBody 500 - { "error": "Error creating payout" }
    */
-  async createPayout({ request, response }: HttpContext) {
-    const schema = z.object({
-      startDate: z.string().transform((str) => DateTime.fromISO(str)),
-      endDate: z.string().transform((str) => DateTime.fromISO(str)),
-    })
-
-    const result = schema.safeParse(request.body())
-
-    if (!result.success) {
-      return response.badRequest({ message: 'Invalid input', errors: result.error.issues })
-    }
-
-    const { startDate, endDate } = result.data
-    const sellerId = request.user!.id
-
+  public async create({ request, response }: HttpContext) {
     try {
-      const amount = await this.payoutService.calculatePayoutAmount(sellerId, startDate, endDate)
-      const payout = await this.payoutService.createPayout(sellerId, amount, 'USD')
-
-      return response.ok({
-        message: 'Payout created successfully',
-        payout: {
-          id: payout.id,
-          amount: payout.amount,
-          currency: payout.currency,
-          status: payout.status,
-          createdAt: payout.createdAt,
-        },
-      })
+      const data = createPayoutSchema.parse(request.body())
+      const payout = await this.payoutService.createPayout(data)
+      return response.status(201).json(payout)
     } catch (error) {
-      return response.internalServerError({
-        message: 'An error occurred while processing the payout',
-        error: error.message,
-      })
+      return response.status(400).json({ error: error.message })
     }
   }
 
   /**
-   * @getPayoutHistory
-   * @description Get payout history for the authenticated seller
-   * @queryParam page {number} The page number (default: 1)
-   * @queryParam limit {number} The number of items per page (default: 10)
+   * @getPayoutById
+   * @description Retrieve a payout by its ID.
+   * @paramParam id - The ID of the payout to retrieve.
    * @responseBody 200 - {
-   *   "payouts": [
-   *     {
-   *       "id": "cuid",
-   *       "amount": 1000,
-   *       "currency": "USD",
-   *       "status": "COMPLETED",
-   *       "createdAt": "2023-02-01T00:00:00.000Z"
-   *     }
-   *   ],
-   *   "page": 1,
-   *   "limit": 10
+   *   "id": "payout123",
+   *   "sellerProfileId": "seller123",
+   *   "amount": 1000,
+   *   "currency": "USD",
+   *   "status": "PENDING"
    * }
-   * @responseBody 500 - { "message": "An error occurred while fetching payout history." }
+   * @responseBody 404 - { "error": "Payout not found" }
+   * @responseBody 500 - { "error": "Error retrieving payout" }
    */
-  async getPayoutHistory({ request, response }: HttpContext) {
-    const schema = z.object({
-      page: z.string().transform(Number).default('1'),
-      limit: z.string().transform(Number).default('10'),
-    })
+  public async getById({ params, response }: HttpContext) {
+    try {
+      const payout = await this.payoutService.getPayoutById(params.id)
+      return response.json(payout)
+    } catch (error) {
+      return response.status(404).json({ error: error.message })
+    }
+  }
 
-    const result = schema.safeParse(request.qs())
+  /**
+   * @updatePayout
+   * @description Update the status of a payout.
+   * @paramParam id - The ID of the payout to update.
+   * @requestBody {
+   *   "status": "COMPLETED"
+   * }
+   * @responseBody 200 - {
+   *   "id": "payout123",
+   *   "sellerProfileId": "seller123",
+   *   "amount": 1000,
+   *   "currency": "USD",
+   *   "status": "COMPLETED"
+   * }
+   * @responseBody 400 - { "error": "Invalid input data" }
+   * @responseBody 404 - { "error": "Payout not found" }
+   * @responseBody 500 - { "error": "Error updating payout" }
+   */
+  public async update({ params, request, response }: HttpContext) {
+    try {
+      const data = updatePayoutSchema.parse(request.body())
+      const payout = await this.payoutService.updatePayout(params.id, data)
+      return response.json(payout)
+    } catch (error) {
+      return response.status(400).json({ error: error.message })
+    }
+  }
 
-    if (!result.success) {
-      return response.badRequest({ message: 'Invalid input', errors: result.error.issues })
+  /**
+   * @getPayoutsBySellerProfile
+   * @description Retrieve all payouts for a specific seller profile.
+   * @paramParam sellerProfileId - The ID of the seller profile.
+   * @responseBody 200 - [
+   *   {
+   *     "id": "payout123",
+   *     "sellerProfileId": "seller123",
+   *     "amount": 1000,
+   *     "currency": "USD",
+   *     "status": "PENDING"
+   *   },
+   *   {
+   *     "id": "payout124",
+   *     "sellerProfileId": "seller123",
+   *     "amount": 2000,
+   *     "currency": "USD",
+   *     "status": "COMPLETED"
+   *   }
+   * ]
+   * @responseBody 404 - { "error": "Seller profile not found" }
+   * @responseBody 500 - { "error": "Error retrieving payouts" }
+   */
+  public async getBySellerProfile({ params, response }: HttpContext) {
+    try {
+      const payouts = await this.payoutService.getPayoutsBySellerProfile(params.sellerProfileId)
+      return response.json(payouts)
+    } catch (error) {
+      return response.status(404).json({ error: error.message })
+    }
+  }
+
+  /**
+   * @processPayoutRequest
+   * @description Process a payout request (for admins only).
+   * @paramParam id - The ID of the payout request to process.
+   * @requestBody {
+   *   "action": "approve" | "reject"
+   * }
+   * @responseBody 200 - {
+   *   "id": "payout123",
+   *   "sellerProfileId": "seller123",
+   *   "amount": 1000,
+   *   "currency": "USD",
+   *   "status": "PROCESSING"
+   * }
+   * @responseBody 400 - { "error": "Invalid action" }
+   * @responseBody 404 - { "error": "Payout request not found" }
+   * @responseBody 500 - { "error": "Error processing payout request" }
+   */
+  public async processPayoutRequest({ params, request, response }: HttpContext) {
+    if (!request.user || request.user.role !== 'ADMIN') {
+      throw new UnAuthorizedException('Only admins can process payout requests')
     }
 
-    const { page, limit } = result.data
-    const sellerId = request.user!.id
-
     try {
-      const payouts = await this.payoutService.getPayoutHistory(sellerId, page, limit)
-
-      return response.ok({
-        payouts: payouts.map((payout) => ({
-          id: payout.id,
-          amount: payout.amount,
-          currency: payout.currency,
-          status: payout.status,
-          createdAt: payout.createdAt,
-        })),
-        page,
-        limit,
-      })
+      const { action } = request.body()
+      const payout = await this.payoutService.processPayoutRequest(params.id, action)
+      return response.json(payout)
     } catch (error) {
-      return response.internalServerError({
-        message: 'An error occurred while fetching payout history',
-        error: error.message,
-      })
+      return response.status(400).json({ error: error.message })
     }
   }
 }

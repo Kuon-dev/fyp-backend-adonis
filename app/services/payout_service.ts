@@ -1,121 +1,123 @@
+import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
-import Stripe from 'stripe'
-import { DateTime } from 'luxon'
+import { PayoutStatus } from '@prisma/client'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-04-10',
-})
-
-export class PayoutService {
+@inject()
+export default class PayoutService {
   /**
-   * Calculate the total amount to be paid out to a seller
-   * @param sellerId The ID of the seller
-   * @param startDate The start date of the payout period
-   * @param endDate The end date of the payout period
+   * Create a new payout.
+   * @param {Object} data - The payout data.
+   * @returns {Promise<Payout>} The created payout.
    */
-  async calculatePayoutAmount(sellerId: string, startDate: DateTime, endDate: DateTime): Promise<number> {
-    const totalSales = await prisma.order.aggregate({
-      where: {
-        codeRepo: {
-          userId: sellerId,
-        },
-        status: 'COMPLETED',
-        createdAt: {
-          gte: startDate.toJSDate(),
-          lte: endDate.toJSDate(),
-        },
-      },
-      _sum: {
-        totalAmount: true,
-      },
-    })
-
-    // Assuming a platform fee of 10%
-    const platformFeePercentage = 0.1
-    const payoutAmount = (totalSales._sum.totalAmount || 0) * (1 - platformFeePercentage)
-
-    return payoutAmount
-  }
-
-  /**
-   * Create a payout for a seller
-   * @param sellerId The ID of the seller
-   * @param amount The amount to be paid out
-   * @param currency The currency of the payout
-   */
-  async createPayout(sellerId: string, amount: number, currency: string): Promise<Payout> {
-    const sellerProfile = await prisma.sellerProfile.findUnique({
-      where: { userId: sellerId },
-      include: { bankAccount: true },
-    })
-
-    if (!sellerProfile || !sellerProfile.bankAccount) {
-      throw new Error('Seller profile or bank account not found')
-    }
-
-    // Create a payout record in the database
-    const payout = await prisma.payout.create({
+  public async createPayout(data: { sellerProfileId: string; amount: number; currency: string }) {
+    return prisma.payout.create({
       data: {
-        sellerProfileId: sellerProfile.id,
-        amount,
-        currency,
-        status: 'PENDING',
+        ...data,
+        status: PayoutStatus.PENDING,
       },
     })
-
-    try {
-      // Create a payout using Stripe
-      const stripePayout = await stripe.payouts.create({
-        amount: Math.round(amount * 100), // Stripe expects amounts in cents
-        currency,
-        method: 'standard',
-        destination: sellerProfile.bankAccount.accountNumber,
-        metadata: {
-          payoutId: payout.id,
-          sellerId: sellerId,
-        },
-      })
-
-      // Update the payout record with the Stripe payout ID
-      await prisma.payout.update({
-        where: { id: payout.id },
-        data: {
-          stripePayoutId: stripePayout.id,
-          status: 'PROCESSING',
-        },
-      })
-
-      return payout
-    } catch (error) {
-      // If the Stripe payout fails, update the payout status to FAILED
-      await prisma.payout.update({
-        where: { id: payout.id },
-        data: { status: 'FAILED' },
-      })
-      throw error
-    }
   }
 
   /**
-   * Get payout history for a seller
-   * @param sellerId The ID of the seller
-   * @param page The page number
-   * @param limit The number of items per page
+   * Get a payout by its ID.
+   * @param {string} id - The payout ID.
+   * @returns {Promise<Payout>} The payout.
    */
-  async getPayoutHistory(sellerId: string, page: number = 1, limit: number = 10): Promise<Payout[]> {
-    const payouts = await prisma.payout.findMany({
-      where: {
-        sellerProfile: {
-          userId: sellerId,
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-    })
+  public async getPayoutById(id: string) {
+    const payout = await prisma.payout.findUnique({ where: { id } })
+    if (!payout) {
+      throw new Error('Payout not found')
+    }
+    return payout
+  }
 
-    return payouts
+  /**
+   * Update a payout's status.
+   * @param {string} id - The payout ID.
+   * @param {Object} data - The data to update.
+   * @returns {Promise<Payout>} The updated payout.
+   */
+  public async updatePayout(id: string, data: { status: PayoutStatus }) {
+    return prisma.payout.update({
+      where: { id },
+      data,
+    })
+  }
+
+  /**
+   * Get all payouts for a specific seller profile.
+   * @param {string} sellerProfileId - The seller profile ID.
+   * @returns {Promise<Payout[]>} An array of payouts.
+   */
+  public async getPayoutsBySellerProfile(sellerProfileId: string) {
+    return prisma.payout.findMany({
+      where: { sellerProfileId },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  /**
+   * Process a payout request.
+   * @param {string} id - The payout request ID.
+   * @param {'approve' | 'reject'} action - The action to take.
+   * @returns {Promise<Payout>} The processed payout.
+   */
+  public async processPayoutRequest(id: string, action: 'approve' | 'reject') {
+    return prisma.$transaction(async (tx) => {
+      const payoutRequest = await tx.payoutRequest.findUnique({
+        where: { id },
+        include: { sellerProfile: true },
+      })
+
+      if (!payoutRequest) {
+        throw new Error('Payout request not found')
+      }
+
+      if (payoutRequest.status !== 'PENDING') {
+        throw new Error('Payout request is not in a pending state')
+      }
+
+      if (action === 'approve') {
+        const payout = await tx.payout.create({
+          data: {
+            sellerProfileId: payoutRequest.sellerProfileId,
+            payoutRequestId: payoutRequest.id,
+            amount: payoutRequest.totalAmount,
+            currency: 'USD', // Assuming USD, adjust as needed
+            status: PayoutStatus.PROCESSING,
+          },
+        })
+
+        await tx.sellerProfile.update({
+          where: { id: payoutRequest.sellerProfileId },
+          data: {
+            lastPayoutDate: new Date(),
+            balance: {
+              decrement: payoutRequest.totalAmount,
+            },
+          },
+        })
+
+        await tx.payoutRequest.update({
+          where: { id },
+          data: {
+            status: 'APPROVED',
+            processedAt: new Date(),
+          },
+        })
+
+        return payout
+      } else {
+        await tx.payoutRequest.update({
+          where: { id },
+          data: {
+            status: 'REJECTED',
+            processedAt: new Date(),
+          },
+        })
+
+        return null
+      }
+    })
   }
 }

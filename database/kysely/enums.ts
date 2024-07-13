@@ -11,12 +11,13 @@ export const SellerVerificationStatus = {
     REJECTED: "REJECTED"
 } as const;
 export type SellerVerificationStatus = (typeof SellerVerificationStatus)[keyof typeof SellerVerificationStatus];
-export const PayoutFrequency = {
-    WEEKLY: "WEEKLY",
-    BIWEEKLY: "BIWEEKLY",
-    MONTHLY: "MONTHLY"
+export const PayoutRequestStatus = {
+    PENDING: "PENDING",
+    APPROVED: "APPROVED",
+    REJECTED: "REJECTED",
+    PROCESSED: "PROCESSED"
 } as const;
-export type PayoutFrequency = (typeof PayoutFrequency)[keyof typeof PayoutFrequency];
+export type PayoutRequestStatus = (typeof PayoutRequestStatus)[keyof typeof PayoutRequestStatus];
 export const PayoutStatus = {
     PENDING: "PENDING",
     PROCESSING: "PROCESSING",
@@ -51,6 +52,16 @@ export const OrderStatus = {
     SUCCEEDED: "SUCCEEDED"
 } as const;
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+export const ReviewFlag = {
+    NONE: "NONE",
+    SPAM: "SPAM",
+    INAPPROPRIATE_LANGUAGE: "INAPPROPRIATE_LANGUAGE",
+    HARASSMENT: "HARASSMENT",
+    OFF_TOPIC: "OFF_TOPIC",
+    FALSE_INFORMATION: "FALSE_INFORMATION",
+    OTHER: "OTHER"
+} as const;
+export type ReviewFlag = (typeof ReviewFlag)[keyof typeof ReviewFlag];
 export const SupportTicketStatus = {
     inProgress: "inProgress",
     todo: "todo",

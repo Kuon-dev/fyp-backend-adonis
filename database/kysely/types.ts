@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { Role, SellerVerificationStatus, PayoutFrequency, PayoutStatus, CodeRepoStatus, Visibility, Language, OrderStatus, SupportTicketStatus, SupportTicketType } from "./enums";
+import type { Role, SellerVerificationStatus, PayoutRequestStatus, PayoutStatus, CodeRepoStatus, Visibility, Language, OrderStatus, ReviewFlag, SupportTicketStatus, SupportTicketType } from "./enums";
 
 export type BankAccount = {
     id: string;
@@ -85,6 +85,7 @@ export type Order = {
     totalAmount: number;
     stripePaymentIntentId: string | null;
     stripePaymentMethodId: string | null;
+    payoutRequestId: string | null;
 };
 export type PasswordResetToken = {
     id: Generated<number>;
@@ -95,12 +96,23 @@ export type PasswordResetToken = {
 export type Payout = {
     id: string;
     sellerProfileId: string;
-    amount: number;
+    payoutRequestId: string;
+    totalAmount: number;
     currency: string;
     status: Generated<PayoutStatus>;
     stripePayoutId: string | null;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
+};
+export type PayoutRequest = {
+    id: string;
+    sellerProfileId: string;
+    totalAmount: number;
+    status: Generated<PayoutRequestStatus>;
+    createdAt: Generated<Timestamp>;
+    updatedAt: Timestamp;
+    processedAt: Timestamp | null;
+    lastPayoutDate: Timestamp | null;
 };
 export type Profile = {
     id: string;
@@ -118,7 +130,7 @@ export type Review = {
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
-    flag: Generated<number | null>;
+    flag: Generated<ReviewFlag>;
     upvotes: Generated<number>;
     downvotes: Generated<number>;
 };
@@ -146,6 +158,8 @@ export type SellerProfile = {
     identityDoc: string | null;
     verificationDate: Timestamp | null;
     verificationStatus: Generated<SellerVerificationStatus>;
+    balance: Generated<number>;
+    lastPayoutDate: Timestamp | null;
 };
 export type Session = {
     id: string;
@@ -191,6 +205,7 @@ export type DB = {
     Order: Order;
     PasswordResetToken: PasswordResetToken;
     Payout: Payout;
+    PayoutRequest: PayoutRequest;
     Profile: Profile;
     Review: Review;
     SalesAggregate: SalesAggregate;

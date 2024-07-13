@@ -43,7 +43,7 @@ export default class AuthController {
     const { email, password } = request.only(['email', 'password'])
 
     const loginValidator = new AuthValidator()
-    loginValidator.addStrategy(new ZodLoginAuthStrategy())
+    //loginValidator.addStrategy(new ZodLoginAuthStrategy())
     loginValidator.addStrategy(new PrismaEmailExistsAuthStrategy())
     loginValidator.addStrategy(new EmptyFieldAuthStrategy())
 
@@ -239,11 +239,12 @@ export default class AuthController {
   async me({ request, response }: HttpContext) {
     try {
       if (request.user === null) throw new Exception('No cookie session found', { status: 204 })
-      const [user, profile] = await Promise.all([
-        this.userService.getUserByEmail(request.user.email),
-        prisma.profile.findFirst({ where: { userId: request.user.id } }),
+      const [user, profile, sellerProfile] = await Promise.all([
+        prisma.user.findUnique({ where: { id: request.user.id } }),
+        prisma.profile.findUnique({ where: { userId: request.user.id } }),
+        prisma.sellerProfile.findUnique({ where: { userId: request.user.id } }),
       ])
-      return response.status(200).json({ user, profile })
+      return response.status(200).json({ user, profile, sellerProfile })
     } catch (error) {
       return response.abort({ message: error.message }, error.status ?? 400)
     }

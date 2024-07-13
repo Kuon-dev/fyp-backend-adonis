@@ -117,7 +117,7 @@ export default class PaymentController {
                 userId,
                 codeRepoId: repo.id,
                 totalAmount: repo.price,
-                status: OrderStatus.pending,
+                status: OrderStatus.SUCCEEDED,
               },
             })
           }
