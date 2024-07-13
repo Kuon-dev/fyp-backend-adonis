@@ -33,7 +33,7 @@ export const KortexVerifyEmail = ({ validationCode, authToken }: KortexVerifyEma
         <Section style={buttonContainer}>
           <Button
             style={button}
-            href={`${frontendUrl}/verify-email?code=${validationCode}&auth_session=${authToken}`}
+            href={`${frontendUrl}/verify-email?code=${validationCode}${authToken}`}
           >
             Click here to verify your email
           </Button>
