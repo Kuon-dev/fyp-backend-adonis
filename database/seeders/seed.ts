@@ -10,7 +10,6 @@ async function main() {
   await seedCodeRepos(1000)
   await seedReviewsAndComments(1000)
   //await generateOrders(1000)
-  console.log('Code repos generated')
   //console.log('Orders generated')
 }
 

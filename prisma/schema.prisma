@@ -60,6 +60,7 @@ model User {
   Comment        Comment[]
   SearchHistory  SearchHistory[]
   SalesAggregate SalesAggregate[]
+  Vote           Vote[]
 }
 
 model Profile {
@@ -87,7 +88,7 @@ model SellerProfile {
   Payout             Payout[]
   balance            Float                    @default(0)
   PayoutRequest      PayoutRequest[]
-  lastPayoutDate     DateTime?                // New field
+  lastPayoutDate     DateTime? // New field
 }
 
 enum SellerVerificationStatus {
@@ -114,14 +115,14 @@ model PayoutRequest {
   id              String              @id @default(cuid())
   sellerProfile   SellerProfile       @relation(fields: [sellerProfileId], references: [id])
   sellerProfileId String
-  totalAmount     Float               // Updated field
+  totalAmount     Float // Updated field
   status          PayoutRequestStatus @default(PENDING)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   processedAt     DateTime?
   payout          Payout?
-  lastPayoutDate  DateTime?           // New field
-  orders          Order[]             // New relation
+  lastPayoutDate  DateTime? // New field
+  orders          Order[] // New relation
 }
 
 enum PayoutRequestStatus {
@@ -137,7 +138,7 @@ model Payout {
   sellerProfileId String
   payoutRequest   PayoutRequest @relation(fields: [payoutRequestId], references: [id])
   payoutRequestId String        @unique
-  totalAmount     Float         // Updated field
+  totalAmount     Float // Updated field
   currency        String
   status          PayoutStatus  @default(PENDING)
   stripePayoutId  String?
@@ -254,7 +255,7 @@ model Order {
   stripePaymentIntentId String?
   stripePaymentMethodId String?
   payoutRequest         PayoutRequest? @relation(fields: [payoutRequestId], references: [id])
-  payoutRequestId       String?        // New field
+  payoutRequestId       String? // New field
 }
 
 enum OrderStatus {
@@ -287,36 +288,60 @@ enum UserCommentFlag {
   FALSE_INFORMATION
   OTHER
 }
+
 model Review {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   content   String
   userId    String
-  user      User      @relation(fields: [userId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
   repoId    String
-  repo      CodeRepo  @relation(fields: [repoId], references: [id])
-  rating    Int       @default(0)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  repo      CodeRepo        @relation(fields: [repoId], references: [id])
+  rating    Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   deletedAt DateTime?
   comments  Comment[]
-  flag     UserCommentFlag @default(NONE)
-  upvotes   Int       @default(0)
-  downvotes Int       @default(0)
+  flag      UserCommentFlag @default(NONE)
+  upvotes   Int             @default(0)
+  downvotes Int             @default(0)
+  votes     Vote[]
 }
 
 model Comment {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   content   String
   userId    String
-  user      User      @relation(fields: [userId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
   reviewId  String
-  review    Review    @relation(fields: [reviewId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  review    Review          @relation(fields: [reviewId], references: [id])
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   deletedAt DateTime?
-  flag     UserCommentFlag @default(NONE)
-  upvotes   Int       @default(0)
-  downvotes Int       @default(0)
+  flag      UserCommentFlag @default(NONE)
+  upvotes   Int             @default(0)
+  downvotes Int             @default(0)
+  votes     Vote[]
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  type      VoteType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  comment   Comment? @relation(fields: [commentId], references: [id])
+  commentId String?
+  Review    Review?  @relation(fields: [reviewId], references: [id])
+  reviewId  String?
+
+  @@unique([userId, commentId])
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
 }
 
 model SupportTicket {
