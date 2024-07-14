@@ -179,10 +179,13 @@ export type SupportTicket = {
 export type Tag = {
     id: string;
     name: string;
-    repoId: string;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
     deletedAt: Timestamp | null;
+};
+export type TagsOnRepos = {
+    codeRepoId: string;
+    tagId: string;
 };
 export type User = {
     id: string;
@@ -223,6 +226,7 @@ export type DB = {
     Session: Session;
     SupportTicket: SupportTicket;
     Tag: Tag;
+    TagsOnRepos: TagsOnRepos;
     User: User;
     Vote: Vote;
 };

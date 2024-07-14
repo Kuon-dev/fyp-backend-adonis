@@ -5,10 +5,10 @@ import { generateUsers } from './user-factory.js'
 import { seedReviewsAndComments } from './comment-factory.js'
 
 async function main() {
-  await generateUsers(200)
+  await generateUsers(100)
   //console.log('Users generated')
-  await seedCodeRepos(1000)
-  await seedReviewsAndComments(1000)
+  await seedCodeRepos(200)
+  await seedReviewsAndComments(300)
   //await generateOrders(1000)
   //console.log('Orders generated')
 }

@@ -184,9 +184,27 @@ model CodeRepo {
   description String?
   language    Language
   price       Float          @default(0.0)
-  tags        Tag[]
+  tags        TagsOnRepos[]
   codeChecks  CodeCheck[]
   orders      Order[]
+}
+
+model Tag {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  repos     TagsOnRepos[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+}
+
+model TagsOnRepos {
+  codeRepo   CodeRepo @relation(fields: [codeRepoId], references: [id])
+  codeRepoId String
+  tag        Tag      @relation(fields: [tagId], references: [id])
+  tagId      String
+
+  @@id([codeRepoId, tagId])
 }
 
 enum CodeRepoStatus {
@@ -204,16 +222,6 @@ enum Visibility {
 enum Language {
   JSX
   TSX
-}
-
-model Tag {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  repoId    String
-  codeRepo  CodeRepo  @relation(fields: [repoId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
 }
 
 model SearchHistory {
