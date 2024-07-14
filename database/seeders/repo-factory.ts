@@ -38,7 +38,7 @@ async function generateCodeRepos(count: number = 10) {
 
     let name: string
     do {
-      name = faker.company.name()
+      name = faker.company.name() + faker.helpers.arrayElement(['App', 'Project', 'Solution', 'Tech', 'Code', 'Snippet'])
     } while (usedNames.has(name))
     usedNames.add(name)
 
