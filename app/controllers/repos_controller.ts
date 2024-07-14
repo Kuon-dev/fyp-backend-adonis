@@ -62,7 +62,6 @@ export default class RepoController {
   public async getById({ params, request, response }: HttpContext) {
     const { id } = params
 
-    console.log(request.user)
     try {
       const repo = await this.repoService.getRepoById(id, request.user?.id ?? null)
       const repoCodeCheck = await prisma.codeCheck.findFirst({
@@ -85,7 +84,6 @@ export default class RepoController {
   public async getByIdPublic({ params, response }: HttpContext) {
     const { id } = params
     try {
-      console.log(id)
       const repo = await this.repoService.getRepoByIdPublic(id)
       const repoCodeCheck = await prisma.codeCheck.findFirst({
         where: {
@@ -281,7 +279,6 @@ export default class RepoController {
   }
 
   public async getByUserSession({ request, response }: HttpContext) {
-    console.log(request.user)
     if (!request.user) throw new Exception('User not found in request object')
 
     try {

@@ -74,6 +74,10 @@ router
         router.get('/repo/:id', [RepoController, 'getById'])
         router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
 
+        // comments
+        router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
+        router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
+
         router.put('/repo/:id', [RepoController, 'update'])
         router.delete('/repo/:id', [RepoController, 'delete'])
         router.get('/repos', [RepoController, 'getPaginated'])
@@ -90,8 +94,8 @@ router
         router.put('/admin/seller-profile/:email', [AdminController, 'updateSellerProfile']).use(middleware.auth({ role: 'ADMIN' }))
         router.post('/admin/:email/ban', [AdminController, 'banUser']).use(middleware.auth({ role: 'ADMIN' }))
         router.post('/admin/:email/unban', [AdminController, 'unbanUser']).use(middleware.auth({ role: 'ADMIN' }))
-        router.delete('/admin/:email', [UserController, 'delete'])
-
+        router.delete('/admin/:email', [AdminController, 'deleteUser']).use(middleware.auth({ role: 'ADMIN' }))
+        router.get('/admin/reviews', [AdminController, 'getAllFlaggedReviews'])
 
         // User routes
         router.post('/users', [UserController, 'create'])
@@ -153,19 +157,19 @@ router
         router.post('/reviews', [ReviewController, 'create'])
         router.get('/reviews/:id', [ReviewController, 'getById'])
         router.put('/reviews/:id', [ReviewController, 'update'])
+        router.put('/reviews/:id/revert', [ReviewController, 'revertFlag'])
         router.delete('/reviews/:id', [ReviewController, 'delete'])
-        router.get('/reviews', [ReviewController, 'getAll'])
-        router.post('/reviews/:id/upvote', [ReviewController, 'upvote'])
-        router.post('/reviews/:id/downvote', [ReviewController, 'downvote'])
+        //router.get('/reviews', [ReviewController, 'getAll'])
+        router.post('/reviews/:id/:vote', [ReviewController, 'handleVote'])
 
         // Comment routes
         router.post('/comments', [CommentController, 'create'])
         router.get('/comments/:id', [CommentController, 'getById'])
         router.put('/comments/:id', [CommentController, 'update'])
+        router.put('/comments/:id/revert', [CommentController, 'revertFlag'])
         router.delete('/comments/:id', [CommentController, 'delete'])
         router.get('/comments', [CommentController, 'getAll'])
-        router.post('/comments/:id/upvote', [CommentController, 'upvote'])
-        router.post('/comments/:id/downvote', [CommentController, 'downvote'])
+        router.post('/comments/:id/:vote', [CommentController, 'handleVote'])
       })
       .prefix('v1')
   })

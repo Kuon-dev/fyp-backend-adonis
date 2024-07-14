@@ -1,7 +1,5 @@
-// File: services/ReviewService.ts
-
 import { prisma } from '#services/prisma_service'
-import type { Review } from '@prisma/client'
+import type { Review, Vote, VoteType } from '@prisma/client'
 
 interface ReviewCreationData {
   content: string
@@ -37,13 +35,26 @@ export class ReviewService {
     }
   }> {
     const reviews = await prisma.review.findMany({
-      where: { repoId },
+      where: { repoId, deletedAt: null },
       skip: (page - 1) * perPage,
       take: perPage,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                name: true,
+                profileImg: true,
+              },
+            },
+          },
+        },
+      },
     })
-
     const total = await prisma.review.count({
-      where: { repoId },
+      where: { repoId, deletedAt: null },
     })
     return {
       data: reviews,
@@ -88,35 +99,20 @@ export class ReviewService {
   }
 
   /**
-   * Retrieve all reviews.
-   * @returns All reviews.
+   * Retrieve all flagged reviews.
+   * @returns All flagged reviews.
    */
-  async getAllReviews(): Promise<Review[]> {
+  async getAllFlaggedReviews(): Promise<Review[]> {
     const reviews = await prisma.review.findMany({
       where: { deletedAt: null, flag: { not: "NONE" } },
       include: { user: true },
     })
-    // only return suer id
-    return reviews.map((r) => {
-      return {
-        ...r,
-        user: {
-          email:r.user.email,
-        },
-      }
-    })
-  }
-
-  /**
-   * Upvote a review by ID.
-   * @param id - The ID of the review to upvote.
-   * @returns The updated review.
-   */
-  async upvoteReview(id: string): Promise<Review> {
-    return prisma.review.update({
-      where: { id, deletedAt: null },
-      data: { upvotes: { increment: 1 } },
-    })
+    return reviews.map((r) => ({
+      ...r,
+      user: {
+        email: r.user.email,
+      },
+    }))
   }
 
   async revertFlag(id: string): Promise<Review> {
@@ -126,16 +122,61 @@ export class ReviewService {
     })
   }
 
-
   /**
-   * Downvote a review by ID.
-   * @param id - The ID of the review to downvote.
+   * Handle voting on a review.
+   * @param reviewId - The ID of the review to vote on.
+   * @param userId - The ID of the user voting.
+   * @param voteType - The type of vote (UPVOTE or DOWNVOTE).
    * @returns The updated review.
    */
-  async downvoteReview(id: string): Promise<Review> {
-    return prisma.review.update({
-      where: { id, deletedAt: null },
-      data: { downvotes: { increment: 1 } },
+  async handleVote(reviewId: string, userId: string, voteType: VoteType): Promise<Review> {
+    const existingVote = await prisma.vote.findUnique({
+      where: {
+        userId_reviewId: {
+          userId,
+          reviewId
+        }
+      }
+    })
+
+    return prisma.$transaction(async (tx) => {
+      if (!existingVote) {
+        await tx.vote.create({
+          data: {
+            userId,
+            reviewId,
+            type: voteType
+          }
+        })
+        return tx.review.update({
+          where: { id: reviewId },
+          data: {
+            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { increment: 1 }
+          }
+        })
+      } else if (existingVote.type !== voteType) {
+        await tx.vote.update({
+          where: { id: existingVote.id },
+          data: { type: voteType }
+        })
+        return tx.review.update({
+          where: { id: reviewId },
+          data: {
+            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { increment: 1 },
+            [voteType === 'UPVOTE' ? 'downvotes' : 'upvotes']: { decrement: 1 }
+          }
+        })
+      } else {
+        await tx.vote.delete({
+          where: { id: existingVote.id }
+        })
+        return tx.review.update({
+          where: { id: reviewId },
+          data: {
+            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { decrement: 1 }
+          }
+        })
+      }
     })
   }
 }

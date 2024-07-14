@@ -2,8 +2,28 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import { ReviewService } from '#services/review_service'
 import { z } from 'zod'
+import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import { VoteType } from '@prisma/client'
 
+const createReviewSchema = z.object({
+  content: z.string().min(1).max(1000),
+  repoId: z.string().cuid(),
+  rating: z.number().int().min(1).max(5),
+})
 
+const updateReviewSchema = z.object({
+  content: z.string().min(1).max(1000).optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+})
+
+const paginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  perPage: z.coerce.number().int().positive().max(100).default(10),
+})
+
+const voteSchema = z.object({
+  type: z.nativeEnum(VoteType),
+})
 
 /**
  * Controller class for handling Review operations.
@@ -13,133 +33,269 @@ export default class ReviewController {
   constructor(protected reviewService: ReviewService) {}
 
   /**
-   * Create a new review.
+   * @createReview
+   * @description Create a new review for a repository.
+   * @route POST /reviews
    * @param {HttpContext} ctx - The HTTP context object.
+   * @requestBody {
+   *   "content": "This is a great repository!",
+   *   "repoId": "cuid1234567890",
+   *   "rating": 5
+   * }
+   * @responseBody 201 - {
+   *   "id": "cuid0987654321",
+   *   "content": "This is a great repository!",
+   *   "userId": "user123",
+   *   "repoId": "cuid1234567890",
+   *   "rating": 5,
+   *   "createdAt": "2023-07-15T10:00:00Z",
+   *   "updatedAt": "2023-07-15T10:00:00Z"
+   * }
+   * @responseBody 400 - { "message": "Validation error", "errors": [...] }
+   * @responseBody 401 - { "message": "Unauthorized" }
    */
   public async create({ request, response }: HttpContext) {
-    const data = request.only(['content', 'userId', 'repoId', 'rating'])
-
     try {
-      const review = await this.reviewService.createReview(data)
+      const userId = request.user?.id
+      if (!userId) {
+        throw new UnAuthorizedException('Unauthorized')
+      }
+      const data = createReviewSchema.parse(request.all())
+      const review = await this.reviewService.createReview({ ...data, userId })
       return response.status(201).json(review)
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return response.status(400).json({ message: 'Validation error', errors: error.errors })
+      }
       return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 
   /**
-   * Retrieve a review by ID.
+   * @getReviewById
+   * @description Retrieve a review by its ID.
+   * @route GET /reviews/:id
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the review.
+   * @responseBody 200 - {
+   *   "id": "cuid0987654321",
+   *   "content": "This is a great repository!",
+   *   "userId": "user123",
+   *   "repoId": "cuid1234567890",
+   *   "rating": 5,
+   *   "createdAt": "2023-07-15T10:00:00Z",
+   *   "updatedAt": "2023-07-15T10:00:00Z",
+   *   "upvotes": 10,
+   *   "downvotes": 2
+   * }
+   * @responseBody 400 - { "message": "Invalid ID" }
    */
   public async getById({ params, response }: HttpContext) {
-    const { id } = params
-
     try {
+      const { id } = params
       const review = await this.reviewService.getReviewById(id)
       return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  public async getPaginatedReviewsByRepo({ params, request, response }: HttpContext) {
-    const { repoId } = params
-    const { page, perPage } = request.qs()
-    try {
-      const reviews = await this.reviewService.getPaginatedReviewsByRepo( repoId ,parseInt(page), parseInt(perPage))
-      return response.status(200).json(reviews)
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      return response.status(400).json({ message: 'Invalid ID' })
     }
   }
 
   /**
-   * Update a review.
+   * @getPaginatedReviewsByRepo
+   * @description Get paginated reviews for a specific repository.
+   * @route GET /repo/:repoId/reviews
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the review.
-   * @bodyParam data - The data to update the review.
+   * @queryParam {number} page - Page number for pagination.
+   * @queryParam {number} perPage - Number of items per page.
+   * @responseBody 200 - {
+   *   "data": [
+   *     {
+   *       "id": "cuid0987654321",
+   *       "content": "This is a great repository!",
+   *       "userId": "user123",
+   *       "repoId": "cuid1234567890",
+   *       "rating": 5,
+   *       "createdAt": "2023-07-15T10:00:00Z",
+   *       "updatedAt": "2023-07-15T10:00:00Z",
+   *       "upvotes": 10,
+   *       "downvotes": 2
+   *     },
+   *     ...
+   *   ],
+   *   "meta": {
+   *     "total": 100,
+   *     "page": 1,
+   *     "perPage": 10,
+   *     "lastPage": 10
+   *   }
+   * }
+   * @responseBody 400 - { "message": "Validation error", "errors": [...] }
+   */
+  public async getPaginatedReviewsByRepo({ params, request, response }: HttpContext) {
+    try {
+      const { repoId } = params
+      const { page, perPage } = paginationSchema.parse(request.qs())
+      const reviews = await this.reviewService.getPaginatedReviewsByRepo(repoId, page, perPage)
+      return response.status(200).json(reviews)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return response.status(400).json({ message: 'Validation error', errors: error.errors })
+      }
+      return response.status(400).json({ message: error.message })
+    }
+  }
+
+  /**
+   * @updateReview
+   * @description Update a specific review.
+   * @route PUT /reviews/:id
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @requestBody {
+   *   "content": "Updated review content",
+   *   "rating": 4
+   * }
+   * @responseBody 200 - {
+   *   "id": "cuid0987654321",
+   *   "content": "Updated review content",
+   *   "userId": "user123",
+   *   "repoId": "cuid1234567890",
+   *   "rating": 4,
+   *   "createdAt": "2023-07-15T10:00:00Z",
+   *   "updatedAt": "2023-07-15T11:00:00Z",
+   *   "upvotes": 10,
+   *   "downvotes": 2
+   * }
+   * @responseBody 400 - { "message": "Validation error", "errors": [...] }
    */
   public async update({ params, request, response }: HttpContext) {
-    const { id } = params
-    const data = request.only(['content', 'rating'])
-
     try {
+      const { id } = params
+      const data = updateReviewSchema.parse(request.all())
       const review = await this.reviewService.updateReview(id, data)
       return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      if (error instanceof z.ZodError) {
+        return response.status(400).json({ message: 'Validation error', errors: error.errors })
+      }
+      return response.status(400).json({ message: error.message })
     }
   }
 
+  /**
+   * @revertReviewFlag
+   * @description Revert the flag on a review to NONE.
+   * @route PUT /reviews/:id/revert
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @responseBody 200 - {
+   *   "id": "cuid0987654321",
+   *   "content": "This is a review",
+   *   "userId": "user123",
+   *   "repoId": "cuid1234567890",
+   *   "rating": 5,
+   *   "createdAt": "2023-07-15T10:00:00Z",
+   *   "updatedAt": "2023-07-15T11:00:00Z",
+   *   "flag": "NONE",
+   *   "upvotes": 10,
+   *   "downvotes": 2
+   * }
+   * @responseBody 400 - { "message": "Invalid ID" }
+   */
   public async revertFlag({ params, response }: HttpContext) {
-    const { id } = params
     try {
+      const { id } = params
       const review = await this.reviewService.revertFlag(id)
       return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      return response.status(400).json({ message: 'Invalid ID' })
     }
   }
 
   /**
-   * Soft delete a review by ID.
+   * @deleteReview
+   * @description Soft delete a specific review.
+   * @route DELETE /reviews/:id
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the review.
+   * @responseBody 200 - { "message": "Review deleted successfully", "review": {...} }
+   * @responseBody 400 - { "message": "Invalid ID" }
    */
   public async delete({ params, response }: HttpContext) {
-    const { id } = params
-
     try {
+      const { id } = params
       const review = await this.reviewService.deleteReview(id)
       return response.status(200).json({ message: 'Review deleted successfully', review })
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      return response.status(400).json({ message: 'Invalid ID' })
     }
   }
 
   /**
-   * Retrieve all reviews.
+   * @getAllFlaggedReviews
+   * @description Get all flagged reviews.
+   * @route GET /reviews/flagged
    * @param {HttpContext} ctx - The HTTP context object.
+   * @responseBody 200 - [
+   *   {
+   *     "id": "cuid0987654321",
+   *     "content": "This is a flagged review",
+   *     "userId": "user123",
+   *     "repoId": "cuid1234567890",
+   *     "rating": 5,
+   *     "createdAt": "2023-07-15T10:00:00Z",
+   *     "updatedAt": "2023-07-15T10:00:00Z",
+   *     "flag": "INAPPROPRIATE_LANGUAGE"
+   *   },
+   *   ...
+   * ]
+   * @responseBody 400 - { "message": "Error message" }
    */
   public async getAll({ response }: HttpContext) {
     try {
-      const reviews = await this.reviewService.getAllReviews()
+      const reviews = await this.reviewService.getAllFlaggedReviews()
       return response.status(200).json(reviews)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Upvote a review by ID.
+   * @handleVote
+   * @description Handle upvote or downvote for a review.
+   * @route POST /reviews/:id/vote
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the review.
+   * @requestBody {
+   *   "type": "UPVOTE" | "DOWNVOTE"
+   * }
+   * @responseBody 200 - {
+   *   "id": "cuid0987654321",
+   *   "content": "This is a review",
+   *   "userId": "user123",
+   *   "repoId": "cuid1234567890",
+   *   "rating": 5,
+   *   "createdAt": "2023-07-15T10:00:00Z",
+   *   "updatedAt": "2023-07-15T11:00:00Z",
+   *   "upvotes": 11,
+   *   "downvotes": 2
+   * }
+   * @responseBody 400 - { "message": "Validation error", "errors": [...] }
+   * @responseBody 401 - { "message": "Unauthorized" }
    */
-  public async upvote({ params, response }: HttpContext) {
-    const { id } = params
-
+  public async handleVote({ params, request, response }: HttpContext) {
     try {
-      const review = await this.reviewService.upvoteReview(id)
+      const { id } = params
+      const userId = request.user?.id
+      if (!userId) {
+        throw new UnAuthorizedException('Unauthorized')
+      }
+      const { type } = voteSchema.parse(request.body())
+      const review = await this.reviewService.handleVote(id, userId, type)
       return response.status(200).json(review)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * Downvote a review by ID.
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the review.
-   */
-  public async downvote({ params, response }: HttpContext) {
-    const { id } = params
-
-    try {
-      const review = await this.reviewService.downvoteReview(id)
-      return response.status(200).json(review)
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      if (error instanceof z.ZodError) {
+        return response.status(400).json({ message: 'Validation error', errors: error.errors })
+      }
+      if (error instanceof UnAuthorizedException) {
+        return response.status(401).json({ message: error.message })
+      }
+      return response.status(400).json({ message: error.message })
     }
   }
 }
