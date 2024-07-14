@@ -95,6 +95,15 @@ export default class PayoutRequestController {
     }
   }
 
+  public async getAll({ response }: HttpContext) {
+    try {
+      const payoutRequests = await this.payoutRequestService.getAllPayoutRequests()
+      return response.status(200).json(payoutRequests)
+    } catch (error) {
+      return response.abort({ message: error.message }, 400)
+    }
+  }
+
   /**
    * Retrieve PayoutRequests for the current user.
    * @param {HttpContext} ctx - The HTTP context object.

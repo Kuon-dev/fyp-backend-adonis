@@ -66,7 +66,9 @@ export default class PayoutRequestService {
   public async updatePayoutRequest(id: string, data: Partial<PayoutRequestStatus>) {
     return prisma.payoutRequest.update({
       where: { id },
-      data,
+      data: {
+        status: data,
+      },
     })
   }
 
@@ -95,6 +97,17 @@ export default class PayoutRequestService {
         limit,
       },
     }
+  }
+
+  public async getAllPayoutRequests() {
+    return prisma.payoutRequest.findMany({
+      include: {
+        sellerProfile: {
+          include: { user: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
   }
 
   public async getPayoutRequestsByUser(userId: string) {
@@ -129,7 +142,7 @@ export default class PayoutRequestService {
           data: {
             sellerProfileId: payoutRequest.sellerProfileId,
             payoutRequestId: payoutRequest.id,
-            amount: payoutRequest.totalAmount,
+            totalAmount: payoutRequest.totalAmount,
             currency: 'USD', // Assuming USD, adjust as needed
             status: 'PENDING',
           },

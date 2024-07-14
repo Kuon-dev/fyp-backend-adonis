@@ -27,6 +27,35 @@ export class ReviewService {
     })
   }
 
+  async getPaginatedReviewsByRepo(repoId: string, page: number, perPage: number): Promise<{
+    data: Review[]
+    meta: {
+      total: number
+      page: number
+      perPage: number
+      lastPage: number
+    }
+  }> {
+    const reviews = await prisma.review.findMany({
+      where: { repoId },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    })
+
+    const total = await prisma.review.count({
+      where: { repoId },
+    })
+    return {
+      data: reviews,
+      meta: {
+        total,
+        page,
+        perPage,
+        lastPage: Math.ceil(total / perPage),
+      },
+    }
+  }
+
   /**
    * Retrieve a review by ID.
    * @param id - The ID of the review to retrieve.
@@ -63,7 +92,19 @@ export class ReviewService {
    * @returns All reviews.
    */
   async getAllReviews(): Promise<Review[]> {
-    return prisma.review.findMany({ where: { deletedAt: null } })
+    const reviews = await prisma.review.findMany({
+      where: { deletedAt: null, flag: { not: "NONE" } },
+      include: { user: true },
+    })
+    // only return suer id
+    return reviews.map((r) => {
+      return {
+        ...r,
+        user: {
+          email:r.user.email,
+        },
+      }
+    })
   }
 
   /**
@@ -77,6 +118,14 @@ export class ReviewService {
       data: { upvotes: { increment: 1 } },
     })
   }
+
+  async revertFlag(id: string): Promise<Review> {
+    return prisma.review.update({
+      where: { id },
+      data: { flag: 'NONE' },
+    })
+  }
+
 
   /**
    * Downvote a review by ID.

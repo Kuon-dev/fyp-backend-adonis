@@ -35,13 +35,6 @@ export default class GetUserSessionMiddleware {
       //  throw new UnAuthorizedException()
       //}
 
-      if (user?.bannedUntil && user?.bannedUntil > new Date()) {
-        throw new UnAuthorizedException('User is banned')
-      }
-
-      if (user?.deletedAt) {
-        throw new UnAuthorizedException('User account is deleted')
-      }
       ctx.request.user = user
       ctx.request.session = session
 

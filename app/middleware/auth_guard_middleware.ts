@@ -23,6 +23,14 @@ export default class AuthGuardMiddleware {
       throw new UserNotVerifiedException()
     }
 
+  if (user?.bannedUntil && user?.bannedUntil > new Date()) {
+    throw new UnAuthorizedException('User is banned')
+  }
+
+  if (user?.deletedAt) {
+    throw new UnAuthorizedException('User account is deleted')
+  }
+
     // If the user has the required role or higher, allow access
     await next()
   }

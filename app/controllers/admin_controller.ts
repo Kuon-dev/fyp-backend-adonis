@@ -1,12 +1,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
+import { CommentService } from '#services/comment_service'
 
 /**
  * Controller class for handling Admin operations on Seller Profiles.
  */
 @inject()
 export default class AdminController {
+
+  constructor(protected commentService: CommentService) {}
   /**
    * Retrieve a Seller Profile by user ID.
    *
@@ -195,6 +198,30 @@ export default class AdminController {
       return response.status(200).json(unbanUser)
     } catch (error) {
       return response.status(400).json({ message: error.message })
+    }
+  }
+
+  public async deleteUser({ params, response }: HttpContext) {
+    const { email } = params
+    try {
+      const deletedUser = await prisma.user.update({
+        where: { email },
+        data: {
+          deletedAt: new Date()
+        }
+      })
+      return response.status(200).json(deletedUser)
+    } catch (error) {
+      return response.status(400).json({ message: error.message })
+    }
+  }
+
+  public async getAllFlaggedReviews({ response }: HttpContext) {
+    try {
+      const comments = await this.commentService.getAllFlaggedComments()
+      return response.status(200).json(comments)
+    } catch (error) {
+      return response.status(error.status ?? 400).json({ message: error.message })
     }
   }
 }

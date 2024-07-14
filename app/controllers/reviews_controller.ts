@@ -1,6 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
-import { ReviewService } from '#services/ReviewService'
+import { ReviewService } from '#services/review_service'
+import { z } from 'zod'
+
+
 
 /**
  * Controller class for handling Review operations.
@@ -40,6 +43,17 @@ export default class ReviewController {
     }
   }
 
+  public async getPaginatedReviewsByRepo({ params, request, response }: HttpContext) {
+    const { repoId } = params
+    const { page, perPage } = request.qs()
+    try {
+      const reviews = await this.reviewService.getPaginatedReviewsByRepo( repoId ,parseInt(page), parseInt(perPage))
+      return response.status(200).json(reviews)
+    } catch (error) {
+      return response.status(error.status ?? 400).json({ message: error.message })
+    }
+  }
+
   /**
    * Update a review.
    * @param {HttpContext} ctx - The HTTP context object.
@@ -52,6 +66,16 @@ export default class ReviewController {
 
     try {
       const review = await this.reviewService.updateReview(id, data)
+      return response.status(200).json(review)
+    } catch (error) {
+      return response.status(error.status ?? 400).json({ message: error.message })
+    }
+  }
+
+  public async revertFlag({ params, response }: HttpContext) {
+    const { id } = params
+    try {
+      const review = await this.reviewService.revertFlag(id)
       return response.status(200).json(review)
     } catch (error) {
       return response.status(error.status ?? 400).json({ message: error.message })
