@@ -68,7 +68,7 @@ export class UserFactory {
             businessPhone: validatedData.businessPhone ?? '',
             businessEmail: validatedData.email ?? '',
             identityDoc: validatedData.identityDoc,
-            verificationStatus: SellerVerificationStatus.PENDING,
+            verificationStatus: SellerVerificationStatus.IDLE,
           },
         })
         return { user, profile, sellerProfile }
