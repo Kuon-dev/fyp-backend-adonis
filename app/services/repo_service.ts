@@ -2,61 +2,39 @@ import { SelectQueryBuilder, expressionBuilder, sql } from 'kysely'
 import type { CodeRepo, OrderStatus } from '@prisma/client'
 import { kyselyDb } from '#database/kysely'
 import { prisma } from './prisma_service.js'
-//import env from '#start/env'
-//import Stripe from 'stripe'
-//import logger from '@adonisjs/core/services/logger'
 
-// Create a type that makes sourceJs and sourceCss optional
 type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss'> & {
   sourceJs?: string
   sourceCss?: string
 }
 
-/**
- * Service class for handling Repo operations.
- */
 export default class RepoService {
-  /**
-   * Create a new Repo.
-   *
-   * @param data - The data to create a new Repo.
-   * @returns Promise<CodeRepo> - The created CodeRepo object.
-   */
   public async createRepo(
     data: Omit<
       CodeRepo,
       'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'
     > & { tags: string[] }
   ): Promise<CodeRepo> {
-    // Create a product in Stripe
     const repo = await prisma.codeRepo.create({
       data: {
         ...data,
-        tags: undefined,
+        tags: {
+          create: data.tags.map(tagName => ({
+            tag: {
+              connectOrCreate: {
+                where: { name: tagName },
+                create: { name: tagName },
+              },
+            },
+          })),
+        },
       },
+      include: { tags: true },
     })
-
-    // Upsert tags and link them to the repo
-    await Promise.all(
-      data.tags.map(async (tag) => {
-        return prisma.tag.upsert({
-          where: { name: tag },
-          update: {},
-          create: { name: tag, repoId: repo.id },
-        })
-      })
-    )
 
     return repo
   }
 
-  /**
-   * Retrieve a Repo by ID.
-   *
-   * @param id - The ID of the Repo.
-   * @param userId - The ID of the user viewing the repo (can be null for guests).
-   * @returns Promise<PartialCodeRepo | null> - The retrieved CodeRepo object or null if not found.
-   */
   public async getRepoById(id: string, userId: string | null): Promise<PartialCodeRepo | null> {
     const repo = await prisma.codeRepo.findUnique({
       where: { id },
@@ -64,28 +42,30 @@ export default class RepoService {
         reviews: {
           include: {
             comments: {
-              take: 2, // Fetch initial set of comments (e.g., 2 comments per review)
+              take: 2,
             },
           },
         },
-        tags: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
         orders: true,
       },
     })
 
     if (repo && userId) {
       // Record search for each tag
-      for (const tag of repo.tags) {
-        await this.recordSearch(userId, tag.name)
+      for (const tagOnRepo of repo.tags) {
+        await this.recordSearch(userId, tagOnRepo.tag.name)
       }
 
-      // Check if the user is the owner, admin, or has purchased the code
       const user = await prisma.user.findUnique({ where: { id: userId } })
       const hasAccess =
         repo.userId === userId || user?.role === 'ADMIN' || (await this.hasPurchased(userId, id))
       const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo
 
-      // Remove source code if user doesn't have access
       if (!hasAccess) {
         delete partialRepo.sourceJs
         delete partialRepo.sourceCss
@@ -94,6 +74,33 @@ export default class RepoService {
     }
 
     return repo
+  }
+
+  public async updateRepo(id: string, data: Partial<CodeRepo> & { tags?: string[] }): Promise<CodeRepo> {
+    const { tags, ...otherData } = data
+
+    const updatedRepo = await prisma.codeRepo.update({
+      where: { id },
+      data: {
+        ...otherData,
+        tags: tags
+          ? {
+              deleteMany: {},
+              create: tags.map(tagName => ({
+                tag: {
+                  connectOrCreate: {
+                    where: { name: tagName },
+                    create: { name: tagName },
+                  },
+                },
+              })),
+            }
+          : undefined,
+      },
+      include: { tags: { include: { tag: true } } },
+    })
+
+    return updatedRepo
   }
 
   /**
@@ -126,20 +133,6 @@ export default class RepoService {
   }
 
   /**
-   * Update a Repo.
-   *
-   * @param id - The ID of the Repo.
-   * @param data - The data to update the Repo.
-   * @returns Promise<CodeRepo> - The updated CodeRepo object.
-   */
-  public async updateRepo(id: string, data: Partial<CodeRepo>): Promise<CodeRepo> {
-    return await prisma.codeRepo.update({
-      where: { id },
-      data,
-    })
-  }
-
-  /**
    * Delete a Repo by ID.
    *
    * @param id - The ID of the Repo.
@@ -159,7 +152,7 @@ export default class RepoService {
    * @param userId - The ID of the user requesting the pagination (can be null for guests).
    * @returns Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> - Paginated results.
    */
-  public async getPaginatedRepos(
+ public async getPaginatedRepos(
     page: number = 1,
     limit: number = 10,
     userId: string | null
@@ -168,7 +161,8 @@ export default class RepoService {
 
     let query = kyselyDb
       .selectFrom('CodeRepo as cr')
-      .leftJoin('Tag as t', 'cr.id', 't.repoId')
+      .leftJoin('TagsOnRepos as tor', 'cr.id', 'tor.codeRepoId')
+      .leftJoin('Tag as t', 'tor.tagId', 't.id')
       .selectAll('cr')
       .select('t.name as tagName')
       .where('cr.visibility', '=', 'public')
@@ -260,7 +254,8 @@ export default class RepoService {
 
     let query = kyselyDb
       .selectFrom('CodeRepo as cr')
-      .leftJoin('Tag as t', 'cr.id', 't.repoId')
+      .leftJoin('TagsOnRepos as tor', 'cr.id', 'tor.codeRepoId')
+      .leftJoin('Tag as t', 'tor.tagId', 't.id')
       .selectAll('cr')
       .select('t.name as tagName')
 

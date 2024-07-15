@@ -26,6 +26,7 @@ const CommentController = () => import('#controllers/comments_controller')
 const ProfileController = () => import('#controllers/profile_controller')
 
 const AdminController = () => import('#controllers/admin_controller')
+const SellerController = () => import('#controllers/seller_controller')
 
 const PayoutRequestController = () => import('#controllers/payout_request_controller')
 
@@ -133,6 +134,29 @@ router
         })
         .prefix('/payout-requests')
         .use(middleware.auth({ role: 'USER' }))
+
+          // Seller-specific routes
+          router.group(() => {
+            // Apply to become a seller
+            router.post('/apply', [SellerController, 'applyForSellerAccount'])
+            // Update seller's own profile
+            router.put('/profile', [SellerController, 'updateProfile'])
+            // Get application status
+            //router.get('/application-status', [SellerController, 'getApplicationStatus'])
+            // Update bank details
+            //router.put('/bank-details', [SellerController, 'updateBankDetails'])
+            // Get seller's balance
+            //router.get('/balance', [SellerController, 'getBalance'])
+            // Request a payout
+            //router.post('/payout-request', [SellerController, 'requestPayout'])
+            // Get payout history
+            //router.get('/payout-history', [SellerController, 'getPayoutHistory'])
+            // Upload or update identity document
+            router.post('/identity-document', [SellerController, 'uploadIdentityDocument'])
+
+          })
+          .prefix('/seller')
+          .use(middleware.auth({ role: 'SELLER' }))
 
         router.post('/checkout', [CheckoutController, 'createPaymentIntent'])
         router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent'])
