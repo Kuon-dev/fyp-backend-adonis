@@ -9,17 +9,47 @@ export default class SellerService {
   /**
    * Apply for a seller account
    * @param userId - The ID of the user applying to be a seller
-   * @param profileData - The seller profile data
+   * @param profileData - The seller profile and bank account data
    */
   public async applyForSellerAccount(userId: string, profileData: any): Promise<SellerProfile> {
     const validatedData = createSellerProfileSchema.parse(profileData)
 
-    return await prisma.sellerProfile.create({
-      data: {
-        ...validatedData,
-        userId,
-        verificationStatus: SellerVerificationStatus.PENDING
-      }
+    return await prisma.$transaction(async (trx) => {
+      // Update the existing seller profile
+      const updatedProfile = await trx.sellerProfile.update({
+        where: { userId },
+        data: {
+          businessName: validatedData.businessName,
+          businessAddress: validatedData.businessAddress,
+          businessPhone: validatedData.businessPhone,
+          businessEmail: validatedData.businessEmail,
+          verificationStatus: SellerVerificationStatus.PENDING,
+        },
+      })
+
+      // Create or update the bank account
+      await trx.bankAccount.upsert({
+        where: { sellerProfileId: updatedProfile.id },
+        create: {
+          sellerProfileId: updatedProfile.id,
+          accountHolderName: validatedData.accountHolderName,
+          accountNumber: validatedData.accountNumber,
+          bankName: validatedData.bankName,
+          swiftCode: validatedData.swiftCode,
+          iban: validatedData.iban,
+          routingNumber: validatedData.routingNumber,
+        },
+        update: {
+          accountHolderName: validatedData.accountHolderName,
+          accountNumber: validatedData.accountNumber,
+          bankName: validatedData.bankName,
+          swiftCode: validatedData.swiftCode,
+          iban: validatedData.iban,
+          routingNumber: validatedData.routingNumber,
+        },
+      })
+
+      return updatedProfile
     })
   }
 
@@ -34,17 +64,54 @@ export default class SellerService {
   }
 
   /**
-   * Update a seller's profile
+   * Update a seller's profile including bank account details
    * @param userId - The ID of the user or seller
    * @param profileData - The updated profile data
    */
   public async updateSellerProfile(userId: string, profileData: any): Promise<SellerProfile> {
     const validatedData = updateSellerProfileSchema.parse(profileData)
 
-    return await prisma.sellerProfile.update({
-      where: { userId },
-      data: validatedData
-    })
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      throw new Error('User not found')
+    }
+
+    try {
+      const updatedProfile = await prisma.sellerProfile.update({
+        where: { userId: user.id },
+        data: {
+          ...(validatedData.businessName && { businessName: validatedData.businessName }),
+          ...(validatedData.businessAddress && { businessAddress: validatedData.businessAddress }),
+          ...(validatedData.businessPhone && { businessPhone: validatedData.businessPhone }),
+          ...(validatedData.businessEmail && { businessEmail: validatedData.businessEmail }),
+          bankAccount: {
+            upsert: {
+              create: {
+                accountHolderName: validatedData.accountHolderName || '',
+                accountNumber: validatedData.accountNumber || '',
+                bankName: validatedData.bankName || '',
+                swiftCode: validatedData.swiftCode || '',
+                iban: validatedData.iban,
+                routingNumber: validatedData.routingNumber,
+              },
+              update: {
+                ...(validatedData.accountHolderName && { accountHolderName: validatedData.accountHolderName }),
+                ...(validatedData.accountNumber && { accountNumber: validatedData.accountNumber }),
+                ...(validatedData.bankName && { bankName: validatedData.bankName }),
+                ...(validatedData.swiftCode && { swiftCode: validatedData.swiftCode }),
+                ...(validatedData.iban && { iban: validatedData.iban }),
+                ...(validatedData.routingNumber && { routingNumber: validatedData.routingNumber }),
+              },
+            },
+          },
+        },
+        include: { bankAccount: true }
+      })
+
+      return updatedProfile
+    } catch (error) {
+      throw new Error(`Failed to update seller profile: ${error.message}`)
+    }
   }
 
   /**

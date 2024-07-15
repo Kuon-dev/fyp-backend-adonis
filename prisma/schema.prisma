@@ -92,6 +92,7 @@ model SellerProfile {
 }
 
 enum SellerVerificationStatus {
+  IDLE
   PENDING
   APPROVED
   REJECTED

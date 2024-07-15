@@ -136,27 +136,27 @@ router
         .use(middleware.auth({ role: 'USER' }))
 
           // Seller-specific routes
-          router.group(() => {
-            // Apply to become a seller
-            router.post('/apply', [SellerController, 'applyForSellerAccount'])
-            // Update seller's own profile
-            router.put('/profile', [SellerController, 'updateProfile'])
-            // Get application status
-            //router.get('/application-status', [SellerController, 'getApplicationStatus'])
-            // Update bank details
-            //router.put('/bank-details', [SellerController, 'updateBankDetails'])
-            // Get seller's balance
-            //router.get('/balance', [SellerController, 'getBalance'])
-            // Request a payout
-            //router.post('/payout-request', [SellerController, 'requestPayout'])
-            // Get payout history
-            //router.get('/payout-history', [SellerController, 'getPayoutHistory'])
-            // Upload or update identity document
-            router.post('/identity-document', [SellerController, 'uploadIdentityDocument'])
+        router.group(() => {
+          // Apply to become a seller
+          router.post('/apply', [SellerController, 'applyForSellerAccount'])
+          // Update seller's own profile
+          router.put('/profile', [SellerController, 'updateProfile'])
+          // Get application status
+          //router.get('/application-status', [SellerController, 'getApplicationStatus'])
+          // Update bank details
+          //router.put('/bank-details', [SellerController, 'updateBankDetails'])
+          // Get seller's balance
+          //router.get('/balance', [SellerController, 'getBalance'])
+          // Request a payout
+          //router.post('/payout-request', [SellerController, 'requestPayout'])
+          // Get payout history
+          //router.get('/payout-history', [SellerController, 'getPayoutHistory'])
+          // Upload or update identity document
+          router.post('/identity-document', [SellerController, 'uploadIdentityDocument'])
 
-          })
-          .prefix('/seller')
-          .use(middleware.auth({ role: 'SELLER' }))
+        })
+        .prefix('/seller')
+        .use(middleware.auth({ role: 'SELLER' }))
 
         router.post('/checkout', [CheckoutController, 'createPaymentIntent'])
         router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent'])

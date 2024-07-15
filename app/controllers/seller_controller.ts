@@ -7,59 +7,55 @@ import { createSellerProfileSchema, updateSellerProfileSchema, createPayoutReque
 export default class SellerController {
   constructor(protected sellerService: SellerService) {}
 
-/**
- * @applyForSellerAccount
- * @description Apply for a seller account including bank account details
- * @requestBody {
- *   "businessName": "string",
- *   "businessAddress": "string",
- *   "businessPhone": "string",
- *   "businessEmail": "string",
- *   "bankAccount": {
- *     "accountHolderName": "string",
- *     "accountNumber": "string",
- *     "bankName": "string",
- *     "swiftCode": "string",
- *     "iban": "string",
- *     "routingNumber": "string"
- *   }
- * }
- * @responseBody 201 - { "message": "Application submitted successfully", "profile": SellerProfile }
- * @responseBody 400 - { "message": "Invalid input data" }
- * @responseBody 409 - { "message": "Seller profile already exists" }
- */
-public async applyForSellerAccount({ request, response }: HttpContext) {
-  try {
+  /**
+   * @applyForSellerAccount
+   * @description Apply for a seller account including bank account details
+   * @requestBody {
+   *   "businessName": "string",
+   *   "businessAddress": "string",
+   *   "businessPhone": "string",
+   *   "businessEmail": "string",
+   *   "accountHolderName": "string",
+   *   "accountNumber": "string",
+   *   "bankName": "string",
+   *   "swiftCode": "string",
+   *   "iban": "string",
+   *   "routingNumber": "string"
+   * }
+   * @responseBody 200 - { "message": "Application submitted successfully", "profile": SellerProfile }
+   * @responseBody 400 - { "message": "Invalid input data" }
+   * @responseBody 401 - { "message": "User not authenticated" }
+   * @responseBody 500 - { "message": "An error occurred while processing the request" }
+   */
+  public async applyForSellerAccount({ request, response }: HttpContext) {
     const userId = request.user?.id
     if (!userId) {
-      return response.unauthorized('User not authenticated')
+      return response.unauthorized({ message: 'User not authenticated' })
     }
 
-    const data = createSellerProfileSchema.parse(request.body())
-    
-    const profile = await this.sellerService.applyForSellerAccount(userId, {
-      businessName: data.businessName,
-      businessAddress: data.businessAddress,
-      businessPhone: data.businessPhone,
-      businessEmail: data.businessEmail,
-      bankAccount: {
-        accountHolderName: data.bankAccount.accountHolderName,
-        accountNumber: data.bankAccount.accountNumber,
-        bankName: data.bankAccount.bankName,
-        swiftCode: data.bankAccount.swiftCode,
-        iban: data.bankAccount.iban,
-        routingNumber: data.bankAccount.routingNumber
+    try {
+      const data = createSellerProfileSchema.parse(request.body())
+      
+      const profile = await this.sellerService.applyForSellerAccount(userId, data)
+
+      return response.ok({ 
+        message: 'Application submitted successfully', 
+        profile 
+      })
+    } catch (error) {
+      if (error.name === 'ZodError') {
+        return response.badRequest({ 
+          message: 'Invalid input data',
+          errors: error.errors
+        })
       }
-    })
-
-    return response.created({ message: 'Application submitted successfully', profile })
-  } catch (error) {
-    if (error.code === 'P2002') {
-      return response.conflict({ message: 'Seller profile already exists' })
+      
+      console.error('Error in applyForSellerAccount:', error)
+      return response.internalServerError({ 
+        message: 'An error occurred while processing the request' 
+      })
     }
-    return response.badRequest({ message: error.message })
   }
-}
 
   /**
    * @updateProfile
