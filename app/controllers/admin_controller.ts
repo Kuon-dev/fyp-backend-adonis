@@ -2,6 +2,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
 import { CommentService } from '#services/comment_service'
+import SellerService from '#services/seller_service'
+import { SellerVerificationStatus, PayoutRequestStatus } from '@prisma/client'
 
 /**
  * Controller class for handling Admin operations on Seller Profiles.
@@ -9,7 +11,10 @@ import { CommentService } from '#services/comment_service'
 @inject()
 export default class AdminController {
 
-  constructor(protected commentService: CommentService) {}
+  constructor(
+    protected commentService: CommentService,
+    protected sellerService: SellerService,
+  ) {}
   /**
    * Retrieve a Seller Profile by user ID.
    *
@@ -222,6 +227,114 @@ export default class AdminController {
       return response.status(200).json(comments)
     } catch (error) {
       return response.status(error.status ?? 400).json({ message: error.message })
+    }
+  }
+
+  /**
+   * @getSellerApplications
+   * @description Get all seller applications
+   * @queryParam status - Optional filter for verification status
+   * @responseBody 200 - { "applications": SellerProfile[] }
+   */
+  public async getSellerApplications({ request, response }: HttpContext) {
+    const status = request.input('status') as SellerVerificationStatus | undefined
+    try {
+      const applications = await this.sellerService.getSellerApplications(status)
+      return response.status(200).json({ applications })
+    } catch (error) {
+      return response.status(400).json({ message: error.message })
+    }
+  }
+
+  /**
+   * @updateSellerApplicationStatus
+   * @description Update the status of a seller application
+   * @paramParam id - The ID of the seller profile
+   * @requestBody {
+   *   "status": "APPROVED" | "REJECTED"
+   * }
+   * @responseBody 200 - { "message": "Application status updated", "profile": SellerProfile }
+   * @responseBody 400 - { "message": "Invalid status" }
+   * @responseBody 404 - { "message": "Seller profile not found" }
+   */
+  public async updateSellerApplicationStatus({ params, request, response }: HttpContext) {
+    const { id } = params
+    const { status } = request.body()
+
+    if (!Object.values(SellerVerificationStatus).includes(status)) {
+      return response.status(400).json({ message: 'Invalid status' })
+    }
+
+    try {
+      const profile = await this.sellerService.updateSellerApplicationStatus(id, status)
+      return response.status(200).json({ message: 'Application status updated', profile })
+    } catch (error) {
+      return response.status(404).json({ message: 'Seller profile not found' })
+    }
+  }
+
+  /**
+   * @getPayoutRequests
+   * @description Get all payout requests
+   * @queryParam status - Optional filter for payout request status
+   * @responseBody 200 - { "requests": PayoutRequest[] }
+   */
+  public async getPayoutRequests({ request, response }: HttpContext) {
+    const status = request.input('status') as PayoutRequestStatus | undefined
+    try {
+      const requests = await this.sellerService.getPayoutRequests(status)
+      return response.status(200).json({ requests })
+    } catch (error) {
+      return response.status(400).json({ message: error.message })
+    }
+  }
+
+  /**
+   * @updatePayoutRequestStatus
+   * @description Update the status of a payout request
+   * @paramParam id - The ID of the payout request
+   * @requestBody {
+   *   "status": "APPROVED" | "REJECTED" | "PROCESSED"
+   * }
+   * @responseBody 200 - { "message": "Payout request status updated", "request": PayoutRequest }
+   * @responseBody 400 - { "message": "Invalid status" }
+   * @responseBody 404 - { "message": "Payout request not found" }
+   */
+  public async updatePayoutRequestStatus({ params, request, response }: HttpContext) {
+    const { id } = params
+    const { status } = request.body()
+
+    if (!Object.values(PayoutRequestStatus).includes(status)) {
+      return response.status(400).json({ message: 'Invalid status' })
+    }
+
+    try {
+      const payoutRequest = await this.sellerService.updatePayoutRequestStatus(id, status)
+      return response.status(200).json({ message: 'Payout request status updated', request: payoutRequest })
+    } catch (error) {
+      return response.status(404).json({ message: 'Payout request not found' })
+    }
+  }
+
+  /**
+   * @verifySellerDocument
+   * @description Verify a seller's identity document
+   * @paramParam id - The ID of the seller profile
+   * @requestBody {
+   *   "isVerified": boolean
+   * }
+   * @responseBody 200 - { "message": "Document verification status updated", "profile": SellerProfile }
+   * @responseBody 404 - { "message": "Seller profile not found" }
+   */
+  public async verifySellerDocument({ params, request, response }: HttpContext) {
+    const { id } = params
+    const { isVerified } = request.body()
+
+    try {
+      const profile = await this.sellerService.verifySellerDocument(id, isVerified)
+      return response.status(200).json({ message: 'Document verification status updated', profile })
+    } catch (error) {
+      return response.status(404).json({ message: 'Seller profile not found' })
     }
   }
 }

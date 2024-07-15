@@ -310,6 +310,7 @@ model Review {
   deletedAt DateTime?
   comments  Comment[]
   flag      UserCommentFlag @default(NONE)
+
   upvotes   Int             @default(0)
   downvotes Int             @default(0)
   votes     Vote[]
@@ -326,6 +327,7 @@ model Comment {
   updatedAt DateTime        @updatedAt
   deletedAt DateTime?
   flag      UserCommentFlag @default(NONE)
+
   upvotes   Int             @default(0)
   downvotes Int             @default(0)
   votes     Vote[]
@@ -339,12 +341,14 @@ model Vote {
   updatedAt DateTime @updatedAt
 
   user      User     @relation(fields: [userId], references: [id])
+
   comment   Comment? @relation(fields: [commentId], references: [id])
   commentId String?
   Review    Review?  @relation(fields: [reviewId], references: [id])
   reviewId  String?
 
   @@unique([userId, commentId])
+  @@unique([userId, reviewId])
 }
 
 enum VoteType {

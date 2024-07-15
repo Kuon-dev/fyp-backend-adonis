@@ -83,6 +83,7 @@ export default class AuthService {
       const session = await lucia.createSession(id, {})
       const sessionCookie = lucia.createSessionCookie(session.id)
       const token = sessionCookie.serialize()
+      logger.info(token)
 
       const code = await this.userVerificationService.generateEmailVerificationCode(id, email)
       await this.userVerificationService.sendVerificationCode(email, code, token)

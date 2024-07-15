@@ -16,6 +16,7 @@ import { UserService } from '#services/user_service'
 import { prisma } from '#services/prisma_service'
 import InvalidSessionIdException from '#exceptions/invalid_session_id_exception'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import logger from '@adonisjs/core/services/logger'
 
 /**
  * Controller class for handling user authentication operations.
@@ -136,6 +137,7 @@ export default class AuthController {
    */
   async verifyEmail({ request, response }: HttpContext) {
     const { code } = request.only(['code'])
+    logger.info(request.headers())
     try {
       const sessionId = lucia.readSessionCookie(request.headers().cookie ?? '')
       if (!sessionId) {

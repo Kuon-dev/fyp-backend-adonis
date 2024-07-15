@@ -7,7 +7,7 @@ import { VoteType } from '@prisma/client'
 
 const createReviewSchema = z.object({
   content: z.string().min(1).max(1000),
-  repoId: z.string().cuid(),
+  repoId: z.string(),
   rating: z.number().int().min(1).max(5),
 })
 
@@ -21,9 +21,9 @@ const paginationSchema = z.object({
   perPage: z.coerce.number().int().positive().max(100).default(10),
 })
 
-const voteSchema = z.object({
-  type: z.nativeEnum(VoteType),
-})
+//const voteSchema = z.object({
+//  type: z.nativeEnum(VoteType),
+//})
 
 /**
  * Controller class for handling Review operations.
@@ -132,9 +132,10 @@ export default class ReviewController {
    */
   public async getPaginatedReviewsByRepo({ params, request, response }: HttpContext) {
     try {
-      const { repoId } = params
+      const { id } = params
+      if (!id) throw new Error('Invalid repo ID')
       const { page, perPage } = paginationSchema.parse(request.qs())
-      const reviews = await this.reviewService.getPaginatedReviewsByRepo(repoId, page, perPage)
+      const reviews = await this.reviewService.getPaginatedReviewsByRepo(id, page, perPage)
       return response.status(200).json(reviews)
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -280,13 +281,13 @@ export default class ReviewController {
    */
   public async handleVote({ params, request, response }: HttpContext) {
     try {
-      const { id } = params
+      const { id, vote } = params
       const userId = request.user?.id
       if (!userId) {
         throw new UnAuthorizedException('Unauthorized')
       }
-      const { type } = voteSchema.parse(request.body())
-      const review = await this.reviewService.handleVote(id, userId, type)
+      const voteType = vote === 'upvote' ? VoteType.UPVOTE : VoteType.DOWNVOTE
+      const review = await this.reviewService.handleVote(id, userId, voteType)
       return response.status(200).json(review)
     } catch (error) {
       if (error instanceof z.ZodError) {
