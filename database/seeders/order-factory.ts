@@ -1,64 +1,48 @@
-import { generateIdFromEntropySize } from 'lucia'
-import { prisma } from '#services/prisma_service'
 import { faker } from '@faker-js/faker'
-import { Order, OrderStatus } from '@prisma/client'
+import { generateIdFromEntropySize } from 'lucia'
+import { Order, OrderStatus, User, CodeRepo } from '@prisma/client'
+import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
 
 function generateDates() {
-  const createdAt = faker.date.past()
-  const updatedAt = faker.date.between({ from: createdAt, to: new Date() })
+  const now = DateTime.now();
+  const twoMonthsAgo = now.minus({ months: 2 });
+
+  const createdAt = faker.date.between({ from: twoMonthsAgo.toJSDate(), to: now.toJSDate() });
+  const updatedAt = faker.date.between({ from: createdAt, to: now.toJSDate() });
   const deletedAt = faker.datatype.boolean(0.1)
-    ? faker.date.between({ from: updatedAt, to: new Date() })
-    : null
-  return { createdAt, updatedAt, deletedAt }
+    ? faker.date.between({ from: updatedAt, to: now.toJSDate() })
+    : null;
+  return { createdAt, updatedAt, deletedAt };
 }
 
-export async function generateOrders(count: number = 100) {
-  const users = await prisma.user.findMany({ select: { id: true } })
-  const codeRepos = await prisma.codeRepo.findMany({ select: { id: true } })
 
-  const orderStatus: OrderStatus[] = ['PENDING', 'COMPLETED', 'CANCELLED']
+function generateOrder(users: User[], codeRepos: CodeRepo[]): Omit<Order, 'id'> {
+  const user = faker.helpers.arrayElement(users)
+  const codeRepo = faker.helpers.arrayElement(codeRepos)
+  const { createdAt, updatedAt, deletedAt } = generateDates()
 
-  const generateOrders = (count: number): Order[] => {
-    const generatedOrders: Order[] = []
-
-    for (let i = 0; i < count; i++) {
-      const randomUserId = faker.helpers.arrayElement(users).id
-      const randomCodeRepoId = faker.helpers.arrayElement(codeRepos).id
-      const { createdAt, updatedAt, deletedAt } = generateDates()
-
-      const order: Order = {
-        id: generateIdFromEntropySize(32),
-        userId: randomUserId,
-        codeRepoId: randomCodeRepoId,
-        totalAmount: parseFloat(faker.commerce.price()),
-        status: faker.helpers.arrayElement(orderStatus),
-        createdAt,
-        updatedAt,
-        deletedAt,
-      }
-      generatedOrders.push(order)
-    }
-
-    return generatedOrders
+  return {
+    userId: user.id,
+    codeRepoId: codeRepo.id,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    status: faker.helpers.arrayElement(Object.values(OrderStatus)),
+    totalAmount: parseFloat(faker.commerce.price({ min: 10, max: 1000 })),
+    stripePaymentIntentId: faker.datatype.boolean(0.8) ? faker.string.uuid() : null,
+    stripePaymentMethodId: faker.datatype.boolean(0.8) ? faker.string.uuid() : null,
+    payoutRequestId: null,
   }
+}
 
-  const orders = generateOrders(count)
-
-  await prisma.order.createMany({
-    data: orders,
-  })
-
-  // Update sales aggregates for completed orders
-  const completedOrders = orders.filter((order) => order.status === 'COMPLETED')
-
-  for (const order of completedOrders) {
+async function updateSalesAggregate(order: Order, sellerId: string) {
+  if (order.status === 'SUCCEEDED') {
     const aggregateDate = DateTime.fromJSDate(order.createdAt).startOf('month').toJSDate()
-
     await prisma.salesAggregate.upsert({
       where: {
         sellerId_date: {
-          sellerId: order.userId, // Assuming the seller is the user who owns the codeRepo
+          sellerId: sellerId,
           date: aggregateDate,
         },
       },
@@ -67,13 +51,66 @@ export async function generateOrders(count: number = 100) {
         salesCount: { increment: 1 },
       },
       create: {
-        sellerId: order.userId,
+        id: generateIdFromEntropySize(32),
+        sellerId: sellerId,
         date: aggregateDate,
         revenue: order.totalAmount,
         salesCount: 1,
       },
     })
   }
+}
 
-  console.log('Seeded orders and updated sales aggregates')
+async function processBatch(orders: Omit<Order, 'id'>[], users: User[], codeRepos: CodeRepo[]) {
+  const createdOrders: Order[] = []
+  for (const orderData of orders) {
+    try {
+      const createdOrder = await prisma.order.create({
+        data: {
+          ...orderData,
+          id: generateIdFromEntropySize(32),
+        },
+      })
+
+      const codeRepo = codeRepos.find(repo => repo.id === createdOrder.codeRepoId)
+      if (codeRepo) {
+        await updateSalesAggregate(createdOrder, codeRepo.userId)
+      }
+
+      createdOrders.push(createdOrder)
+      console.log(`Created order: ${createdOrder.id}`)
+    } catch (error) {
+      console.error(`Error creating order:`, error)
+    }
+  }
+  return createdOrders
+}
+
+export async function seedOrders(count: number = 100) {
+  let successfullyCreated = 0
+  const batchSize = 10 // Adjust this value based on your needs
+
+  try {
+    const users = await prisma.user.findMany()
+    const codeRepos = await prisma.codeRepo.findMany()
+
+    if (users.length === 0 || codeRepos.length === 0) {
+      throw new Error('No users or code repos found. Please seed users and code repos first.')
+    }
+
+    for (let i = 0; i < count; i += batchSize) {
+      const batchCount = Math.min(batchSize, count - i)
+      const orderBatch = Array.from({ length: batchCount }, () => generateOrder(users, codeRepos))
+      const createdOrders = await processBatch(orderBatch, users, codeRepos)
+      successfullyCreated += createdOrders.length
+    }
+
+    console.log(`Successfully seeded ${successfullyCreated} out of ${count} requested orders`)
+  } catch (error) {
+    console.error('Error seeding orders:', error)
+  } finally {
+    await prisma.$disconnect()
+  }
+
+  return { successfullyCreated }
 }

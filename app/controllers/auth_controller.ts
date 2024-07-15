@@ -119,10 +119,10 @@ export default class AuthController {
    * @responseBody 400 - { "message": "Logout failed" }
    */
   async logout({ request, response }: HttpContext) {
-    const sessionId = request.cookie('auth_token')
+    const sessionId = request.cookie('auth_session')
     try {
       await this.authService.handleLogout(sessionId)
-      return response.clearCookie('auth_token').status(200).json({ message: 'Logout successful' })
+      return response.clearCookie('auth_session').status(200).json({ message: 'Logout successful' })
     } catch (error) {
       return response.abort({ message: error.message }, 400)
     }

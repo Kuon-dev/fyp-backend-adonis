@@ -343,7 +343,7 @@ export default class SellerService {
    * @param userId - The ID of the user or seller
    * @param days - Number of days to fetch sales data for (default: 30)
    */
-  public async getDashboardData(userId: string, days: number = 30): Promise<DashboardData> {
+  public async getDashboardData(userId: string, days: number = 180): Promise<DashboardData> {
     const endDate = DateTime.now().endOf('day')
     const startDate = endDate.minus({ days: days - 1 }).startOf('day')
 
