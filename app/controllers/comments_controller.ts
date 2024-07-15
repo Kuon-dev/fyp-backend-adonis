@@ -53,13 +53,13 @@ export default class CommentController {
     try {
       const userId = request.user?.id
       if (!userId) {
-        throw new UnAuthorizedException('Unauthorized');
+        throw new UnAuthorizedException('Unauthorized')
       }
       const data = request.all()
       const validatedData = createCommentSchema.parse(data)
       const comment = await this.commentService.createComment({
         ...validatedData,
-        userId
+        userId,
       })
       return response.status(201).json(comment)
     } catch (error) {
@@ -104,7 +104,11 @@ export default class CommentController {
     try {
       const { reviewId } = params
       const { page, perPage } = paginationSchema.parse(request.qs())
-      const comments = await this.commentService.getPaginatedCommentsByReview(reviewId, page, perPage)
+      const comments = await this.commentService.getPaginatedCommentsByReview(
+        reviewId,
+        page,
+        perPage
+      )
       return response.status(200).json(comments)
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -284,7 +288,7 @@ export default class CommentController {
       const { id, vote } = params
       const userId = request.user?.id
       if (!userId) {
-        throw new UnAuthorizedException('Unauthorized');
+        throw new UnAuthorizedException('Unauthorized')
       }
       // process the types into the enum
       const voteType = vote === 'upvote' ? VoteType.UPVOTE : VoteType.DOWNVOTE

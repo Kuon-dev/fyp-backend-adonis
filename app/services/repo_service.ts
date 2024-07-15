@@ -19,7 +19,7 @@ export default class RepoService {
       data: {
         ...data,
         tags: {
-          create: data.tags.map(tagName => ({
+          create: data.tags.map((tagName) => ({
             tag: {
               connectOrCreate: {
                 where: { name: tagName },
@@ -76,7 +76,10 @@ export default class RepoService {
     return repo
   }
 
-  public async updateRepo(id: string, data: Partial<CodeRepo> & { tags?: string[] }): Promise<CodeRepo> {
+  public async updateRepo(
+    id: string,
+    data: Partial<CodeRepo> & { tags?: string[] }
+  ): Promise<CodeRepo> {
     const { tags, ...otherData } = data
 
     const updatedRepo = await prisma.codeRepo.update({
@@ -86,7 +89,7 @@ export default class RepoService {
         tags: tags
           ? {
               deleteMany: {},
-              create: tags.map(tagName => ({
+              create: tags.map((tagName) => ({
                 tag: {
                   connectOrCreate: {
                     where: { name: tagName },
@@ -152,7 +155,7 @@ export default class RepoService {
    * @param userId - The ID of the user requesting the pagination (can be null for guests).
    * @returns Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> - Paginated results.
    */
- public async getPaginatedRepos(
+  public async getPaginatedRepos(
     page: number = 1,
     limit: number = 10,
     userId: string | null
@@ -359,22 +362,20 @@ export default class RepoService {
           },
         },
       },
-      orderBy: [
-        { reviews: { _count: 'desc' } },
-        { updatedAt: 'desc' },
-      ],
+      orderBy: [{ reviews: { _count: 'desc' } }, { updatedAt: 'desc' }],
       take: limit,
     })
 
     // Calculate average rating for each repo
-    const reposWithRatings = featuredRepos.map(repo => {
-      const avgRating = repo.reviews.reduce((sum, review) => sum + review.rating, 0) / repo.reviews.length || 0
+    const reposWithRatings = featuredRepos.map((repo) => {
+      const avgRating =
+        repo.reviews.reduce((sum, review) => sum + review.rating, 0) / repo.reviews.length || 0
       return { ...repo, avgRating }
     })
 
     // Sort by average rating and then by number of reviews
-    return reposWithRatings.sort((a, b) =>
-      b.avgRating - a.avgRating || b.reviews.length - a.reviews.length
+    return reposWithRatings.sort(
+      (a, b) => b.avgRating - a.avgRating || b.reviews.length - a.reviews.length
     )
   }
 }

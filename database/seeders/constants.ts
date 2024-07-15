@@ -425,11 +425,11 @@ const KanbanBoard = () => {
 };
 
 render(<KanbanBoard />);
-`;
+`
 
 export const KANBAN_CSS = `
 /* No additional CSS needed as styles are handled by Tailwind */
-`;
+`
 
 export const PROJECT_MANAGEMENT = `
 import React from "react"

@@ -1,7 +1,16 @@
 import { hash } from '@node-rs/argon2'
 import { PrismaTransactionalClient, prisma } from '#services/prisma_service'
 import { generateIdFromEntropySize } from 'lucia'
-import { BankAccount, Role, SellerVerificationStatus, User, Profile, SellerProfile, Prisma, PrismaClient } from '@prisma/client'
+import {
+  BankAccount,
+  Role,
+  SellerVerificationStatus,
+  User,
+  Profile,
+  SellerProfile,
+  Prisma,
+  PrismaClient,
+} from '@prisma/client'
 import { z } from 'zod'
 //import logger from '@adonisjs/core/services/logger'
 import { PrismaPromise } from '@prisma/client/runtime/library'
@@ -11,7 +20,7 @@ import { PrismaPromise } from '@prisma/client/runtime/library'
 const userSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  fullname: z.string().min(2)
+  fullname: z.string().min(2),
 })
 
 const sellerSchema = userSchema.extend({
@@ -55,11 +64,16 @@ export class UserFactory {
    * @param {SellerFactoryData} data - Seller data
    * @returns {Promise<{user: User, profile: Profile, sellerProfile: SellerProfile}>} Created user, regular profile, and seller profile
    */
-  static async createSeller(data: SellerFactoryData): Promise<{ user: User; profile: Profile; sellerProfile: SellerProfile }> {
+  static async createSeller(
+    data: SellerFactoryData
+  ): Promise<{ user: User; profile: Profile; sellerProfile: SellerProfile }> {
     try {
       const validatedData = sellerSchema.parse(data)
       return prisma.$transaction(async (tx) => {
-        const { user, profile } = await this.createBaseUser({ ...validatedData, role: Role.SELLER }, tx)
+        const { user, profile } = await this.createBaseUser(
+          { ...validatedData, role: Role.SELLER },
+          tx
+        )
         const sellerProfile = await tx.sellerProfile.create({
           data: {
             userId: user.id,
@@ -86,7 +100,10 @@ export class UserFactory {
    * @param {BankAccountData} bankAccountData - Bank account data
    * @returns {Promise<BankAccount>} Created bank account
    */
-  static async addBankAccount(sellerId: string, bankAccountData: BankAccountData): Promise<BankAccount> {
+  static async addBankAccount(
+    sellerId: string,
+    bankAccountData: BankAccountData
+  ): Promise<BankAccount> {
     try {
       const validatedData = bankAccountSchema.parse(bankAccountData)
       return prisma.$transaction(async (tx) => {
@@ -145,31 +162,31 @@ export class UserFactory {
    */
   private static async createBaseUser(
     data: UserFactoryData & { role: Role },
-    tx?: PrismaTransactionalClient,
+    tx?: PrismaTransactionalClient
   ): Promise<{ user: User; profile: Profile }> {
-      const existingUser = await prisma.user.findUnique({
-        where: { email: data.email },
-      });
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email },
+    })
 
-      if (existingUser) {
-        throw new Error(`User with email ${data.email} already exists`);
-      }
+    if (existingUser) {
+      throw new Error(`User with email ${data.email} already exists`)
+    }
 
-      if (tx) {
-        const passwordHash = await this.hashPassword(data.password)
-        const id = generateIdFromEntropySize(32)
+    if (tx) {
+      const passwordHash = await this.hashPassword(data.password)
+      const id = generateIdFromEntropySize(32)
 
-        const user = await tx.user.create({
-          data: { id, email: data.email, passwordHash, role: data.role },
-        })
+      const user = await tx.user.create({
+        data: { id, email: data.email, passwordHash, role: data.role },
+      })
 
-        const profile = await tx.profile.create({
-          data: { userId: id, name: data.fullname },
-        })
+      const profile = await tx.profile.create({
+        data: { userId: id, name: data.fullname },
+      })
 
-        return { user, profile }
-      }
-      else return prisma.$transaction(async (ptx: PrismaTransactionalClient) => {
+      return { user, profile }
+    } else
+      return prisma.$transaction(async (ptx: PrismaTransactionalClient) => {
         const passwordHash = await this.hashPassword(data.password)
         const id = generateIdFromEntropySize(32)
 

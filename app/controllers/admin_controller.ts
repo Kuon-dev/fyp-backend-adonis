@@ -10,10 +10,9 @@ import { SellerVerificationStatus, PayoutRequestStatus } from '@prisma/client'
  */
 @inject()
 export default class AdminController {
-
   constructor(
     protected commentService: CommentService,
-    protected sellerService: SellerService,
+    protected sellerService: SellerService
   ) {}
   /**
    * Retrieve a Seller Profile by user ID.
@@ -27,7 +26,7 @@ export default class AdminController {
     try {
       const sellerProfile = await prisma.sellerProfile.findUnique({
         where: { userId: id },
-        include: { bankAccount: true, user: true }
+        include: { bankAccount: true, user: true },
       })
 
       if (!sellerProfile) {
@@ -59,7 +58,7 @@ export default class AdminController {
       'bankName',
       'swiftCode',
       'iban',
-      'routingNumber'
+      'routingNumber',
     ])
 
     const user = await prisma.user.findUnique({ where: { email } })
@@ -69,7 +68,7 @@ export default class AdminController {
 
     try {
       const updatedProfile = await prisma.sellerProfile.update({
-        where: { userId: user.id},
+        where: { userId: user.id },
         data: {
           businessName: data.businessName,
           businessAddress: data.businessAddress,
@@ -96,7 +95,7 @@ export default class AdminController {
             },
           },
         },
-        include: { bankAccount: true }
+        include: { bankAccount: true },
       })
 
       return response.status(200).json(updatedProfile)
@@ -122,9 +121,9 @@ export default class AdminController {
         prisma.sellerProfile.findMany({
           skip,
           take: limit,
-          include: { user: true, bankAccount: true }
+          include: { user: true, bankAccount: true },
         }),
-        prisma.sellerProfile.count()
+        prisma.sellerProfile.count(),
       ])
 
       return response.status(200).json({
@@ -132,8 +131,8 @@ export default class AdminController {
         meta: {
           total,
           page,
-          limit
-        }
+          limit,
+        },
       })
     } catch (error) {
       return response.status(400).json({ message: error.message })
@@ -156,8 +155,8 @@ export default class AdminController {
         where: { userId: id },
         data: {
           verificationStatus: status,
-          verificationDate: new Date()
-        }
+          verificationDate: new Date(),
+        },
       })
 
       return response.status(200).json(updatedProfile)
@@ -181,8 +180,8 @@ export default class AdminController {
       const bannedUser = await prisma.user.update({
         where: { id },
         data: {
-          bannedUntil: new Date(banUntil)
-        }
+          bannedUntil: new Date(banUntil),
+        },
       })
 
       return response.status(200).json(bannedUser)
@@ -197,8 +196,8 @@ export default class AdminController {
       const unbanUser = await prisma.user.update({
         where: { id },
         data: {
-          bannedUntil: null
-        }
+          bannedUntil: null,
+        },
       })
       return response.status(200).json(unbanUser)
     } catch (error) {
@@ -212,8 +211,8 @@ export default class AdminController {
       const deletedUser = await prisma.user.update({
         where: { email },
         data: {
-          deletedAt: new Date()
-        }
+          deletedAt: new Date(),
+        },
       })
       return response.status(200).json(deletedUser)
     } catch (error) {
@@ -310,7 +309,9 @@ export default class AdminController {
 
     try {
       const payoutRequest = await this.sellerService.updatePayoutRequestStatus(id, status)
-      return response.status(200).json({ message: 'Payout request status updated', request: payoutRequest })
+      return response
+        .status(200)
+        .json({ message: 'Payout request status updated', request: payoutRequest })
     } catch (error) {
       return response.status(404).json({ message: 'Payout request not found' })
     }

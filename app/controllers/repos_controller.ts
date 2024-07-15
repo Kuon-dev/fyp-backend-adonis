@@ -319,11 +319,10 @@ export default class RepoController {
       return response.abort({ message: error.message }, 400)
     }
 
-  /**
-   * Get featured repos based on various criteria
-   * @param {number} limit - The number of featured repos to return
-   * @returns {Promise<CodeRepo[]>} - A list of featured repos
-   */
- }
-
+    /**
+     * Get featured repos based on various criteria
+     * @param {number} limit - The number of featured repos to return
+     * @returns {Promise<CodeRepo[]>} - A list of featured repos
+     */
+  }
 }

@@ -26,7 +26,7 @@ export default class GetUserSessionMiddleware {
       }
 
       if (session && session.fresh) {
-        ctx.response.header('Set-Cookie', (lucia.createSessionCookie(session.id)).serialize());
+        ctx.response.header('Set-Cookie', lucia.createSessionCookie(session.id).serialize())
       }
 
       // if there is no user found but a role prop exist

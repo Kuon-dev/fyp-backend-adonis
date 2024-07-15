@@ -1,10 +1,6 @@
 import { prisma } from '#services/prisma_service'
 import { Comment, UserCommentFlag, VoteType } from '@prisma/client'
-import {
-  RegExpMatcher,
-  englishDataset,
-  englishRecommendedTransformers
-} from 'obscenity'
+import { RegExpMatcher, englishDataset, englishRecommendedTransformers } from 'obscenity'
 
 interface CommentCreationData {
   content: string
@@ -34,7 +30,7 @@ export class CommentService {
   constructor() {
     this.matcher = new RegExpMatcher({
       ...englishDataset.build(),
-      ...englishRecommendedTransformers
+      ...englishRecommendedTransformers,
     })
   }
 
@@ -43,7 +39,8 @@ export class CommentService {
   }
 
   private sanitizeComment(comment: Comment): CommentResponse {
-    const { id, content, userId, reviewId, createdAt, updatedAt, upvotes, downvotes, flag } = comment
+    const { id, content, userId, reviewId, createdAt, updatedAt, upvotes, downvotes, flag } =
+      comment
     return { id, content, userId, reviewId, createdAt, updatedAt, upvotes, downvotes, flag }
   }
 
@@ -83,24 +80,30 @@ export class CommentService {
     return this.sanitizeComment(comment)
   }
 
-  async getAllFlaggedComments(): Promise<Omit<CommentResponse, 'upvotes' | 'downvotes' | 'createdAt'>[]> {
+  async getAllFlaggedComments(): Promise<
+    Omit<CommentResponse, 'upvotes' | 'downvotes' | 'createdAt'>[]
+  > {
     const comments = await prisma.comment.findMany({
       where: {
         deletedAt: null,
-        flag: { not: UserCommentFlag.NONE }
-      }
+        flag: { not: UserCommentFlag.NONE },
+      },
     })
     return comments.map(({ upvotes, downvotes, createdAt, ...rest }) => rest)
   }
 
-  async handleVote(commentId: string, userId: string, voteType: VoteType): Promise<CommentResponse> {
+  async handleVote(
+    commentId: string,
+    userId: string,
+    voteType: VoteType
+  ): Promise<CommentResponse> {
     const existingVote = await prisma.vote.findUnique({
       where: {
         userId_commentId: {
           userId,
-          commentId
-        }
-      }
+          commentId,
+        },
+      },
     })
 
     await prisma.$transaction(async (tx) => {
@@ -109,42 +112,42 @@ export class CommentService {
           data: {
             userId,
             commentId,
-            type: voteType
-          }
-        })
-        await tx.comment.update({
-          where: { id: commentId },
-          data: {
-            [voteType === VoteType.UPVOTE ? 'upvotes' : 'downvotes']: { increment: 1 }
-          }
-        })
-      } else if (existingVote.type !== voteType) {
-        await tx.vote.update({
-          where: { id: existingVote.id },
-          data: { type: voteType }
+            type: voteType,
+          },
         })
         await tx.comment.update({
           where: { id: commentId },
           data: {
             [voteType === VoteType.UPVOTE ? 'upvotes' : 'downvotes']: { increment: 1 },
-            [voteType === VoteType.UPVOTE ? 'downvotes' : 'upvotes']: { decrement: 1 }
-          }
+          },
         })
-      } else {
-        await tx.vote.delete({
-          where: { id: existingVote.id }
+      } else if (existingVote.type !== voteType) {
+        await tx.vote.update({
+          where: { id: existingVote.id },
+          data: { type: voteType },
         })
         await tx.comment.update({
           where: { id: commentId },
           data: {
-            [voteType === VoteType.UPVOTE ? 'upvotes' : 'downvotes']: { decrement: 1 }
-          }
+            [voteType === VoteType.UPVOTE ? 'upvotes' : 'downvotes']: { increment: 1 },
+            [voteType === VoteType.UPVOTE ? 'downvotes' : 'upvotes']: { decrement: 1 },
+          },
+        })
+      } else {
+        await tx.vote.delete({
+          where: { id: existingVote.id },
+        })
+        await tx.comment.update({
+          where: { id: commentId },
+          data: {
+            [voteType === VoteType.UPVOTE ? 'upvotes' : 'downvotes']: { decrement: 1 },
+          },
         })
       }
     })
 
     const updatedComment = await prisma.comment.findUnique({
-      where: { id: commentId }
+      where: { id: commentId },
     })
 
     if (!updatedComment) {

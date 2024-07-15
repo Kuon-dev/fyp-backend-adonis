@@ -6,7 +6,7 @@ test.group('Repository Creation', () => {
   async function getAuthToken(client: ApiClient): Promise<string> {
     const loginResponse = await client.post('/api/v1/login').json({
       email: 'test@example.com',
-      password: 'password123'
+      password: 'password123',
     })
     return loginResponse.headers()['set-cookie'][0]
   }
@@ -17,14 +17,11 @@ test.group('Repository Creation', () => {
       description: 'A test repository',
       language: 'JSX',
       price: 0,
-      tags: ['test', 'react']
+      tags: ['test', 'react'],
     }
-    const token = await getAuthToken(client);
+    const token = await getAuthToken(client)
 
-    const response = await client
-      .post('/api/v1/repos')
-      .header('Cookie', token)
-      .json(repoData)
+    const response = await client.post('/api/v1/repos').header('Cookie', token).json(repoData)
 
     response.assertStatus(201)
     assert.properties(response.body(), ['id', 'name', 'description', 'language', 'price', 'status'])
@@ -41,9 +38,9 @@ test.group('Repository Creation', () => {
       description: 'A test repository',
       language: 'InvalidLanguage', // Invalid: not in enum
       price: -1, // Invalid: negative price
-      tags: ['test', 'react']
+      tags: ['test', 'react'],
     }
-    const token = await getAuthToken(client);
+    const token = await getAuthToken(client)
 
     const response = await client
       .post('/api/v1/repos')
@@ -53,13 +50,13 @@ test.group('Repository Creation', () => {
     response.assertStatus(400)
     assert.equal(response.body().message, 'Validation error')
     assert.isArray(response.body().errors)
-    
+
     const nameError = response.body().errors.find((err: any) => err.path.includes('name'))
     assert.exists(nameError)
-    
+
     const languageError = response.body().errors.find((err: any) => err.path.includes('language'))
     assert.exists(languageError)
-    
+
     const priceError = response.body().errors.find((err: any) => err.path.includes('price'))
     assert.exists(priceError)
   })
@@ -70,12 +67,10 @@ test.group('Repository Creation', () => {
       description: 'A test repository',
       language: 'JSX',
       price: 0,
-      tags: ['test', 'react']
+      tags: ['test', 'react'],
     }
 
-    const response = await client
-      .post('/api/v1/repos')
-      .json(repoData)
+    const response = await client.post('/api/v1/repos').json(repoData)
 
     response.assertStatus(401)
     response.assertBodyContains({ message: 'User not authenticated' })

@@ -10,8 +10,7 @@ export default class AppProvider {
   /**
    * Register bindings to the container
    */
-  register() {
-  }
+  register() {}
 
   /**
    *
@@ -46,6 +45,5 @@ export default class AppProvider {
   /**
    * Preparing to shutdown the app
    */
-  async shutdown() {
-  }
+  async shutdown() {}
 }

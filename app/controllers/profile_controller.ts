@@ -93,7 +93,7 @@ export default class ProfileController {
         'bankName',
         'swiftCode',
         'iban',
-        'routingNumber'
+        'routingNumber',
       ])
 
       const validatedData = updateSellerProfileSchema.parse(sellerProfileData)

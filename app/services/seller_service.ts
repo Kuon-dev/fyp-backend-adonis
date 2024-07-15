@@ -1,8 +1,18 @@
 import { inject } from '@adonisjs/core'
-import { SellerProfile, User, SellerVerificationStatus, PayoutRequest, PayoutRequestStatus } from '@prisma/client'
+import {
+  SellerProfile,
+  User,
+  SellerVerificationStatus,
+  PayoutRequest,
+  PayoutRequestStatus,
+} from '@prisma/client'
 import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
-import { createSellerProfileSchema, updateSellerProfileSchema, createPayoutRequestSchema } from '#validators/seller'
+import {
+  createSellerProfileSchema,
+  updateSellerProfileSchema,
+  createPayoutRequestSchema,
+} from '#validators/seller'
 
 @inject()
 export default class SellerService {
@@ -59,7 +69,7 @@ export default class SellerService {
    */
   public async getSellerProfile(userId: string): Promise<SellerProfile | null> {
     return await prisma.sellerProfile.findUnique({
-      where: { userId }
+      where: { userId },
     })
   }
 
@@ -95,7 +105,9 @@ export default class SellerService {
                 routingNumber: validatedData.routingNumber,
               },
               update: {
-                ...(validatedData.accountHolderName && { accountHolderName: validatedData.accountHolderName }),
+                ...(validatedData.accountHolderName && {
+                  accountHolderName: validatedData.accountHolderName,
+                }),
                 ...(validatedData.accountNumber && { accountNumber: validatedData.accountNumber }),
                 ...(validatedData.bankName && { bankName: validatedData.bankName }),
                 ...(validatedData.swiftCode && { swiftCode: validatedData.swiftCode }),
@@ -105,7 +117,7 @@ export default class SellerService {
             },
           },
         },
-        include: { bankAccount: true }
+        include: { bankAccount: true },
       })
 
       return updatedProfile
@@ -121,7 +133,7 @@ export default class SellerService {
   public async getSellerApplications(status?: SellerVerificationStatus): Promise<SellerProfile[]> {
     return await prisma.sellerProfile.findMany({
       where: status ? { verificationStatus: status } : undefined,
-      include: { user: true }
+      include: { user: true },
     })
   }
 
@@ -130,13 +142,16 @@ export default class SellerService {
    * @param sellerId - The ID of the seller profile
    * @param status - The new verification status
    */
-  public async updateSellerApplicationStatus(sellerId: string, status: SellerVerificationStatus): Promise<SellerProfile> {
+  public async updateSellerApplicationStatus(
+    sellerId: string,
+    status: SellerVerificationStatus
+  ): Promise<SellerProfile> {
     return await prisma.sellerProfile.update({
       where: { id: sellerId },
       data: {
         verificationStatus: status,
-        verificationDate: status === SellerVerificationStatus.APPROVED ? new Date() : null
-      }
+        verificationDate: status === SellerVerificationStatus.APPROVED ? new Date() : null,
+      },
     })
   }
 
@@ -165,8 +180,8 @@ export default class SellerService {
       data: {
         sellerProfileId: profile.id,
         totalAmount: validatedData.amount,
-        status: PayoutRequestStatus.PENDING
-      }
+        status: PayoutRequestStatus.PENDING,
+      },
     })
   }
 
@@ -180,7 +195,7 @@ export default class SellerService {
 
     return await prisma.payoutRequest.findMany({
       where: { sellerProfileId: profile.id },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
   }
 
@@ -194,8 +209,8 @@ export default class SellerService {
       where: { userId },
       data: {
         identityDoc: documentUrl,
-        verificationStatus: SellerVerificationStatus.PENDING
-      }
+        verificationStatus: SellerVerificationStatus.PENDING,
+      },
     })
   }
 
@@ -208,9 +223,11 @@ export default class SellerService {
     return await prisma.sellerProfile.update({
       where: { id: sellerId },
       data: {
-        verificationStatus: isVerified ? SellerVerificationStatus.APPROVED : SellerVerificationStatus.REJECTED,
-        verificationDate: isVerified ? new Date() : null
-      }
+        verificationStatus: isVerified
+          ? SellerVerificationStatus.APPROVED
+          : SellerVerificationStatus.REJECTED,
+        verificationDate: isVerified ? new Date() : null,
+      },
     })
   }
 
@@ -222,7 +239,7 @@ export default class SellerService {
     return await prisma.payoutRequest.findMany({
       where: status ? { status } : undefined,
       include: { sellerProfile: true },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
   }
 
@@ -231,13 +248,16 @@ export default class SellerService {
    * @param requestId - The ID of the payout request
    * @param status - The new status of the payout request
    */
-  public async updatePayoutRequestStatus(requestId: string, status: PayoutRequestStatus): Promise<PayoutRequest> {
+  public async updatePayoutRequestStatus(
+    requestId: string,
+    status: PayoutRequestStatus
+  ): Promise<PayoutRequest> {
     return await prisma.payoutRequest.update({
       where: { id: requestId },
       data: {
         status,
-        processedAt: status === PayoutRequestStatus.PROCESSED ? new Date() : null
-      }
+        processedAt: status === PayoutRequestStatus.PROCESSED ? new Date() : null,
+      },
     })
   }
 }

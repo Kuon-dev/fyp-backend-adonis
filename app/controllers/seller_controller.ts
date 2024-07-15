@@ -1,7 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import SellerService from '#services/seller_service'
-import { createSellerProfileSchema, updateSellerProfileSchema, createPayoutRequestSchema } from '#validators/seller'
+import {
+  createSellerProfileSchema,
+  updateSellerProfileSchema,
+  createPayoutRequestSchema,
+} from '#validators/seller'
 
 @inject()
 export default class SellerController {
@@ -35,24 +39,24 @@ export default class SellerController {
 
     try {
       const data = createSellerProfileSchema.parse(request.body())
-      
+
       const profile = await this.sellerService.applyForSellerAccount(userId, data)
 
-      return response.ok({ 
-        message: 'Application submitted successfully', 
-        profile 
+      return response.ok({
+        message: 'Application submitted successfully',
+        profile,
       })
     } catch (error) {
       if (error.name === 'ZodError') {
-        return response.badRequest({ 
+        return response.badRequest({
           message: 'Invalid input data',
-          errors: error.errors
+          errors: error.errors,
         })
       }
-      
+
       console.error('Error in applyForSellerAccount:', error)
-      return response.internalServerError({ 
-        message: 'An error occurred while processing the request' 
+      return response.internalServerError({
+        message: 'An error occurred while processing the request',
       })
     }
   }

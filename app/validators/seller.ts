@@ -10,17 +10,17 @@ export const createSellerProfileSchema = z.object({
   bankName: z.string().min(1, 'Bank name is required'),
   swiftCode: z.string().min(8).max(11, 'SWIFT code must be 8 or 11 characters'),
   iban: z.string().optional(),
-  routingNumber: z.string().optional()
+  routingNumber: z.string().optional(),
 })
 
 export const updateSellerProfileSchema = createSellerProfileSchema.partial()
 
 export const createPayoutRequestSchema = z.object({
-  amount: z.number().positive('Amount must be positive')
+  amount: z.number().positive('Amount must be positive'),
 })
 
 export const updatePayoutRequestSchema = z.object({
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'PROCESSED'])
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'PROCESSED']),
 })
 
 export type CreateSellerProfileDto = z.infer<typeof createSellerProfileSchema>

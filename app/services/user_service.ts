@@ -64,11 +64,10 @@ export class UserService {
         sellerProfile: {
           include: {
             bankAccount: true,
-          }
+          },
         },
-      }
+      },
     })
-
 
     if (!user) {
       throw new Error(`User with email ${email} not found.`)
@@ -82,7 +81,7 @@ export class UserService {
    *
    * @returns {Promise<User[]>} - All users.
    */
-  async getAllUsers(): Promise<{id: string, email: string, role: Role}[]> {
+  async getAllUsers(): Promise<{ id: string; email: string; role: Role }[]> {
     // only return the ncessary data
     return prisma.user.findMany({
       where: { deletedAt: null },
@@ -91,9 +90,8 @@ export class UserService {
         email: true,
         bannedUntil: true,
         //fullname: true,
-        role: true
-      }
-
+        role: true,
+      },
     })
   }
 

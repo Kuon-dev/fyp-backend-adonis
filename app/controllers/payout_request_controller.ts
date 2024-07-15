@@ -22,7 +22,10 @@ export default class PayoutRequestController {
 
     try {
       const data = createPayoutRequestSchema.parse(request.body())
-      const payoutRequest = await this.payoutRequestService.createPayoutRequest(request.user.id, data)
+      const payoutRequest = await this.payoutRequestService.createPayoutRequest(
+        request.user.id,
+        data
+      )
       return response.status(201).json(payoutRequest)
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -111,7 +114,9 @@ export default class PayoutRequestController {
   public async getCurrentUserPayoutRequests({ request, response }: HttpContext) {
     if (!request.user) throw new UnAuthorizedException('User not found in request object')
     try {
-      const payoutRequests = await this.payoutRequestService.getPayoutRequestsByUser(request.user.id)
+      const payoutRequests = await this.payoutRequestService.getPayoutRequestsByUser(
+        request.user.id
+      )
       return response.status(200).json(payoutRequests)
     } catch (error) {
       return response.abort({ message: error.message }, 400)
@@ -128,7 +133,11 @@ export default class PayoutRequestController {
 
     try {
       const { action } = request.body()
-      const payoutRequest = await this.payoutRequestService.processPayoutRequest(id, action, request.user.id)
+      const payoutRequest = await this.payoutRequestService.processPayoutRequest(
+        id,
+        action,
+        request.user.id
+      )
       return response.status(200).json(payoutRequest)
     } catch (error) {
       return response.abort({ message: error.message }, 400)

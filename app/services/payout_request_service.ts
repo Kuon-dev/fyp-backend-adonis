@@ -16,7 +16,8 @@ export default class PayoutRequestService {
       orderBy: { createdAt: 'desc' },
     })
 
-    const lastPayoutDate = lastPayoutRequest?.createdAt || sellerProfile.lastPayoutDate || new Date(0)
+    const lastPayoutDate =
+      lastPayoutRequest?.createdAt || sellerProfile.lastPayoutDate || new Date(0)
 
     const orders = await prisma.order.findMany({
       where: {
@@ -39,7 +40,7 @@ export default class PayoutRequestService {
       })
 
       await tx.order.updateMany({
-        where: { id: { in: orders.map(order => order.id) } },
+        where: { id: { in: orders.map((order) => order.id) } },
         data: { payoutRequestId: payoutRequest.id },
       })
 

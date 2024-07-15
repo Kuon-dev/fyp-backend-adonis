@@ -25,7 +25,11 @@ export class ReviewService {
     })
   }
 
-  async getPaginatedReviewsByRepo(repoId: string, page: number, perPage: number): Promise<{
+  async getPaginatedReviewsByRepo(
+    repoId: string,
+    page: number,
+    perPage: number
+  ): Promise<{
     data: Review[]
     meta: {
       total: number
@@ -104,7 +108,7 @@ export class ReviewService {
    */
   async getAllFlaggedReviews(): Promise<Review[]> {
     const reviews = await prisma.review.findMany({
-      where: { deletedAt: null, flag: { not: "NONE" } },
+      where: { deletedAt: null, flag: { not: 'NONE' } },
       include: { user: true },
     })
     return reviews.map((r) => ({
@@ -134,9 +138,9 @@ export class ReviewService {
       where: {
         userId_reviewId: {
           userId,
-          reviewId
-        }
-      }
+          reviewId,
+        },
+      },
     })
 
     return prisma.$transaction(async (tx) => {
@@ -145,36 +149,36 @@ export class ReviewService {
           data: {
             userId,
             reviewId,
-            type: voteType
-          }
-        })
-        return tx.review.update({
-          where: { id: reviewId },
-          data: {
-            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { increment: 1 }
-          }
-        })
-      } else if (existingVote.type !== voteType) {
-        await tx.vote.update({
-          where: { id: existingVote.id },
-          data: { type: voteType }
+            type: voteType,
+          },
         })
         return tx.review.update({
           where: { id: reviewId },
           data: {
             [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { increment: 1 },
-            [voteType === 'UPVOTE' ? 'downvotes' : 'upvotes']: { decrement: 1 }
-          }
+          },
         })
-      } else {
-        await tx.vote.delete({
-          where: { id: existingVote.id }
+      } else if (existingVote.type !== voteType) {
+        await tx.vote.update({
+          where: { id: existingVote.id },
+          data: { type: voteType },
         })
         return tx.review.update({
           where: { id: reviewId },
           data: {
-            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { decrement: 1 }
-          }
+            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { increment: 1 },
+            [voteType === 'UPVOTE' ? 'downvotes' : 'upvotes']: { decrement: 1 },
+          },
+        })
+      } else {
+        await tx.vote.delete({
+          where: { id: existingVote.id },
+        })
+        return tx.review.update({
+          where: { id: reviewId },
+          data: {
+            [voteType === 'UPVOTE' ? 'upvotes' : 'downvotes']: { decrement: 1 },
+          },
         })
       }
     })

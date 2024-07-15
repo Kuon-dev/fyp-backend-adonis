@@ -49,8 +49,7 @@ router
         router.post('/forgot-password', [AuthController, 'createPasswordResetToken'])
         router.post('/reset-password', [AuthController, 'resetPassword'])
         router.post('/verify-email', [AuthController, 'verifyEmail'])
-        router
-          .post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser'])
+        router.post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser'])
         router.get('/me', [AuthController, 'me'])
 
         router
@@ -92,10 +91,18 @@ router
         router.get('/repos/featured', [RepoController, 'getFeatured'])
 
         // admin routes
-        router.put('/admin/seller-profile/:email', [AdminController, 'updateSellerProfile']).use(middleware.auth({ role: 'ADMIN' }))
-        router.post('/admin/:email/ban', [AdminController, 'banUser']).use(middleware.auth({ role: 'ADMIN' }))
-        router.post('/admin/:email/unban', [AdminController, 'unbanUser']).use(middleware.auth({ role: 'ADMIN' }))
-        router.delete('/admin/:email', [AdminController, 'deleteUser']).use(middleware.auth({ role: 'ADMIN' }))
+        router
+          .put('/admin/seller-profile/:email', [AdminController, 'updateSellerProfile'])
+          .use(middleware.auth({ role: 'ADMIN' }))
+        router
+          .post('/admin/:email/ban', [AdminController, 'banUser'])
+          .use(middleware.auth({ role: 'ADMIN' }))
+        router
+          .post('/admin/:email/unban', [AdminController, 'unbanUser'])
+          .use(middleware.auth({ role: 'ADMIN' }))
+        router
+          .delete('/admin/:email', [AdminController, 'deleteUser'])
+          .use(middleware.auth({ role: 'ADMIN' }))
         router.get('/admin/reviews', [AdminController, 'getAllFlaggedReviews'])
 
         // User routes
@@ -121,42 +128,43 @@ router
         ])
         router.get('/orders/search', [OrderController, 'searchOrders'])
 
-      router
-        .group(() => {
-          router.post('/', [PayoutRequestController, 'create'])
-          router.get('/:id', [PayoutRequestController, 'getById'])
-          router.put('/:id', [PayoutRequestController, 'update'])
-          router.delete('/:id', [PayoutRequestController, 'delete'])
-          router.get('/', [PayoutRequestController, 'getPaginated'])
-          router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
-          router.post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])
-            .use(middleware.auth({ role: 'ADMIN' }))
-        })
-        .prefix('/payout-requests')
-        .use(middleware.auth({ role: 'USER' }))
+        router
+          .group(() => {
+            router.post('/', [PayoutRequestController, 'create'])
+            router.get('/:id', [PayoutRequestController, 'getById'])
+            router.put('/:id', [PayoutRequestController, 'update'])
+            router.delete('/:id', [PayoutRequestController, 'delete'])
+            router.get('/', [PayoutRequestController, 'getPaginated'])
+            router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
+            router
+              .post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])
+              .use(middleware.auth({ role: 'ADMIN' }))
+          })
+          .prefix('/payout-requests')
+          .use(middleware.auth({ role: 'USER' }))
 
-          // Seller-specific routes
-        router.group(() => {
-          // Apply to become a seller
-          router.post('/apply', [SellerController, 'applyForSellerAccount'])
-          // Update seller's own profile
-          router.put('/profile', [SellerController, 'updateProfile'])
-          // Get application status
-          //router.get('/application-status', [SellerController, 'getApplicationStatus'])
-          // Update bank details
-          //router.put('/bank-details', [SellerController, 'updateBankDetails'])
-          // Get seller's balance
-          //router.get('/balance', [SellerController, 'getBalance'])
-          // Request a payout
-          //router.post('/payout-request', [SellerController, 'requestPayout'])
-          // Get payout history
-          //router.get('/payout-history', [SellerController, 'getPayoutHistory'])
-          // Upload or update identity document
-          router.post('/identity-document', [SellerController, 'uploadIdentityDocument'])
-
-        })
-        .prefix('/seller')
-        .use(middleware.auth({ role: 'SELLER' }))
+        // Seller-specific routes
+        router
+          .group(() => {
+            // Apply to become a seller
+            router.post('/apply', [SellerController, 'applyForSellerAccount'])
+            // Update seller's own profile
+            router.put('/profile', [SellerController, 'updateProfile'])
+            // Get application status
+            //router.get('/application-status', [SellerController, 'getApplicationStatus'])
+            // Update bank details
+            //router.put('/bank-details', [SellerController, 'updateBankDetails'])
+            // Get seller's balance
+            //router.get('/balance', [SellerController, 'getBalance'])
+            // Request a payout
+            //router.post('/payout-request', [SellerController, 'requestPayout'])
+            // Get payout history
+            //router.get('/payout-history', [SellerController, 'getPayoutHistory'])
+            // Upload or update identity document
+            router.post('/identity-document', [SellerController, 'uploadIdentityDocument'])
+          })
+          .prefix('/seller')
+          .use(middleware.auth({ role: 'SELLER' }))
 
         router.post('/checkout', [CheckoutController, 'createPaymentIntent'])
         router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent'])
