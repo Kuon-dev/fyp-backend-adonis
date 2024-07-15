@@ -84,13 +84,27 @@ export class UserService {
   async getAllUsers(): Promise<{ id: string; email: string; role: Role }[]> {
     // only return the ncessary data
     return prisma.user.findMany({
-      where: { deletedAt: null },
       select: {
         id: true,
         email: true,
         bannedUntil: true,
         //fullname: true,
         role: true,
+        sellerProfile: {
+          include: {
+            bankAccount: true,
+          }
+          //select: {
+          //  businessName: true,
+          //  businessAddress: true,
+          //  businessPhone: true,
+          //  businessEmail: true,
+          //  identityDoc: true,
+          //
+          //  bankAccount: true,
+          //  verificationStatus: true,
+          //},
+        }
       },
     })
   }

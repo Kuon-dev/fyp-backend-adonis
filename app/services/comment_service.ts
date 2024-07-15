@@ -85,11 +85,19 @@ export class CommentService {
   > {
     const comments = await prisma.comment.findMany({
       where: {
-        deletedAt: null,
         flag: { not: UserCommentFlag.NONE },
       },
+      include: { user: true },
     })
-    return comments.map(({ upvotes, downvotes, createdAt, ...rest }) => rest)
+
+    return comments.map(({ upvotes, downvotes, createdAt, ...rest }) => {
+      return {
+        ...rest,
+        user: {
+          email: rest.user.email,
+        },
+      }
+    })
   }
 
   async handleVote(

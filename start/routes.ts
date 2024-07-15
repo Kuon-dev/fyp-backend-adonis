@@ -105,12 +105,13 @@ router
           .use(middleware.auth({ role: 'ADMIN' }))
         router.get('/admin/reviews', [AdminController, 'getAllFlaggedReviews'])
 
+        router.get('/users', [UserController, 'getAll'])
+
         // User routes
         router.post('/users', [UserController, 'create'])
         router.get('/users/:email', [UserController, 'getByEmail'])
         router.put('/users/:email', [UserController, 'update'])
         router.delete('/users/:email', [UserController, 'delete'])
-        router.get('/users', [UserController, 'getAll'])
         router.get('/users/paginated', [UserController, 'getPaginated'])
         router.put('/users/:email/profile', [UserController, 'updateProfile'])
 
@@ -148,12 +149,9 @@ router
           .group(() => {
             // Apply to become a seller
             router.post('/apply', [SellerController, 'applyForSellerAccount'])
+            router.get('/dashboard', [SellerController, 'getDashboardData'])
             // Update seller's own profile
             router.put('/profile', [SellerController, 'updateProfile'])
-            // Get application status
-            //router.get('/application-status', [SellerController, 'getApplicationStatus'])
-            // Update bank details
-            //router.put('/bank-details', [SellerController, 'updateBankDetails'])
             // Get seller's balance
             //router.get('/balance', [SellerController, 'getBalance'])
             // Request a payout

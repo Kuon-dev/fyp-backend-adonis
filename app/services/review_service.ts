@@ -1,5 +1,6 @@
 import { prisma } from '#services/prisma_service'
 import type { Review, Vote, VoteType } from '@prisma/client'
+import logger from '@adonisjs/core/services/logger'
 
 interface ReviewCreationData {
   content: string
@@ -111,6 +112,7 @@ export class ReviewService {
       where: { deletedAt: null, flag: { not: 'NONE' } },
       include: { user: true },
     })
+
     return reviews.map((r) => ({
       ...r,
       user: {

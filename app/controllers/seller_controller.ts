@@ -174,4 +174,22 @@ export default class SellerController {
       return response.badRequest({ message: error.message })
     }
   }
+
+  public async getDashboardData({ request, response }: HttpContext) {
+    const userId = request.user?.id
+    if (!userId) {
+      return response.unauthorized({ message: 'User not authenticated' })
+    }
+
+    try {
+      const days = request.input('days', 30) // Allow specifying days, default to 30
+      const dashboardData = await this.sellerService.getDashboardData(userId, days)
+      return response.ok(dashboardData)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      return response.internalServerError({
+        message: 'An error occurred while fetching dashboard data',
+      })
+    }
+  }
 }

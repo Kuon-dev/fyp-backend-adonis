@@ -4,6 +4,7 @@ import { prisma } from '#services/prisma_service'
 import { CommentService } from '#services/comment_service'
 import SellerService from '#services/seller_service'
 import { SellerVerificationStatus, PayoutRequestStatus } from '@prisma/client'
+import { ReviewService } from '#services/review_service'
 
 /**
  * Controller class for handling Admin operations on Seller Profiles.
@@ -12,7 +13,8 @@ import { SellerVerificationStatus, PayoutRequestStatus } from '@prisma/client'
 export default class AdminController {
   constructor(
     protected commentService: CommentService,
-    protected sellerService: SellerService
+    protected sellerService: SellerService,
+    protected reviewService: ReviewService
   ) {}
   /**
    * Retrieve a Seller Profile by user ID.
@@ -59,7 +61,14 @@ export default class AdminController {
       'swiftCode',
       'iban',
       'routingNumber',
+      'verificationStatus',
     ])
+
+    if (data.verificationStatus) {
+      if (!Object.values(SellerVerificationStatus).includes(data.verificationStatus)) {
+        return response.status(400).json({ message: 'Invalid status' })
+      }
+    }
 
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
@@ -67,38 +76,39 @@ export default class AdminController {
     }
 
     try {
-      const updatedProfile = await prisma.sellerProfile.update({
-        where: { userId: user.id },
-        data: {
-          businessName: data.businessName,
-          businessAddress: data.businessAddress,
-          businessPhone: data.businessPhone,
-          businessEmail: data.businessEmail,
-          bankAccount: {
-            upsert: {
-              create: {
-                accountHolderName: data.accountHolderName,
-                accountNumber: data.accountNumber,
-                bankName: data.bankName,
-                swiftCode: data.swiftCode,
-                iban: data.iban,
-                routingNumber: data.routingNumber,
-              },
-              update: {
-                accountHolderName: data.accountHolderName,
-                accountNumber: data.accountNumber,
-                bankName: data.bankName,
-                swiftCode: data.swiftCode,
-                iban: data.iban,
-                routingNumber: data.routingNumber,
-              },
-            },
-          },
-        },
-        include: { bankAccount: true },
-      })
+      await this.sellerService.updateSellerProfile(user.id, data)
+      //const updatedProfile = await prisma.sellerProfile.update({
+      //  where: { userId: user.id },
+      //  data: {
+      //    businessName: data.businessName,
+      //    businessAddress: data.businessAddress,
+      //    businessPhone: data.businessPhone,
+      //    businessEmail: data.businessEmail,
+      //    bankAccount: {
+      //      upsert: {
+      //        create: {
+      //          accountHolderName: data.accountHolderName,
+      //          accountNumber: data.accountNumber,
+      //          bankName: data.bankName,
+      //          swiftCode: data.swiftCode,
+      //          iban: data.iban,
+      //          routingNumber: data.routingNumber,
+      //        },
+      //        update: {
+      //          accountHolderName: data.accountHolderName,
+      //          accountNumber: data.accountNumber,
+      //          bankName: data.bankName,
+      //          swiftCode: data.swiftCode,
+      //          iban: data.iban,
+      //          routingNumber: data.routingNumber,
+      //        },
+      //      },
+      //    },
+      //  },
+      //  include: { bankAccount: true },
+      //})
 
-      return response.status(200).json(updatedProfile)
+      return response.status(200).json({ message: 'Seller profile updated successfully' })
     } catch (error) {
       return response.status(400).json({ message: error.message })
     }
@@ -222,6 +232,16 @@ export default class AdminController {
 
   public async getAllFlaggedReviews({ response }: HttpContext) {
     try {
+      const comments = await this.reviewService.getAllFlaggedReviews()
+      return response.status(200).json(comments)
+    } catch (error) {
+      return response.status(error.status ?? 400).json({ message: error.message })
+    }
+  }
+
+
+  public async getAllFlaggedComments({ response }: HttpContext) {
+    try {
       const comments = await this.commentService.getAllFlaggedComments()
       return response.status(200).json(comments)
     } catch (error) {
@@ -258,14 +278,14 @@ export default class AdminController {
    */
   public async updateSellerApplicationStatus({ params, request, response }: HttpContext) {
     const { id } = params
-    const { status } = request.body()
+    const { verificationStatus } = request.body()
 
-    if (!Object.values(SellerVerificationStatus).includes(status)) {
+    if (!Object.values(SellerVerificationStatus).includes(verificationStatus)) {
       return response.status(400).json({ message: 'Invalid status' })
     }
 
     try {
-      const profile = await this.sellerService.updateSellerApplicationStatus(id, status)
+      const profile = await this.sellerService.updateSellerApplicationStatus(id, verificationStatus)
       return response.status(200).json({ message: 'Application status updated', profile })
     } catch (error) {
       return response.status(404).json({ message: 'Seller profile not found' })

@@ -36,7 +36,7 @@ export class OrderService {
     return prisma.order.create({
       data: {
         ...data,
-        status: OrderStatus.PENDING, // Set initial status to pending
+        status: OrderStatus.REQUIRESACTION, // Set initial status to pending
       },
     })
   }
@@ -259,14 +259,14 @@ export class OrderService {
         throw new Error('Order not found')
       }
 
-      if (order.status === OrderStatus.COMPLETED) {
+      if (order.status === OrderStatus.SUCCEEDED) {
         throw new Error('Order is already completed')
       }
 
       // Update order status
       const updatedOrder = await trx.order.update({
         where: { id: orderId },
-        data: { status: OrderStatus.COMPLETED },
+        data: { status: OrderStatus.SUCCEEDED },
       })
 
       const sellerId = order.codeRepo.userId
@@ -305,7 +305,7 @@ export class OrderService {
     return prisma.order.count({
       where: {
         codeRepoId,
-        status: OrderStatus.COMPLETED,
+        status: OrderStatus.SUCCEEDED,
       },
     })
   }
