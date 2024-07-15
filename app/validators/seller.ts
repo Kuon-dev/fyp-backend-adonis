@@ -11,7 +11,7 @@ export const createSellerProfileSchema = z.object({
   swiftCode: z.string().min(8).max(11, 'SWIFT code must be 8 or 11 characters'),
   iban: z.string().optional(),
   routingNumber: z.string().optional(),
-  verificationStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED', "IDLE"]),
+  verificationStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'IDLE']),
 })
 
 export const updateSellerProfileSchema = createSellerProfileSchema.partial()

@@ -39,7 +39,7 @@ import logger from '@adonisjs/core/services/logger'
 
 @inject()
 export default class SellerService {
-  constructor (protected s3Facade: S3Facade) {}
+  constructor(protected s3Facade: S3Facade) {}
   /**
    * Apply for a seller account
    * @param userId - The ID of the user applying to be a seller
@@ -97,59 +97,64 @@ export default class SellerService {
     })
   }
 
-/**
- * Update a seller's profile including bank account details and verification status
- * @param userId - The ID of the user or seller
- * @param profileData - The updated profile data
- */
-public async updateSellerProfile(userId: string, profileData: UpdateSellerProfileDto): Promise<SellerProfile> {
-  const validatedData = updateSellerProfileSchema.parse(profileData);
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new Error('User not found');
-  }
-  try {
-    const updatedProfile = await prisma.sellerProfile.update({
-      where: { userId: user.id },
-      data: {
-        ...(validatedData.businessName && { businessName: validatedData.businessName }),
-        ...(validatedData.businessAddress && { businessAddress: validatedData.businessAddress }),
-        ...(validatedData.businessPhone && { businessPhone: validatedData.businessPhone }),
-        ...(validatedData.businessEmail && { businessEmail: validatedData.businessEmail }),
-        ...(validatedData.verificationStatus && { 
-          verificationStatus: validatedData.verificationStatus,
-          ...(validatedData.verificationStatus === 'APPROVED' && { verificationDate: new Date() })
-        }),
-        bankAccount: {
-          upsert: {
-            create: {
-              accountHolderName: validatedData.accountHolderName || '',
-              accountNumber: validatedData.accountNumber || '',
-              bankName: validatedData.bankName || '',
-              swiftCode: validatedData.swiftCode || '',
-              iban: validatedData.iban,
-              routingNumber: validatedData.routingNumber,
-            },
-            update: {
-              ...(validatedData.accountHolderName && {
-                accountHolderName: validatedData.accountHolderName,
-              }),
-              ...(validatedData.accountNumber && { accountNumber: validatedData.accountNumber }),
-              ...(validatedData.bankName && { bankName: validatedData.bankName }),
-              ...(validatedData.swiftCode && { swiftCode: validatedData.swiftCode }),
-              ...(validatedData.iban && { iban: validatedData.iban }),
-              ...(validatedData.routingNumber && { routingNumber: validatedData.routingNumber }),
+  /**
+   * Update a seller's profile including bank account details and verification status
+   * @param userId - The ID of the user or seller
+   * @param profileData - The updated profile data
+   */
+  public async updateSellerProfile(
+    userId: string,
+    profileData: UpdateSellerProfileDto
+  ): Promise<SellerProfile> {
+    const validatedData = updateSellerProfileSchema.parse(profileData)
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      throw new Error('User not found')
+    }
+    try {
+      const updatedProfile = await prisma.sellerProfile.update({
+        where: { userId: user.id },
+        data: {
+          ...(validatedData.businessName && { businessName: validatedData.businessName }),
+          ...(validatedData.businessAddress && { businessAddress: validatedData.businessAddress }),
+          ...(validatedData.businessPhone && { businessPhone: validatedData.businessPhone }),
+          ...(validatedData.businessEmail && { businessEmail: validatedData.businessEmail }),
+          ...(validatedData.verificationStatus && {
+            verificationStatus: validatedData.verificationStatus,
+            ...(validatedData.verificationStatus === 'APPROVED' && {
+              verificationDate: new Date(),
+            }),
+          }),
+          bankAccount: {
+            upsert: {
+              create: {
+                accountHolderName: validatedData.accountHolderName || '',
+                accountNumber: validatedData.accountNumber || '',
+                bankName: validatedData.bankName || '',
+                swiftCode: validatedData.swiftCode || '',
+                iban: validatedData.iban,
+                routingNumber: validatedData.routingNumber,
+              },
+              update: {
+                ...(validatedData.accountHolderName && {
+                  accountHolderName: validatedData.accountHolderName,
+                }),
+                ...(validatedData.accountNumber && { accountNumber: validatedData.accountNumber }),
+                ...(validatedData.bankName && { bankName: validatedData.bankName }),
+                ...(validatedData.swiftCode && { swiftCode: validatedData.swiftCode }),
+                ...(validatedData.iban && { iban: validatedData.iban }),
+                ...(validatedData.routingNumber && { routingNumber: validatedData.routingNumber }),
+              },
             },
           },
         },
-      },
-      include: { bankAccount: true },
-    });
-    return updatedProfile;
-  } catch (error) {
-    throw new Error(`Failed to update seller profile: ${error.message}`);
+        include: { bankAccount: true },
+      })
+      return updatedProfile
+    } catch (error) {
+      throw new Error(`Failed to update seller profile: ${error.message}`)
+    }
   }
-}
 
   /**
    * Get all seller applications
@@ -296,7 +301,12 @@ public async updateSellerProfile(userId: string, profileData: UpdateSellerProfil
     if (!profile) throw new Error('Seller profile not found')
 
     try {
-      const { media } = await this.s3Facade.uploadFile(file, 'application/pdf', prisma, 'identity-documents')
+      const { media } = await this.s3Facade.uploadFile(
+        file,
+        'application/pdf',
+        prisma,
+        'identity-documents'
+      )
 
       return await prisma.sellerProfile.update({
         where: { userId },
@@ -353,8 +363,8 @@ public async updateSellerProfile(userId: string, profileData: UpdateSellerProfil
     const filledSalesData: SalesDataPoint[] = []
     let currentDate = startDate
     while (currentDate <= endDate) {
-      const existingData = salesData.find(
-        (d) => DateTime.fromJSDate(d.date).hasSame(currentDate, 'day')
+      const existingData = salesData.find((d) =>
+        DateTime.fromJSDate(d.date).hasSame(currentDate, 'day')
       )
       filledSalesData.push({
         date: currentDate.toFormat('yyyy-MM-dd'),

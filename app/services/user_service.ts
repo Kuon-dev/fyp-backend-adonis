@@ -93,7 +93,7 @@ export class UserService {
         sellerProfile: {
           include: {
             bankAccount: true,
-          }
+          },
           //select: {
           //  businessName: true,
           //  businessAddress: true,
@@ -104,7 +104,7 @@ export class UserService {
           //  bankAccount: true,
           //  verificationStatus: true,
           //},
-        }
+        },
       },
     })
   }

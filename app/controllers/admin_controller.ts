@@ -239,7 +239,6 @@ export default class AdminController {
     }
   }
 
-
   public async getAllFlaggedComments({ response }: HttpContext) {
     try {
       const comments = await this.commentService.getAllFlaggedComments()
