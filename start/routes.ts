@@ -45,7 +45,7 @@ router
         // Auth routes
         router.post('/login', [AuthController, 'login'])
         router.post('/register', [AuthController, 'register'])
-        router.post('/logout', [AuthController, 'logout']).use(middleware.auth({ role: 'USER' }))
+        router.post('/logout', [AuthController, 'logout'])
         router.post('/forgot-password', [AuthController, 'createPasswordResetToken'])
         router.post('/reset-password', [AuthController, 'resetPassword'])
         router.post('/verify-email', [AuthController, 'verifyEmail'])
@@ -104,6 +104,7 @@ router
           .delete('/admin/:email', [AdminController, 'deleteUser'])
           .use(middleware.auth({ role: 'ADMIN' }))
         router.get('/admin/reviews', [AdminController, 'getAllFlaggedReviews'])
+        router.get('/admin/payout-requests', [PayoutRequestController, 'getAll'])
 
         router.get('/users', [UserController, 'getAll'])
 
@@ -131,11 +132,9 @@ router
 
         router
           .group(() => {
-            router.post('/', [PayoutRequestController, 'create'])
             router.get('/:id', [PayoutRequestController, 'getById'])
             router.put('/:id', [PayoutRequestController, 'update'])
             router.delete('/:id', [PayoutRequestController, 'delete'])
-            router.get('/', [PayoutRequestController, 'getAll'])
             router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
             router
               .post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])
@@ -153,7 +152,9 @@ router
             // Update seller's own profile
             router.put('/profile', [SellerController, 'updateProfile'])
             // Get seller's balance
-            //router.get('/balance', [SellerController, 'getBalance'])
+            router.get('/balance', [PayoutRequestController, 'getSellerBalance'])
+            router.get('/payout-requests', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
+            router.post('/payout-requests', [PayoutRequestController, 'create'])
             // Request a payout
             //router.post('/payout-request', [SellerController, 'requestPayout'])
             // Get payout history

@@ -10,7 +10,7 @@ async function main() {
   //console.log('Users generated')
   await seedCodeRepos(200)
   await seedReviewsAndComments(300)
-  await seedOrders(500)
+  await seedOrders(2000)
   await seedPayoutsAndRequests(50)
   //console.log('Orders generated')
 }

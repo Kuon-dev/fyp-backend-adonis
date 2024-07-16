@@ -2,14 +2,23 @@ import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
 import { PayoutRequestStatus, SellerVerificationStatus } from '@prisma/client'
 import { DateTime } from 'luxon'
-import { string } from 'zod'
+
+const MINIMUM_PAYOUT_AMOUNT = 50
+const COOLDOWN_PERIOD_DAYS = 7
 
 @inject()
 export default class PayoutRequestService {
   public async createPayoutRequest(userId: string, data: { totalAmount: number }) {
-    const sellerProfile = await prisma.sellerProfile.findUnique({ where: { userId } })
+    const sellerProfile = await prisma.sellerProfile.findUnique({
+      where: { userId },
+      include: { user: true }
+    })
     if (!sellerProfile) {
       throw new Error('Seller profile not found')
+    }
+
+    if (sellerProfile.verificationStatus !== SellerVerificationStatus.APPROVED) {
+      throw new Error('Seller is not verified')
     }
 
     const lastPayoutRequest = await prisma.payoutRequest.findFirst({
@@ -17,36 +26,54 @@ export default class PayoutRequestService {
       orderBy: { createdAt: 'desc' },
     })
 
-    const lastPayoutDate =
-      lastPayoutRequest?.createdAt || sellerProfile.lastPayoutDate || new Date(0)
+    const lastPayoutDate = lastPayoutRequest?.createdAt || sellerProfile.lastPayoutDate || new Date(0)
+    const cooldownPeriod = DateTime.fromJSDate(lastPayoutDate).plus({ days: COOLDOWN_PERIOD_DAYS })
 
-    const orders = await prisma.order.findMany({
-      where: {
-        codeRepo: { userId },
-        createdAt: { gt: lastPayoutDate },
-        status: 'SUCCEEDED',
-      },
-    })
+    if (DateTime.now() < cooldownPeriod) {
+      throw new Error('Cooldown period has not elapsed since last payout request')
+    }
 
-    const totalAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0)
+    if (data.totalAmount < MINIMUM_PAYOUT_AMOUNT) {
+      throw new Error(`Minimum payout amount is $${MINIMUM_PAYOUT_AMOUNT}`)
+    }
+
+    if (data.totalAmount > sellerProfile.balance) {
+      throw new Error('Requested amount exceeds available balance')
+    }
 
     return prisma.$transaction(async (tx) => {
       const payoutRequest = await tx.payoutRequest.create({
         data: {
           sellerProfileId: sellerProfile.id,
-          totalAmount,
+          totalAmount: data.totalAmount,
           lastPayoutDate,
           status: PayoutRequestStatus.PENDING,
         },
       })
 
-      await tx.order.updateMany({
-        where: { id: { in: orders.map((order) => order.id) } },
-        data: { payoutRequestId: payoutRequest.id },
+      await tx.sellerProfile.update({
+        where: { id: sellerProfile.id },
+        data: { lastPayoutDate: new Date() },
       })
 
       return payoutRequest
     })
+  }
+
+  public async getSellerBalance(userId: string) {
+    const sellerProfile = await prisma.sellerProfile.findUnique({
+      where: { userId },
+      select: { balance: true, lastPayoutDate: true },
+    })
+
+    if (!sellerProfile) {
+      throw new Error('Seller profile not found')
+    }
+
+    return {
+      balance: sellerProfile.balance,
+      lastPayoutRequestDate: sellerProfile.lastPayoutDate,
+    }
   }
 
   public async getPayoutRequestById(id: string) {
@@ -155,7 +182,7 @@ export default class PayoutRequestService {
             sellerProfileId: payoutRequest.sellerProfileId,
             payoutRequestId: payoutRequest.id,
             totalAmount: payoutRequest.totalAmount,
-            currency: 'myr', // Assuming USD, adjust as needed
+            currency: 'myr',
           },
         })
 
