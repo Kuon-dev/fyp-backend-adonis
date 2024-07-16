@@ -1,7 +1,8 @@
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
-import { PayoutRequestStatus } from '@prisma/client'
+import { PayoutRequestStatus, SellerVerificationStatus } from '@prisma/client'
 import { DateTime } from 'luxon'
+import { string } from 'zod'
 
 @inject()
 export default class PayoutRequestService {
@@ -101,10 +102,20 @@ export default class PayoutRequestService {
   }
 
   public async getAllPayoutRequests() {
-    return prisma.payoutRequest.findMany({
+    return await prisma.payoutRequest.findMany({
+      where: {
+        sellerProfile: {
+          verificationStatus: SellerVerificationStatus.APPROVED
+        }
+      },
       include: {
         sellerProfile: {
-          include: { user: true },
+          include: {
+            user: {
+              select: { email: true, role: true, bannedUntil: true, deletedAt: true },
+            },
+            bankAccount: true
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -144,8 +155,7 @@ export default class PayoutRequestService {
             sellerProfileId: payoutRequest.sellerProfileId,
             payoutRequestId: payoutRequest.id,
             totalAmount: payoutRequest.totalAmount,
-            currency: 'USD', // Assuming USD, adjust as needed
-            status: 'PENDING',
+            currency: 'myr', // Assuming USD, adjust as needed
           },
         })
 
@@ -162,7 +172,7 @@ export default class PayoutRequestService {
         await tx.payoutRequest.update({
           where: { id },
           data: {
-            status: PayoutRequestStatus.APPROVED,
+            status: PayoutRequestStatus.PROCESSED,
             processedAt: new Date(),
           },
         })

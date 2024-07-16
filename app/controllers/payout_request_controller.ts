@@ -1,10 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
-import { Exception } from '@adonisjs/core/exceptions'
+//import { Exception } from '@adonisjs/core/exceptions'
 import { z } from 'zod'
 import PayoutRequestService from '#services/payout_request_service'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import { createPayoutRequestSchema, updatePayoutRequestSchema } from '#validators/payout_request'
+import { PayoutRequestStatus } from '@prisma/client'
 
 /**
  * Controller class for handling PayoutRequest operations.
@@ -58,8 +59,8 @@ export default class PayoutRequestController {
     if (!request.user) throw new UnAuthorizedException('User not found in request object')
 
     try {
-      const data = updatePayoutRequestSchema.parse(request.body())
-      const payoutRequest = await this.payoutRequestService.updatePayoutRequest(id, data)
+      const data = updatePayoutRequestSchema.parse(request.body()) as { status: PayoutRequestStatus }
+      const payoutRequest = await this.payoutRequestService.updatePayoutRequest(id, data.status)
       return response.status(200).json(payoutRequest)
     } catch (error) {
       if (error instanceof z.ZodError) {

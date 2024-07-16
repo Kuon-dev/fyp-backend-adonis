@@ -5,7 +5,7 @@ export const createPayoutRequestSchema = z.object({
 })
 
 export const updatePayoutRequestSchema = z.object({
-  status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'PROCESSED']).optional(),
+  status: z.enum(['PENDING', 'REJECTED', 'PROCESSED']),
 })
 
 export const processPayoutRequestSchema = z.object({

@@ -15,6 +15,7 @@ export default class PayoutController {
    *   "sellerProfileId": "seller123",
    *   "amount": 1000,
    *   "currency": "USD"
+   *   "payoutRequestId": "payout123
    * }
    * @responseBody 201 - {
    *   "id": "payout123",
@@ -78,16 +79,16 @@ export default class PayoutController {
    * @responseBody 404 - { "error": "Payout not found" }
    * @responseBody 500 - { "error": "Error updating payout" }
    */
-  public async update({ params, request, response }: HttpContext) {
-    try {
-      const data = updatePayoutSchema.parse(request.body())
-      const payout = await this.payoutService.updatePayout(params.id, data)
-      return response.json(payout)
-    } catch (error) {
-      return response.status(400).json({ error: error.message })
-    }
-  }
-
+  //public async update({ params, request, response }: HttpContext) {
+  //  try {
+  //    const data = updatePayoutSchema.parse(request.body())
+  //    const payout = await this.payoutService.updatePayout(params.id, data)
+  //    return response.json(payout)
+  //  } catch (error) {
+  //    return response.status(400).json({ error: error.message })
+  //  }
+  //}
+  //
   /**
    * @getPayoutsBySellerProfile
    * @description Retrieve all payouts for a specific seller profile.
@@ -138,17 +139,17 @@ export default class PayoutController {
    * @responseBody 404 - { "error": "Payout request not found" }
    * @responseBody 500 - { "error": "Error processing payout request" }
    */
-  public async processPayoutRequest({ params, request, response }: HttpContext) {
-    if (!request.user || request.user.role !== 'ADMIN') {
-      throw new UnAuthorizedException('Only admins can process payout requests')
-    }
-
-    try {
-      const { action } = request.body()
-      const payout = await this.payoutService.processPayoutRequest(params.id, action)
-      return response.json(payout)
-    } catch (error) {
-      return response.status(400).json({ error: error.message })
-    }
-  }
+  //public async processPayoutRequest({ params, request, response }: HttpContext) {
+  //  if (!request.user || request.user.role !== 'ADMIN') {
+  //    throw new UnAuthorizedException('Only admins can process payout requests')
+  //  }
+  //
+  //  try {
+  //    const { action } = request.body()
+  //    const payout = await this.payoutService.processPayoutRequest(params.id, action)
+  //    return response.json(payout)
+  //  } catch (error) {
+  //    return response.status(400).json({ error: error.message })
+  //  }
+  //}
 }

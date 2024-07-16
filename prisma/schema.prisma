@@ -128,7 +128,6 @@ model PayoutRequest {
 
 enum PayoutRequestStatus {
   PENDING
-  APPROVED
   REJECTED
   PROCESSED
 }
@@ -141,17 +140,8 @@ model Payout {
   payoutRequestId String        @unique
   totalAmount     Float // Updated field
   currency        String
-  status          PayoutStatus  @default(PENDING)
-  stripePayoutId  String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-}
-
-enum PayoutStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
 }
 
 model Session {

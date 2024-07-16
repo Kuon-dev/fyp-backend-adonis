@@ -4,7 +4,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   : ColumnType<T, T | undefined, T>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-import type { Role, SellerVerificationStatus, PayoutRequestStatus, PayoutStatus, CodeRepoStatus, Visibility, Language, OrderStatus, UserCommentFlag, VoteType, SupportTicketStatus, SupportTicketType } from "./enums";
+import type { Role, SellerVerificationStatus, PayoutRequestStatus, CodeRepoStatus, Visibility, Language, OrderStatus, UserCommentFlag, VoteType, SupportTicketStatus, SupportTicketType } from "./enums";
 
 export type BankAccount = {
     id: string;
@@ -99,8 +99,6 @@ export type Payout = {
     payoutRequestId: string;
     totalAmount: number;
     currency: string;
-    status: Generated<PayoutStatus>;
-    stripePayoutId: string | null;
     createdAt: Generated<Timestamp>;
     updatedAt: Timestamp;
 };

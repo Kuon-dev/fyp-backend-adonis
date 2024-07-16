@@ -14,18 +14,10 @@ export const SellerVerificationStatus = {
 export type SellerVerificationStatus = (typeof SellerVerificationStatus)[keyof typeof SellerVerificationStatus];
 export const PayoutRequestStatus = {
     PENDING: "PENDING",
-    APPROVED: "APPROVED",
     REJECTED: "REJECTED",
     PROCESSED: "PROCESSED"
 } as const;
 export type PayoutRequestStatus = (typeof PayoutRequestStatus)[keyof typeof PayoutRequestStatus];
-export const PayoutStatus = {
-    PENDING: "PENDING",
-    PROCESSING: "PROCESSING",
-    COMPLETED: "COMPLETED",
-    FAILED: "FAILED"
-} as const;
-export type PayoutStatus = (typeof PayoutStatus)[keyof typeof PayoutStatus];
 export const CodeRepoStatus = {
     pending: "pending",
     active: "active",

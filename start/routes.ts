@@ -135,7 +135,7 @@ router
             router.get('/:id', [PayoutRequestController, 'getById'])
             router.put('/:id', [PayoutRequestController, 'update'])
             router.delete('/:id', [PayoutRequestController, 'delete'])
-            router.get('/', [PayoutRequestController, 'getPaginated'])
+            router.get('/', [PayoutRequestController, 'getAll'])
             router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
             router
               .post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])

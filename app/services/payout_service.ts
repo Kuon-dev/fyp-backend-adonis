@@ -1,6 +1,6 @@
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
-import { PayoutStatus } from '@prisma/client'
+//import { PayoutStatus } from '@prisma/client'
 
 @inject()
 export default class PayoutService {
@@ -9,13 +9,14 @@ export default class PayoutService {
    * @param {Object} data - The payout data.
    * @returns {Promise<Payout>} The created payout.
    */
-  public async createPayout(data: { sellerProfileId: string; amount: number; currency: string }) {
+  public async createPayout(data: { payoutRequestId: string, sellerProfileId: string; amount: number; currency: string }) {
     return prisma.payout.create({
       data: {
+        payoutRequestId: data.payoutRequestId,
         sellerProfileId: data.sellerProfileId,
         totalAmount: data.amount,
         currency: data.currency,
-        status: PayoutStatus.PENDING,
+        //status: PayoutStatus.COMPLETED,
       },
     })
   }
@@ -31,19 +32,6 @@ export default class PayoutService {
       throw new Error('Payout not found')
     }
     return payout
-  }
-
-  /**
-   * Update a payout's status.
-   * @param {string} id - The payout ID.
-   * @param {Object} data - The data to update.
-   * @returns {Promise<Payout>} The updated payout.
-   */
-  public async updatePayout(id: string, data: { status: PayoutStatus }) {
-    return prisma.payout.update({
-      where: { id },
-      data,
-    })
   }
 
   /**
@@ -85,8 +73,7 @@ export default class PayoutService {
             sellerProfileId: payoutRequest.sellerProfileId,
             payoutRequestId: payoutRequest.id,
             totalAmount: payoutRequest.totalAmount,
-            currency: 'USD', // Assuming USD, adjust as needed
-            status: PayoutStatus.PROCESSING,
+            currency: 'MYR', // Assuming USD, adjust as needed
           },
         })
 
@@ -103,7 +90,7 @@ export default class PayoutService {
         await tx.payoutRequest.update({
           where: { id },
           data: {
-            status: 'APPROVED',
+            status: 'PROCESSED',
             processedAt: new Date(),
           },
         })

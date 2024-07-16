@@ -1,30 +1,32 @@
-
 import { faker } from '@faker-js/faker';
 import { generateIdFromEntropySize } from 'lucia';
-import { PayoutRequest, PayoutRequestStatus, Payout, PayoutStatus, SellerProfile, Order } from '@prisma/client';
+import { PayoutRequest, PayoutRequestStatus, Payout, SellerProfile, SellerVerificationStatus } from '@prisma/client';
 import { prisma } from '#services/prisma_service';
 import { DateTime } from 'luxon';
 
-function generateDates() {
+function generateDates(status: PayoutRequestStatus) {
   const now = DateTime.now();
   const twoMonthsAgo = now.minus({ months: 2 });
 
   const createdAt = faker.date.between({ from: twoMonthsAgo.toJSDate(), to: now.toJSDate() });
   const updatedAt = faker.date.between({ from: createdAt, to: now.toJSDate() });
-  const processedAt = faker.datatype.boolean(0.7)
+
+  // Only generate processedAt for APPROVED or PROCESSED status
+  const processedAt = (status === PayoutRequestStatus.PROCESSED)
     ? faker.date.between({ from: updatedAt, to: now.toJSDate() })
     : null;
+
   return { createdAt, updatedAt, processedAt };
 }
 
-function generatePayoutRequest(sellerProfiles: SellerProfile[]): Omit<PayoutRequest, 'id'> {
-  const sellerProfile = faker.helpers.arrayElement(sellerProfiles);
-  const { createdAt, updatedAt, processedAt } = generateDates();
+function generatePayoutRequest(sellerProfile: SellerProfile): Omit<PayoutRequest, 'id'> {
+  const status = faker.helpers.arrayElement(Object.values(PayoutRequestStatus));
+  const { createdAt, updatedAt, processedAt } = generateDates(status);
 
   return {
     sellerProfileId: sellerProfile.id,
-    totalAmount: parseFloat(faker.finance.amount(100, 10000, 2)),
-    status: faker.helpers.arrayElement(Object.values(PayoutRequestStatus)),
+    totalAmount: parseFloat(faker.finance.amount({ min: 100, max: 10000, dec: 2 })),
+    status,
     createdAt,
     updatedAt,
     processedAt,
@@ -33,21 +35,19 @@ function generatePayoutRequest(sellerProfiles: SellerProfile[]): Omit<PayoutRequ
 }
 
 function generatePayout(payoutRequest: PayoutRequest): Omit<Payout, 'id'> {
-  const { createdAt, updatedAt } = generateDates();
+  const { createdAt, updatedAt } = generateDates(payoutRequest.status);
 
   return {
     sellerProfileId: payoutRequest.sellerProfileId,
     payoutRequestId: payoutRequest.id,
     totalAmount: payoutRequest.totalAmount,
     currency: 'USD',
-    status: faker.helpers.arrayElement(Object.values(PayoutStatus)),
-    stripePayoutId: faker.datatype.boolean(0.8) ? faker.string.uuid() : null,
     createdAt,
     updatedAt,
   };
 }
 
-async function processBatch(payoutRequests: Omit<PayoutRequest, 'id'>[], sellerProfiles: SellerProfile[]) {
+async function processBatch(payoutRequests: Omit<PayoutRequest, 'id'>[]) {
   const createdPayoutRequests: PayoutRequest[] = [];
   const createdPayouts: Payout[] = [];
 
@@ -63,7 +63,7 @@ async function processBatch(payoutRequests: Omit<PayoutRequest, 'id'>[], sellerP
       createdPayoutRequests.push(createdPayoutRequest);
       console.log(`Created payout request: ${createdPayoutRequest.id}`);
 
-      if (createdPayoutRequest.status === 'APPROVED' || createdPayoutRequest.status === 'PROCESSED') {
+      if (createdPayoutRequest.status === PayoutRequestStatus.PROCESSED) {
         const payoutData = generatePayout(createdPayoutRequest);
         const createdPayout = await prisma.payout.create({
           data: {
@@ -104,21 +104,25 @@ export async function seedPayoutsAndRequests(count: number = 50) {
   const batchSize = 10; // Adjust this value based on your needs
 
   try {
-    const sellerProfiles = await prisma.sellerProfile.findMany();
+    const verifiedSellerProfiles = await prisma.sellerProfile.findMany({
+      where: {
+        verificationStatus: SellerVerificationStatus.APPROVED
+      }
+    });
 
-    if (sellerProfiles.length === 0) {
-      throw new Error('No seller profiles found. Please seed seller profiles first.');
+    if (verifiedSellerProfiles.length === 0) {
+      throw new Error('No verified seller profiles found. Please seed verified seller profiles first.');
     }
 
     for (let i = 0; i < count; i += batchSize) {
       const batchCount = Math.min(batchSize, count - i);
-      const payoutRequestBatch = Array.from({ length: batchCount }, () => generatePayoutRequest(sellerProfiles));
-      const { createdPayoutRequests, createdPayouts } = await processBatch(payoutRequestBatch, sellerProfiles);
+      const payoutRequestBatch = Array.from({ length: batchCount }, () => generatePayoutRequest(faker.helpers.arrayElement(verifiedSellerProfiles)));
+      const { createdPayoutRequests, createdPayouts } = await processBatch(payoutRequestBatch);
       successfullyCreatedRequests += createdPayoutRequests.length;
       successfullyCreatedPayouts += createdPayouts.length;
     }
 
-    console.log(`Successfully seeded ${successfullyCreatedRequests} payout requests and ${successfullyCreatedPayouts} payouts`);
+    console.log(`Successfully seeded ${successfullyCreatedRequests} payout requests and ${successfullyCreatedPayouts} payouts for verified sellers`);
   } catch (error) {
     console.error('Error seeding payouts and requests:', error);
   } finally {
@@ -127,4 +131,3 @@ export async function seedPayoutsAndRequests(count: number = 50) {
 
   return { successfullyCreatedRequests, successfullyCreatedPayouts };
 }
-
