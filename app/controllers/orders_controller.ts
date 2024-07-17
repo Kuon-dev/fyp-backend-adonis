@@ -1,355 +1,162 @@
-import type { HttpContext } from '@adonisjs/core/http'
-import { OrderService } from '#services/order_service'
+import { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
-import { CreateOrderSchema, UpdateOrderSchema } from '#validators/order'
+import { z } from 'zod'
+import OrderService from '#services/order_service'
+import { prisma } from '#services/prisma_service'
+import { OrderStatus } from '@prisma/client'
+
+const createOrderSchema = z.object({
+  repoId: z.string().cuid(),
+  amount: z.number().positive(),
+  stripePaymentIntentId: z.string(),
+})
+
+const updateOrderSchema = z.object({
+  status: z.nativeEnum(OrderStatus),
+})
 
 @inject()
 export default class OrderController {
   constructor(protected orderService: OrderService) {}
 
   /**
-   * @checkCode
-   * @description Create a new order.
+   * @createOrder
+   * @description Create a new order
    * @requestBody {
-   *   "userId": "string",
-   *   "codeRepoId": "string",
-   *   "totalAmount": number
+   *   "repoId": "clxxxxxxxxxxxxxxxx",
+   *   "amount": 1000,
+   *   "stripePaymentIntentId": "pi_xxxxxxxxxxxxx"
    * }
-   * @responseBody 201 - {
-   *   "id": "string",
-   *   "userId": "string",
-   *   "codeRepoId": "string",
-   *   "totalAmount": number,
-   *   "status": "string",
-   *   "createdAt": "string",
-   *   "updatedAt": "string"
-   * }
-   * @responseBody 400 - { "message": "Validation failed", "errors": [] }
+   * @responseBody 201 - { "id": "clxxxxxxxxxxxxxxxx", ... }
+   * @responseBody 400 - { "message": "Invalid input data" }
+   * @responseBody 500 - { "message": "Failed to create order" }
    */
   public async create({ request, response }: HttpContext) {
-    const data = request.only(['userId', 'codeRepoId', 'totalAmount'])
-
-    const validation = CreateOrderSchema.safeParse(data)
-    if (!validation.success) {
-      return response
-        .status(400)
-        .json({ message: 'Validation failed', errors: validation.error.errors })
-    }
-
     try {
-      const order = await this.orderService.createOrder(validation.data)
-      return response.status(201).json(order)
+      const data = createOrderSchema.parse(request.body())
+      const userId = request.user?.id
+
+      if (!userId) {
+        return response.unauthorized({ message: 'User not authenticated' })
+      }
+
+      const order = await this.orderService.createOrder({
+        userId,
+        repoId: data.repoId,
+        amount: data.amount,
+        status: OrderStatus.SUCCEEDED, // Assuming default status, adjust as needed
+        stripePaymentIntentId: data.stripePaymentIntentId,
+      })
+      return response.created(order)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      if (error instanceof z.ZodError) {
+        return response.badRequest({ message: 'Invalid input data', errors: error.errors })
+      }
+      return response.internalServerError({ message: 'Failed to create order' })
     }
   }
 
   /**
-   * @checkCode
-   * @description Retrieve a paginated list of all orders.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of items per page.
-   * @responseBody 200 - {
-   *   "orders": [
-   *     {
-   *       "id": "string",
-   *       "userId": "string",
-   *       "codeRepoId": "string",
-   *       "totalAmount": number,
-   *       "status": "string",
-   *       "createdAt": "string",
-   *       "updatedAt": "string"
-   *     }
-   *   ],
-   *   "total": number
-   * }
-   * @responseBody 400 - { "message": "Error message" }
+   * @getOrder
+   * @description Get an order by ID
+   * @paramParam id - The ID of the order
+   * @responseBody 200 - { "id": "clxxxxxxxxxxxxxxxx", ... }
+   * @responseBody 404 - { "message": "Order not found" }
    */
-  public async getAll({ request, response }: HttpContext) {
+  public async show({ params, response, request }: HttpContext) {
+    const userId = request.user?.id
+
+    if (!userId) {
+      return response.unauthorized({ message: 'User not authenticated' })
+    }
+
+    const order = await this.orderService.getOrderById(params.id)
+    if (!order) {
+      return response.notFound({ message: 'Order not found' })
+    }
+
+    // Check if the order belongs to the authenticated user
+    if (order.userId !== userId) {
+      return response.forbidden({ message: 'Access denied' })
+    }
+
+    return response.ok(order)
+  }
+
+  /**
+   * @listOrders
+   * @description List orders for the authenticated user
+   * @queryParam page - Page number
+   * @queryParam limit - Number of items per page
+   * @responseBody 200 - { "data": [...], "meta": { ... } }
+   */
+  public async index({ request, response }: HttpContext) {
     const page = request.input('page', 1)
     const limit = request.input('limit', 10)
+    const userId = request.user?.id
 
-    try {
-      const { orders, total } = await this.orderService.getAllOrders(page, limit)
-      return response.status(200).json({ orders, total })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+    if (!userId) {
+      return response.unauthorized({ message: 'User not authenticated' })
     }
+
+    // Since getOrdersByUser is not implemented in the service, we'll use prisma directly here
+    // In a real-world scenario, you should implement this method in the OrderService
+    const orders = await prisma.order.findMany({
+      where: { userId },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const total = await prisma.order.count({ where: { userId } })
+
+    return response.ok({
+      data: orders,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.ceil(total / limit),
+      },
+    })
   }
 
   /**
-   * @checkCode
-   * @description Retrieve an order by its ID.
-   * @paramParam id - The ID of the order.
-   * @responseBody 200 - {
-   *   "id": "string",
-   *   "userId": "string",
-   *   "codeRepoId": "string",
-   *   "totalAmount": number,
-   *   "status": "string",
-   *   "createdAt": "string",
-   *   "updatedAt": "string"
-   * }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async getById({ params, response }: HttpContext) {
-    const { id } = params
-
-    try {
-      const order = await this.orderService.getOrderById(id)
-      return response.status(200).json(order)
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Retrieve a paginated list of orders for a specific user.
-   * @paramParam userId - The user ID.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of items per page.
-   * @responseBody 200 - {
-   *   "orders": [
-   *     {
-   *       "id": "string",
-   *       "userId": "string",
-   *       "codeRepoId": "string",
-   *       "totalAmount": number,
-   *       "status": "string",
-   *       "createdAt": "string",
-   *       "updatedAt": "string"
-   *     }
-   *   ],
-   *   "total": number
-   * }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async getByUser({ params, request, response }: HttpContext) {
-    const { userId } = params
-    const page = request.input('page', 1)
-    const limit = request.input('limit', 10)
-
-    try {
-      const { orders, total } = await this.orderService.getOrdersByUser(userId, page, limit)
-      return response.status(200).json({ orders, total })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Update an order by its ID.
-   * @paramParam id - The ID of the order.
+   * @updateOrder
+   * @description Update an order's status
+   * @paramParam id - The ID of the order
    * @requestBody {
-   *   "status": "string",
-   *   "totalAmount": number
+   *   "status": "CANCELLED"
    * }
-   * @responseBody 200 - {
-   *   "id": "string",
-   *   "userId": "string",
-   *   "codeRepoId": "string",
-   *   "totalAmount": number,
-   *   "status": "string",
-   *   "createdAt": "string",
-   *   "updatedAt": "string"
-   * }
-   * @responseBody 400 - { "message": "Validation failed", "errors": [] }
+   * @responseBody 200 - { "id": "clxxxxxxxxxxxxxxxx", ... }
+   * @responseBody 400 - { "message": "Invalid input data" }
+   * @responseBody 404 - { "message": "Order not found" }
    */
   public async update({ params, request, response }: HttpContext) {
-    const { id } = params
-    const data = request.only(['status', 'totalAmount'])
-
-    const validation = UpdateOrderSchema.safeParse(data)
-    if (!validation.success) {
-      return response
-        .status(400)
-        .json({ message: 'Validation failed', errors: validation.error.errors })
-    }
-
     try {
-      const order = await this.orderService.updateOrder(id, validation.data)
-      return response.status(200).json(order)
+      const { status } = updateOrderSchema.parse(request.body())
+      const userId = request.user?.id
+
+      if (!userId) {
+        return response.unauthorized({ message: 'User not authenticated' })
+      }
+
+      const order = await this.orderService.getOrderById(params.id)
+      if (!order) {
+        return response.notFound({ message: 'Order not found' })
+      }
+
+      if (order.userId !== userId) {
+        return response.forbidden({ message: 'Access denied' })
+      }
+
+      const updatedOrder = await this.orderService.updateOrderStatus(params.id, status)
+      return response.ok(updatedOrder)
     } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Soft delete an order by its ID.
-   * @paramParam id - The ID of the order.
-   * @responseBody 200 - { "message": "Order deleted successfully", "order": {} }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async delete({ params, response }: HttpContext) {
-    const { id } = params
-
-    try {
-      const order = await this.orderService.deleteOrder(id)
-      return response.status(200).json({ message: 'Order deleted successfully', order })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Retrieve a paginated list of orders filtered by status.
-   * @paramParam status - The status of the orders.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of items per page.
-   * @responseBody 200 - {
-   *   "orders": [
-   *     {
-   *       "id": "string",
-   *       "userId": "string",
-   *       "codeRepoId": "string",
-   *       "totalAmount": number,
-   *       "status": "string",
-   *       "createdAt": "string",
-   *       "updatedAt": "string"
-   *     }
-   *   ],
-   *   "total": number
-   * }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async getByStatus({ params, request, response }: HttpContext) {
-    const { status } = params
-    const page = request.input('page', 1)
-    const limit = request.input('limit', 10)
-
-    try {
-      const { orders, total } = await this.orderService.getOrdersByStatus(status, page, limit)
-      return response.status(200).json({ orders, total })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Retrieve a paginated list of orders for a specific user filtered by status.
-   * @paramParam userId - The user ID.
-   * @paramParam status - The status of the orders.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of items per page.
-   * @responseBody 200 - {
-   *   "orders": [
-   *     {
-   *       "id": "string",
-   *       "userId": "string",
-   *       "codeRepoId": "string",
-   *       "totalAmount": number,
-   *       "status": "string",
-   *       "createdAt": "string",
-   *       "updatedAt": "string"
-   *     }
-   *   ],
-   *   "total": number
-   * }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async getUserOrdersByStatus({ params, request, response }: HttpContext) {
-    const { userId, status } = params
-    const page = request.input('page', 1)
-    const limit = request.input('limit', 10)
-
-    try {
-      const { orders, total } = await this.orderService.getUserOrdersByStatus(
-        userId,
-        status,
-        page,
-        limit
-      )
-      return response.status(200).json({ orders, total })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Search orders based on various criteria.
-   * @queryParam userId - The user ID.
-   * @queryParam status - The order status.
-   * @queryParam fromDate - The start date for the search range.
-   * @queryParam toDate - The end date for the search range.
-   * @queryParam minAmount - The minimum total amount for the search.
-   * @queryParam maxAmount - The maximum total amount for the search.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of items per page.
-   * @responseBody 200 - {
-   *   "orders": [
-   *     {
-   *       "id": "string",
-   *       "userId": "string",
-   *       "codeRepoId": "string",
-   *       "totalAmount": number,
-   *       "status": "string",
-   *       "createdAt": "string",
-   *       "updatedAt": "string"
-   *     }
-   *   ],
-   *   "total": number
-   * }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async searchOrders({ request, response }: HttpContext) {
-    const criteria = request.only([
-      'userId',
-      'status',
-      'fromDate',
-      'toDate',
-      'minAmount',
-      'maxAmount',
-    ])
-    const page = request.input('page', 1)
-    const limit = request.input('limit', 10)
-
-    try {
-      const { orders, total } = await this.orderService.searchOrders(criteria, page, limit)
-      return response.status(200).json({ orders, total })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Complete an order by ID and update sales aggregates.
-   * @paramParam id - The ID of the order to complete.
-   * @responseBody 200 - { "message": "Order completed successfully", "order": {} }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async completeOrder({ params, response }: HttpContext) {
-    const { id } = params
-
-    try {
-      const order = await this.orderService.completeOrder(id)
-      return response.status(200).json({ message: 'Order completed successfully', order })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
-    }
-  }
-
-  /**
-   * @checkCode
-   * @description Get the total sales count for a CodeRepo.
-   * @paramParam id - The ID of the CodeRepo.
-   * @responseBody 200 - { "codeRepoId": "string", "salesCount": number }
-   * @responseBody 400 - { "message": "Error message" }
-   */
-  public async getCodeRepoSalesCount({ params, response }: HttpContext) {
-    const { id } = params
-
-    try {
-      const salesCount = await this.orderService.getCodeRepoSalesCount(id)
-      return response.status(200).json({ codeRepoId: id, salesCount })
-    } catch (error) {
-      return response.status(error.status ?? 400).json({ message: error.message })
+      if (error instanceof z.ZodError) {
+        return response.badRequest({ message: 'Invalid input data', errors: error.errors })
+      }
+      return response.internalServerError({ message: 'Failed to update order' })
     }
   }
 }

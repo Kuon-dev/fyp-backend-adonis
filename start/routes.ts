@@ -1,219 +1,178 @@
-/*
-|--------------------------------------------------------------------------
-| routers file
-|--------------------------------------------------------------------------
-|
-| The routes file is used for defining the HTTP routes.
-|
-*/
-
 import router from '@adonisjs/core/services/router'
-import { prisma } from '#services/prisma_service'
 import { middleware } from '#start/kernel'
 import AutoSwagger from 'adonis-autoswagger'
 import swagger from '#config/swagger'
 
+// Controller imports
+const CheckoutController = () => import('#controllers/checkout_controller')
 const AuthController = () => import('#controllers/auth_controller')
 const RepoController = () => import('#controllers/repos_controller')
 const SupportController = () => import('#controllers/supports_controller')
 const UserController = () => import('#controllers/users_controller')
-const OrderController = () => import('#controllers/orders_controller')
-const CheckoutController = () => import('#controllers/checkout_controller')
 const CodeCheckController = () => import('#controllers/code_checks_controller')
 const HealthChecksController = () => import('#controllers/health_checks_controller')
 const ReviewController = () => import('#controllers/reviews_controller')
 const CommentController = () => import('#controllers/comments_controller')
 const ProfileController = () => import('#controllers/profile_controller')
-
 const AdminController = () => import('#controllers/admin_controller')
 const SellerController = () => import('#controllers/seller_controller')
-
+const OrderController = () => import('#controllers/orders_controller')
 const PayoutRequestController = () => import('#controllers/payout_request_controller')
 
-router.get('/', async () => {
-  const users = await prisma.user.findMany()
-  return {
-    hello: 'world',
-    users,
-  }
-})
+// Root route
+router.group(() => {
+  router.group(() => {
+    // Auth routes
+    router.group(() => {
+      router.post('/login', [AuthController, 'login'])
+      router.post('/register', [AuthController, 'register'])
+      router.post('/logout', [AuthController, 'logout'])
+      router.post('/forgot-password', [AuthController, 'createPasswordResetToken'])
+      router.post('/reset-password', [AuthController, 'resetPassword'])
+      router.post('/verify-email', [AuthController, 'verifyEmail'])
+      router.post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser'])
+      router.get('/me', [AuthController, 'me'])
+    })
 
-router
-  .group(() => {
+    // Profile routes
     router
-      .group(() => {
-        // Auth routes
-        router.post('/login', [AuthController, 'login'])
-        router.post('/register', [AuthController, 'register'])
-        router.post('/logout', [AuthController, 'logout'])
-        router.post('/forgot-password', [AuthController, 'createPasswordResetToken'])
-        router.post('/reset-password', [AuthController, 'resetPassword'])
-        router.post('/verify-email', [AuthController, 'verifyEmail'])
-        router.post('/send-verify-code', [AuthController, 'sendVerifyEmailCodeFromUser'])
-        router.get('/me', [AuthController, 'me'])
+      .put('/profile', [ProfileController, 'updateProfile'])
+      .use(middleware.auth({ role: 'USER' }))
 
-        router
-          .put('/profile', [ProfileController, 'updateProfile'])
-          .use(middleware.auth({ role: 'USER' }))
+    // Support routes
+    router.group(() => {
+      router.post('/ticket', [SupportController, 'createTicket'])
+      router
+        .get('/tickets', [SupportController, 'getAllTickets'])
+        .use(middleware.auth({ role: 'ADMIN' }))
+      router.get('/tickets/paginated', [SupportController, 'getPaginatedTickets'])
+      router.get('/ticket/:id', [SupportController, 'getTicketById'])
+      router.get('/tickets/title', [SupportController, 'getTicketsByTitle'])
+      router.get('/tickets/email', [SupportController, 'getTicketsByEmail'])
+      router.get('/tickets/status', [SupportController, 'getTicketsByStatus'])
+      router.put('/ticket/:id', [SupportController, 'updateTicket'])
+      router.post('/email', [SupportController, 'sendDefaultEmail'])
+    }).prefix('/support')
 
-        // Support routes
-        router.post('/support/ticket', [SupportController, 'createTicket'])
-        router
-          .get('/support/tickets', [SupportController, 'getAllTickets'])
-          .use(middleware.auth({ role: 'ADMIN' }))
-        router.get('/support/tickets/paginated', [SupportController, 'getPaginatedTickets'])
-        router.get('/support/ticket/:id', [SupportController, 'getTicketById'])
-        router.get('/support/tickets/title', [SupportController, 'getTicketsByTitle'])
-        router.get('/support/tickets/email', [SupportController, 'getTicketsByEmail'])
-        router.get('/support/tickets/status', [SupportController, 'getTicketsByStatus'])
-        router.put('/support/ticket/:id', [SupportController, 'updateTicket'])
-        router.post('/support/email', [SupportController, 'sendDefaultEmail'])
+    // Repo routes
+    router.group(() => {
+      router.post('/', [RepoController, 'create'])
+      //router.get('/:id', [RepoController, 'getById'])
+      router.put('/:id', [RepoController, 'update'])
+      router.delete('/:id', [RepoController, 'delete'])
+      router.get('/', [RepoController, 'getPaginated'])
+      router.get('/search', [RepoController, 'search'])
+      router.get('/user/:userId', [RepoController, 'getByUser'])
+      router
+        .get('/user', [RepoController, 'getByUserSession'])
+        .use(middleware.auth({ role: 'USER' }))
+      router.get('/all', [RepoController, 'getAll'])
+      router.get('/featured', [RepoController, 'getFeatured'])
+    }).prefix('/repos')
 
-        // Repo routes
-        router.post('/repos', [RepoController, 'create'])
-        router.get('/repo/:id', [RepoController, 'getById'])
-        router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
+    // Comment routes
+    router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
+    router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
+    router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
 
-        // comments
-        router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
-        router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
+    // Admin routes
+    router.group(() => {
+      router.put('/seller-profile/:email', [AdminController, 'updateSellerProfile'])
+      router.post('/:email/ban', [AdminController, 'banUser'])
+      router.post('/:email/unban', [AdminController, 'unbanUser'])
+      router.delete('/:email', [AdminController, 'deleteUser'])
+      router.get('/reviews', [AdminController, 'getAllFlaggedReviews'])
+      router.get('/payout-requests', [PayoutRequestController, 'getAll'])
+    })
+      .prefix('/admin')
+      .use(middleware.auth({ role: 'ADMIN' }))
 
-        router.put('/repo/:id', [RepoController, 'update'])
-        router.delete('/repo/:id', [RepoController, 'delete'])
-        router.get('/repos', [RepoController, 'getPaginated'])
-        router.get('/repos/search', [RepoController, 'search'])
-        router.get('/repos/user/:userId', [RepoController, 'getByUser'])
-        router
-          .get('/repos/user', [RepoController, 'getByUserSession'])
-          .use(middleware.auth({ role: 'USER' }))
+    // User routes
+    router.group(() => {
+      router.post('/', [UserController, 'create'])
+      router.get('/:email', [UserController, 'getByEmail'])
+      router.put('/:email', [UserController, 'update'])
+      router.delete('/:email', [UserController, 'delete'])
+      router.get('/', [UserController, 'getAll'])
+      router.get('/paginated', [UserController, 'getPaginated'])
+      router.put('/:email/profile', [UserController, 'updateProfile'])
+    }).prefix('/users')
 
-        router.get('/repos/all', [RepoController, 'getAll'])
-        router.get('/repos/featured', [RepoController, 'getFeatured'])
+    router.post('/checkout', [CheckoutController, 'initCheckout'])
+    router.get('/checkout/:sessionId', [CheckoutController, 'processPayment'])
 
-        // admin routes
-        router
-          .put('/admin/seller-profile/:email', [AdminController, 'updateSellerProfile'])
-          .use(middleware.auth({ role: 'ADMIN' }))
-        router
-          .post('/admin/:email/ban', [AdminController, 'banUser'])
-          .use(middleware.auth({ role: 'ADMIN' }))
-        router
-          .post('/admin/:email/unban', [AdminController, 'unbanUser'])
-          .use(middleware.auth({ role: 'ADMIN' }))
-        router
-          .delete('/admin/:email', [AdminController, 'deleteUser'])
-          .use(middleware.auth({ role: 'ADMIN' }))
-        router.get('/admin/reviews', [AdminController, 'getAllFlaggedReviews'])
-        router.get('/admin/payout-requests', [PayoutRequestController, 'getAll'])
+    // Payout request routes
+    router.group(() => {
+      router.get('/:id', [PayoutRequestController, 'getById'])
+      router.put('/:id', [PayoutRequestController, 'update'])
+      router.delete('/:id', [PayoutRequestController, 'delete'])
+      router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
+      router
+        .post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])
+        .use(middleware.auth({ role: 'ADMIN' }))
+    })
+      .prefix('/payout-requests')
+      .use(middleware.auth({ role: 'USER' }))
 
-        router.get('/users', [UserController, 'getAll'])
+    // Seller routes
+    router.group(() => {
+      router.post('/apply', [SellerController, 'applyForSellerAccount'])
+      router.get('/dashboard', [SellerController, 'getDashboardData'])
+      router.put('/profile', [SellerController, 'updateProfile'])
+      router.get('/balance', [PayoutRequestController, 'getSellerBalance'])
+      router.get('/payout-requests', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
+      router.post('/payout-requests', [PayoutRequestController, 'create'])
+    })
+      .prefix('/seller')
+      .use(middleware.auth({ role: 'SELLER' }))
 
-        // User routes
-        router.post('/users', [UserController, 'create'])
-        router.get('/users/:email', [UserController, 'getByEmail'])
-        router.put('/users/:email', [UserController, 'update'])
-        router.delete('/users/:email', [UserController, 'delete'])
-        router.get('/users/paginated', [UserController, 'getPaginated'])
-        router.put('/users/:email/profile', [UserController, 'updateProfile'])
+    // Code analysis routes
+    router.post('/code-analysis/public', [CodeCheckController, 'publicCheckCode'])
+    router
+      .post('/code-analysis', [CodeCheckController, 'checkAndStoreCode'])
+      .use(middleware.auth({ role: 'USER' }))
+    router.get('/code-analysis/{id}', [CodeCheckController, 'getCodeCheck'])
 
-        // Order routes
-        router.post('/orders', [OrderController, 'create'])
-        router.get('/orders', [OrderController, 'getAll'])
-        router.get('/orders/:id', [OrderController, 'getById'])
-        router.get('/users/:userId/orders', [OrderController, 'getByUser'])
-        router.put('/orders/:id', [OrderController, 'update'])
-        router.delete('/orders/:id', [OrderController, 'delete'])
-        router.get('/orders/status/:status', [OrderController, 'getByStatus'])
-        router.get('/users/:userId/orders/status/:status', [
-          OrderController,
-          'getUserOrdersByStatus',
-        ])
-        router.get('/orders/search', [OrderController, 'searchOrders'])
+    // Health check routes
+    router.get('/health', [HealthChecksController])
 
-        router
-          .group(() => {
-            router.get('/:id', [PayoutRequestController, 'getById'])
-            router.put('/:id', [PayoutRequestController, 'update'])
-            router.delete('/:id', [PayoutRequestController, 'delete'])
-            router.get('/user/current', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
-            router
-              .post('/:id/process', [PayoutRequestController, 'processPayoutRequest'])
-              .use(middleware.auth({ role: 'ADMIN' }))
-          })
-          .prefix('/payout-requests')
-          .use(middleware.auth({ role: 'USER' }))
+    // Review routes
+    router.group(() => {
+      router.post('/', [ReviewController, 'create'])
+      router.get('/:id', [ReviewController, 'getById'])
+      router.put('/:id', [ReviewController, 'update'])
+      router.put('/:id/revert', [ReviewController, 'revertFlag'])
+      router.delete('/:id', [ReviewController, 'delete'])
+      router.post('/:id/:vote', [ReviewController, 'handleVote'])
+    }).prefix('/reviews')
 
-        // Seller-specific routes
-        router
-          .group(() => {
-            // Apply to become a seller
-            router.post('/apply', [SellerController, 'applyForSellerAccount'])
-            router.get('/dashboard', [SellerController, 'getDashboardData'])
-            // Update seller's own profile
-            router.put('/profile', [SellerController, 'updateProfile'])
-            // Get seller's balance
-            router.get('/balance', [PayoutRequestController, 'getSellerBalance'])
-            router.get('/payout-requests', [PayoutRequestController, 'getCurrentUserPayoutRequests'])
-            router.post('/payout-requests', [PayoutRequestController, 'create'])
-            // Request a payout
-            //router.post('/payout-request', [SellerController, 'requestPayout'])
-            // Get payout history
-            //router.get('/payout-history', [SellerController, 'getPayoutHistory'])
-            // Upload or update identity document
-            router.post('/identity-document', [SellerController, 'uploadIdentityDocument'])
-          })
-          .prefix('/seller')
-          .use(middleware.auth({ role: 'SELLER' }))
+    // Comment routes
+    router.group(() => {
+      router.post('/', [CommentController, 'create'])
+      router.get('/:id', [CommentController, 'getById'])
+      router.put('/:id', [CommentController, 'update'])
+      router.put('/:id/revert', [CommentController, 'revertFlag'])
+      router.delete('/:id', [CommentController, 'delete'])
+      router.get('/', [CommentController, 'getAll'])
+      router.post('/:id/:vote', [CommentController, 'handleVote'])
+    }).prefix('/comments')
 
-        router.post('/checkout', [CheckoutController, 'createPaymentIntent'])
-        router.get('/checkout/:sessionId', [CheckoutController, 'getPaymentIntent'])
+    // orders
+      router.group(() => {
+        router.post('/', [OrderController, 'create'])
+        router.get('/:id', [OrderController, 'show'])
+        router.get('/', [OrderController, 'index'])
+        router.put('/:id', [OrderController, 'update'])
+      }).prefix('/orders')
 
-        router.post('/code-analysis/public', [CodeCheckController, 'publicCheckCode'])
-        router
-          .post('/code-analysis', [CodeCheckController, 'checkAndStoreCode'])
-          .use(middleware.auth({ role: 'USER' }))
-        router.get('/code-analysis/{id}', [CodeCheckController, 'getCodeCheck'])
+  }).prefix('v1')
+}).prefix('api')
 
-        // Health Check routes
-        router.get('/health', [HealthChecksController])
-        router.get('/ping', async () => {
-          return {
-            message: 'pong',
-            // time interval to calculate response time
-            time: Date.now(),
-          }
-        })
-
-        // Review routes
-        router.post('/reviews', [ReviewController, 'create'])
-        router.get('/reviews/:id', [ReviewController, 'getById'])
-        router.put('/reviews/:id', [ReviewController, 'update'])
-        router.put('/reviews/:id/revert', [ReviewController, 'revertFlag'])
-        router.delete('/reviews/:id', [ReviewController, 'delete'])
-        //router.get('/reviews', [ReviewController, 'getAll'])
-        router.post('/reviews/:id/:vote', [ReviewController, 'handleVote'])
-
-        // Comment routes
-        router.post('/comments', [CommentController, 'create'])
-        router.get('/comments/:id', [CommentController, 'getById'])
-        router.put('/comments/:id', [CommentController, 'update'])
-        router.put('/comments/:id/revert', [CommentController, 'revertFlag'])
-        router.delete('/comments/:id', [CommentController, 'delete'])
-        router.get('/comments', [CommentController, 'getAll'])
-        router.post('/comments/:id/:vote', [CommentController, 'handleVote'])
-      })
-      .prefix('v1')
-  })
-  .prefix('api')
-
-// returns swagger in YAML
+// Swagger routes
 router.get('/swagger', async () => {
   return AutoSwagger.default.docs(router.toJSON(), swagger)
 })
 
-// Renders Swagger-UI and passes YAML-output of /swagger
 router.get('/docs', async () => {
   return AutoSwagger.default.ui('/swagger', swagger)
-  // return AutoSwagger.default.scalar("/swagger", swagger); to use Scalar instead
-  // return AutoSwagger.default.rapidoc("/swagger", swagger); to use RapiDoc instead
 })

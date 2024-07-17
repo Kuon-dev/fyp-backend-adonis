@@ -6,7 +6,7 @@ import {
   PayoutRequest,
   PayoutRequestStatus,
 } from '@prisma/client'
-import { prisma } from '#services/prisma_service'
+import { PrismaTransactionalClient, prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
 import {
   createSellerProfileSchema,
@@ -406,5 +406,22 @@ export default class SellerService {
       salesData: filledSalesData,
       recentReviews: formattedReviews,
     }
+  }
+
+  public async updateBalance(
+    sellerId: string,
+    amount: number,
+    tx?: PrismaTransactionalClient
+  ) {
+    const db = tx || prisma
+    
+    return await db.sellerProfile.update({
+      where: { id: sellerId },
+      data: {
+        balance: {
+          increment: amount
+        }
+      }
+    })
   }
 }

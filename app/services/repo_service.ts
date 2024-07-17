@@ -1,11 +1,16 @@
 import { SelectQueryBuilder, expressionBuilder, sql } from 'kysely'
-import type { CodeRepo, OrderStatus } from '@prisma/client'
+import { CodeRepo, OrderStatus } from '@prisma/client'
 import { kyselyDb } from '#database/kysely'
-import { prisma } from './prisma_service.js'
+import { PrismaTransactionalClient, prisma } from './prisma_service.js'
 
 type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss'> & {
   sourceJs?: string
   sourceCss?: string
+}
+
+type RepoCheckoutInfo = {
+  repo: PartialCodeRepo;
+  sellerProfileId: string | null;
 }
 
 export default class RepoService {
@@ -242,85 +247,6 @@ export default class RepoService {
   }
 
   /**
-   * Search Repos by dynamic criteria.
-   *
-   * @param specifications - The list of specifications to filter by.
-   * @param userId - The ID of the user performing the search (can be null for guests).
-   * @returns Promise<PartialCodeRepo[]> - Array of CodeRepo objects matching the search criteria.
-   */
-  public async searchRepos(
-    specifications: RepoSpecification[],
-    userId: string | null
-  ): Promise<PartialCodeRepo[]> {
-    const compositeSpecification = new CompositeSpecification()
-    specifications.forEach((spec) => compositeSpecification.add(spec))
-
-    let query = kyselyDb
-      .selectFrom('CodeRepo as cr')
-      .leftJoin('TagsOnRepos as tor', 'cr.id', 'tor.codeRepoId')
-      .leftJoin('Tag as t', 'tor.tagId', 't.id')
-      .selectAll('cr')
-      .select('t.name as tagName')
-
-    query = compositeSpecification.apply(query)
-
-    if (userId) {
-      // Record search for each tag specification
-      for (const spec of specifications) {
-        if (spec instanceof TagSpecification) {
-          for (const tag of spec.tags) {
-            await this.recordSearch(userId, tag)
-          }
-        }
-      }
-
-      // Fetch user's recent search tags
-      const recentTags = await prisma.searchHistory.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      })
-
-      const recentTagNames = recentTags.map((tag) => tag.tag)
-
-      // Prioritize repos that match recent search tags
-      query = query.orderBy(
-        sql`CASE WHEN t.name IN (${recentTagNames.map((tag) => `'${tag}'`).join(', ')}) THEN 1 ELSE 2 END`
-      )
-      query = query.orderBy('cr.createdAt', 'desc')
-    }
-
-    const repos = await query.execute()
-
-    // Filter out source code for unauthorized users
-    const partialRepos = await Promise.all(
-      repos.map(async (repo) => {
-        const partialRepo: PartialCodeRepo = { ...repo } as PartialCodeRepo
-
-        if (userId) {
-          const user = await prisma.user.findUnique({ where: { id: userId } })
-          const hasAccess =
-            repo.userId === userId ||
-            user?.role === 'ADMIN' ||
-            (await this.hasPurchased(userId, repo.id))
-
-          if (!hasAccess) {
-            delete partialRepo.sourceJs
-            delete partialRepo.sourceCss
-          }
-        } else {
-          delete partialRepo.sourceJs
-          delete partialRepo.sourceCss
-        }
-
-        return partialRepo
-      })
-    )
-
-    return partialRepos
-  }
-
-  /**
    * Retrieve Repos by user ID.
    *
    * @param userId - The user ID to filter by.
@@ -378,98 +304,67 @@ export default class RepoService {
       (a, b) => b.avgRating - a.avgRating || b.reviews.length - a.reviews.length
     )
   }
-}
 
-/**
- * Interface for Repository specifications used in search queries.
- */
-interface RepoSpecification {
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any>
-}
-
-/**
- * Specification for filtering repos by visibility.
- */
-export class VisibilitySpecification implements RepoSpecification {
-  constructor(private visibility: string) {}
-
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where('cr.visibility', '=', this.visibility)
-  }
-}
-
-/**
- * Specification for filtering repos by tags.
- */
-export class TagSpecification implements RepoSpecification {
-  constructor(public tags: string[]) {}
-
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    const eb = expressionBuilder(query)
-
-    return query.where(
-      eb.exists(
-        eb
-          .selectFrom('Tag as t')
-          .select('t.id')
-          .whereRef('t.repoId', '=', 'cr.id')
-          .where('t.name', 'in', this.tags)
-      )
-    )
-  }
-}
-
-/**
- * Specification for filtering repos by language.
- */
-export class LanguageSpecification implements RepoSpecification {
-  constructor(private language: string) {}
-
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where('cr.language', '=', this.language)
-  }
-}
-
-/**
- * Specification for filtering repos by user ID.
- */
-export class UserSpecification implements RepoSpecification {
-  constructor(private userId: string) {}
-
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where('cr.userId', '=', this.userId)
-  }
-}
-
-/**
- * Specification for searching repos by name or description.
- */
-export class SearchSpecification implements RepoSpecification {
-  constructor(private searchQuery: string) {}
-
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return query.where((eb) =>
-      eb.or([
-        eb('cr.name', 'ilike', `%${this.searchQuery}%`),
-        eb('cr.description', 'ilike', `%${this.searchQuery}%`),
-      ])
-    )
-  }
-}
-
-/**
- * Composite specification for combining multiple specifications.
- */
-export class CompositeSpecification implements RepoSpecification {
-  private specifications: RepoSpecification[] = []
-
-  add(spec: RepoSpecification): void {
-    this.specifications.push(spec)
+  /**
+   * Grant access to a repo for a user.
+   *
+   * @param repoId - The ID of the repo to grant access to.
+   * @param userId - The ID of the user to grant access to.
+   * @param tx - Optional transaction client for database operations.
+   * @returns Promise<boolean> - True if access was granted successfully, false otherwise.
+   */
+  public async grantAccess(
+    repoId: string,
+    userId: string,
+    tx?: PrismaTransactionalClient
+  ): Promise<boolean> {
+    const db = tx || prisma
+    try {
+      // Here we're assuming that granting access means creating an 'Order' with a 'SUCCEEDED' status
+      // You might want to adjust this logic based on your specific requirements
+      await db.order.create({
+        data: {
+          userId: userId,
+          codeRepoId: repoId,
+          status: OrderStatus.SUCCEEDED,
+          totalAmount: 0, // You might want to set this to the actual price of the repo
+        },
+      })
+      return true
+    } catch (error) {
+      console.error('Error granting access:', error)
+      return false
+    }
   }
 
-  apply(query: SelectQueryBuilder<any, any, any>): SelectQueryBuilder<any, any, any> {
-    return this.specifications.reduce((acc, spec) => {
-      return spec.apply(acc)
-    }, query)
+  /**
+   * Get a repo by its ID, including necessary related data for checkout.
+   *
+   * @param id - The ID of the repo.
+   * @returns Promise<RepoCheckoutInfo | null> - The repo data and seller info, or null if not found.
+   */
+  public async getRepoForCheckout(id: string): Promise<RepoCheckoutInfo | null> {
+    const repo = await prisma.codeRepo.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            sellerProfile: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!repo) return null
+
+    const { sourceJs, sourceCss, user, ...safeRepo } = repo
+    return {
+      repo: safeRepo,
+      sellerProfileId: user?.sellerProfile?.id ?? null,
+    }
   }
 }
