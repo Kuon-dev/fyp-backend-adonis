@@ -13,13 +13,15 @@ import logger from '@adonisjs/core/services/logger'
 
 const searchSchema = z.object({
   query: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  minPrice: z.number().optional(),
-  maxPrice: z.number().optional(),
+  tags: z.union([
+    z.string(),
+    z.array(z.string())
+  ]).optional().transform(val => Array.isArray(val) ? val : val ? [val] : undefined),
+  minPrice: z.number().min(0).optional(),
+  maxPrice: z.number().min(0).optional(),
   language: z.nativeEnum(Language).optional(),
-  visibility: z.nativeEnum(Visibility).optional(),
   page: z.number().int().positive().default(1),
-  pageSize: z.number().int().positive().max(100).default(10),
+  pageSize: z.number().int().positive().default(10)
 })
 
 /**
@@ -279,7 +281,7 @@ export default class RepoController {
    * @queryParam visibility - Filter by visibility (public/private)
    * @queryParam page - Page number for pagination
    * @queryParam pageSize - Number of items per page
-   * @responseBody 200 - { 
+   * @responseBody 200 - {
    *   "data": [
    *     { "id": "...", "name": "...", "description": "...", "language": "...", "price": 0, "visibility": "..." }
    *   ],
@@ -291,14 +293,13 @@ export default class RepoController {
     try {
       const validatedData = searchSchema.parse(request.qs())
       logger.info({ validatedData }, 'Search criteria');
-      
+
       const searchCriteria: SearchCriteria = {
         query: validatedData.query,
         tags: validatedData.tags,
         minPrice: validatedData.minPrice,
         maxPrice: validatedData.maxPrice,
         language: validatedData.language,
-        visibility: validatedData.visibility,
       }
 
       const userId = request.user?.id

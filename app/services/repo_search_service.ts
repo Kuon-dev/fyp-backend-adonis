@@ -1,4 +1,4 @@
-import { Kysely, sql, ExpressionBuilder, SelectQueryBuilder } from 'kysely';
+import { Kysely, sql, SelectQueryBuilder, Expression, SqlBool } from 'kysely';
 import { Language, Visibility } from '@prisma/client';
 import { DB } from '#database/kysely/types';
 import { kyselyDb } from '#database/kysely';
@@ -13,10 +13,23 @@ export interface SearchCriteria {
   visibility?: Visibility;
 }
 
+interface CodeRepoSearchResult {
+  id: string;
+  name: string;
+  description: string | null;
+  language: Language;
+  price: number;
+  visibility: Visibility;
+  tags: string[];
+  createdAt: Date;
+}
+
+type CodeRepoSearchQuery = SelectQueryBuilder<DB, 'CodeRepo' | 'TagsOnRepos' | 'Tag', any>;
+
 export class CodeRepoSearchBuilder {
   private db: Kysely<DB>;
   private searchCriteria: SearchCriteria;
-  private query: SelectQueryBuilder<DB, 'CodeRepo', any>;
+  private query: CodeRepoSearchQuery;
   private userId?: string;
 
   constructor(db: Kysely<DB>) {
@@ -31,9 +44,18 @@ export class CodeRepoSearchBuilder {
         'CodeRepo.description',
         'CodeRepo.language',
         'CodeRepo.price',
-        'CodeRepo.visibility'
+        'CodeRepo.visibility',
+        'CodeRepo.createdAt', 
+        sql<string[]>`array_agg(DISTINCT "Tag"."name")`.as('tags')
       ])
-      .distinct();
+      .groupBy([
+        'CodeRepo.id',
+        'CodeRepo.name',
+        'CodeRepo.description',
+        'CodeRepo.language',
+        'CodeRepo.price',
+        'CodeRepo.visibility'
+      ]);
   }
 
   withQuery(query?: string): this {
@@ -100,20 +122,21 @@ export class CodeRepoSearchBuilder {
     }
 
     try {
+      const test = new Date();
       await this.db.insertInto('SearchHistory')
         .values({
           id: sql`uuid_generate_v4()`,
           userId: this.userId,
           tag: this.searchCriteria.query,
-          createdAt: new Date()
-        })
+          createdAt: test,
+      })
         .execute();
     } catch (error) {
       logger.error({ error }, 'Error saving search history');
     }
   }
 
-  build(): SelectQueryBuilder<DB, 'CodeRepo', any> {
+  build(): CodeRepoSearchQuery {
     this.saveSearchHistory().catch(error => {
       logger.error({ error }, 'Error saving search history');
     });
@@ -141,38 +164,77 @@ export default class CodeRepoSearchService {
       .withTags(criteria.tags)
       .withPriceRange(criteria.minPrice, criteria.maxPrice)
       .withLanguage(criteria.language)
-      .withVisibility(criteria.visibility)
+      .withVisibility('public' as Visibility)
       .withUserId(userId);
 
     try {
       const query = builder.build();
-      const queryCount = builder.build();
       
       logger.info({ query: query.compile().sql, bindings: query.compile().parameters }, 'Built query');
 
-      const totalCountQuery = queryCount.clearSelect().select(sql`count(distinct "CodeRepo"."id")`.as('count'));
+      // Create a separate count query without GROUP BY
+      const countQuery = this.db.selectFrom('CodeRepo')
+        .leftJoin('TagsOnRepos', 'CodeRepo.id', 'TagsOnRepos.codeRepoId')
+        .leftJoin('Tag', 'TagsOnRepos.tagId', 'Tag.id')
+        .select(sql<number>`count(distinct "CodeRepo"."id")`.as('count'))
+        .where((eb) => {
+          const conditions: Expression<SqlBool>[] = [];
+
+          if (criteria.tags && criteria.tags.length > 0) {
+            conditions.push(eb('Tag.name', 'in', criteria.tags));
+          }
+          if (criteria.query) {
+            const searchTerms = criteria.query.split(' ').filter(term => term.length > 0);
+            const searchConditions = searchTerms.map(term => 
+              eb.or([
+                eb('CodeRepo.name', 'ilike', `%${term}%`),
+                eb('CodeRepo.description', 'ilike', `%${term}%`)
+              ])
+            );
+            conditions.push(eb.and(searchConditions));
+          }
+          if (criteria.minPrice !== undefined) {
+            conditions.push(eb('CodeRepo.price', '>=', criteria.minPrice));
+          }
+          if (criteria.maxPrice !== undefined) {
+            conditions.push(eb('CodeRepo.price', '<=', criteria.maxPrice));
+          }
+          if (criteria.language) {
+            conditions.push(eb('CodeRepo.language', '=', criteria.language));
+          }
+          conditions.push(eb('CodeRepo.visibility', '=', 'public' as Visibility));
+
+          return eb.and(conditions);
+        });
+
       const resultsQuery = query.limit(pageSize).offset(offset);
 
       logger.info({ 
-        countSQL: totalCountQuery.compile().sql,
-        countBindings: totalCountQuery.compile().parameters,
+        countSQL: countQuery.compile().sql,
+        countBindings: countQuery.compile().parameters,
         resultsSQL: resultsQuery.compile().sql,
         resultsBindings: resultsQuery.compile().parameters
       }, 'Generated SQL queries');
 
       const [totalCountResult, results] = await Promise.all([
-        totalCountQuery.execute(),
-        resultsQuery.execute(),
+        countQuery.executeTakeFirst(),
+        resultsQuery.execute() as Promise<CodeRepoSearchResult[]>,
       ]);
 
       logger.info({ totalCountResult, results }, 'Query results');
 
-      const total = Number(totalCountResult[0]?.count || 0);
+      const total = Number(totalCountResult?.count || 0);
 
-      logger.info({ total, resultCount: results.length }, 'Search results');
+      // Process the results to format tags
+      const formattedResults = results.map(repo => ({
+        ...repo,
+        tags: repo.tags?.filter(Boolean) || [] // Remove null values and ensure it's an array
+      }));
+
+      logger.info({ total, resultCount: formattedResults.length }, 'Search results');
 
       return {
-        data: results,
+        data: formattedResults,
         meta: {
           total,
           page,

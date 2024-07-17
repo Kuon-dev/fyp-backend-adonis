@@ -6,7 +6,7 @@ import { prisma } from '#services/prisma_service'
 import logger from '@adonisjs/core/services/logger'
 
 const initCheckoutSchema = z.object({
-  repoId: z.string().cuid(),
+  repoId: z.string(),
 })
 
 const processPaymentSchema = z.object({

@@ -6,7 +6,7 @@ import { prisma } from '#services/prisma_service'
 import { OrderStatus } from '@prisma/client'
 
 const createOrderSchema = z.object({
-  repoId: z.string().cuid(),
+  repoId: z.string(),
   amount: z.number().positive(),
   stripePaymentIntentId: z.string(),
 })
