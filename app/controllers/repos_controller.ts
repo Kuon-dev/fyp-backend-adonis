@@ -17,11 +17,11 @@ const searchSchema = z.object({
     z.string(),
     z.array(z.string())
   ]).optional().transform(val => Array.isArray(val) ? val : val ? [val] : undefined),
-  minPrice: z.number().min(0).optional(),
-  maxPrice: z.number().min(0).optional(),
+  minPrice: z.string().optional().transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(0).optional()),
+  maxPrice: z.string().optional().transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(0).optional()),
   language: z.nativeEnum(Language).optional(),
-  page: z.number().int().positive().default(1),
-  pageSize: z.number().int().positive().default(10)
+  page: z.string().default("1").transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(1).optional()),
+  pageSize: z.string().default("10").transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(1).optional())
 })
 
 /**
@@ -292,7 +292,7 @@ export default class RepoController {
   public async search({ request, response }: HttpContext) {
     try {
       const validatedData = searchSchema.parse(request.qs())
-      logger.info({ validatedData }, 'Search criteria');
+      //logger.info({ validatedData }, 'Search criteria');
 
       const searchCriteria: SearchCriteria = {
         query: validatedData.query,

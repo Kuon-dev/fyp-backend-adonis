@@ -3,6 +3,7 @@ import { Language, Visibility } from '@prisma/client';
 import { DB } from '#database/kysely/types';
 import { kyselyDb } from '#database/kysely';
 import logger from '@adonisjs/core/services/logger'
+import { generateIdFromEntropySize } from 'lucia';
 
 export interface SearchCriteria {
   query?: string;
@@ -45,7 +46,7 @@ export class CodeRepoSearchBuilder {
         'CodeRepo.language',
         'CodeRepo.price',
         'CodeRepo.visibility',
-        'CodeRepo.createdAt', 
+        'CodeRepo.createdAt',
         sql<string[]>`array_agg(DISTINCT "Tag"."name")`.as('tags')
       ])
       .groupBy([
@@ -63,7 +64,7 @@ export class CodeRepoSearchBuilder {
       this.searchCriteria.query = query;
       const searchTerms = query.split(' ').filter(term => term.length > 0);
       this.query = this.query.where(eb => {
-        const conditions = searchTerms.map(term => 
+        const conditions = searchTerms.map(term =>
           eb.or([
             eb('CodeRepo.name', 'ilike', `%${term}%`),
             eb('CodeRepo.description', 'ilike', `%${term}%`)
@@ -125,7 +126,7 @@ export class CodeRepoSearchBuilder {
       const test = new Date();
       await this.db.insertInto('SearchHistory')
         .values({
-          id: sql`uuid_generate_v4()`,
+          id: generateIdFromEntropySize(32),
           userId: this.userId,
           tag: this.searchCriteria.query,
           createdAt: test,
@@ -141,7 +142,7 @@ export class CodeRepoSearchBuilder {
       logger.error({ error }, 'Error saving search history');
     });
 
-    logger.info({ sql: this.query.compile().sql, bindings: this.query.compile().parameters }, 'Generated SQL query');
+    //logger.info({ sql: this.query.compile().sql, bindings: this.query.compile().parameters }, 'Generated SQL query');
 
     return this.query;
   }
@@ -157,7 +158,7 @@ export default class CodeRepoSearchService {
   async search(criteria: SearchCriteria, userId?: string, page: number = 1, pageSize: number = 10) {
     const offset = (page - 1) * pageSize;
 
-    logger.info({ criteria, userId, page, pageSize }, 'Search method called with parameters');
+    //logger.info({ criteria, userId, page, pageSize }, 'Search method called with parameters');
 
     const builder = new CodeRepoSearchBuilder(this.db)
       .withQuery(criteria.query)
@@ -169,8 +170,8 @@ export default class CodeRepoSearchService {
 
     try {
       const query = builder.build();
-      
-      logger.info({ query: query.compile().sql, bindings: query.compile().parameters }, 'Built query');
+
+      //logger.info({ query: query.compile().sql, bindings: query.compile().parameters }, 'Built query');
 
       // Create a separate count query without GROUP BY
       const countQuery = this.db.selectFrom('CodeRepo')
@@ -185,7 +186,7 @@ export default class CodeRepoSearchService {
           }
           if (criteria.query) {
             const searchTerms = criteria.query.split(' ').filter(term => term.length > 0);
-            const searchConditions = searchTerms.map(term => 
+            const searchConditions = searchTerms.map(term =>
               eb.or([
                 eb('CodeRepo.name', 'ilike', `%${term}%`),
                 eb('CodeRepo.description', 'ilike', `%${term}%`)
@@ -209,19 +210,19 @@ export default class CodeRepoSearchService {
 
       const resultsQuery = query.limit(pageSize).offset(offset);
 
-      logger.info({ 
-        countSQL: countQuery.compile().sql,
-        countBindings: countQuery.compile().parameters,
-        resultsSQL: resultsQuery.compile().sql,
-        resultsBindings: resultsQuery.compile().parameters
-      }, 'Generated SQL queries');
+      //logger.info({
+      //  countSQL: countQuery.compile().sql,
+      //  countBindings: countQuery.compile().parameters,
+      //  resultsSQL: resultsQuery.compile().sql,
+      //  resultsBindings: resultsQuery.compile().parameters
+      //}, 'Generated SQL queries');
 
       const [totalCountResult, results] = await Promise.all([
         countQuery.executeTakeFirst(),
         resultsQuery.execute() as Promise<CodeRepoSearchResult[]>,
       ]);
 
-      logger.info({ totalCountResult, results }, 'Query results');
+      //logger.info({ totalCountResult, results }, 'Query results');
 
       const total = Number(totalCountResult?.count || 0);
 
@@ -231,7 +232,7 @@ export default class CodeRepoSearchService {
         tags: repo.tags?.filter(Boolean) || [] // Remove null values and ensure it's an array
       }));
 
-      logger.info({ total, resultCount: formattedResults.length }, 'Search results');
+      //logger.info({ total, resultCount: formattedResults.length }, 'Search results');
 
       return {
         data: formattedResults,

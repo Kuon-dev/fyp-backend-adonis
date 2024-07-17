@@ -1,169 +1,196 @@
-// import type { HttpContext } from '@adonisjs/core/http'
 import type { HttpContext } from '@adonisjs/core/http'
 import SupportTicketService from '#services/support_service'
 import { inject } from '@adonisjs/core'
+import { SupportTicketStatus } from '@prisma/client'
 
-/**
- * Controller class for handling support ticket operations.
- */
 @inject()
 export default class SupportController {
-  /**
-   * Creates an instance of SupportController.
-   *
-   * @param supportTicketService - The support ticket service.
-   */
   constructor(protected supportTicketService: SupportTicketService) {}
 
   /**
-   * Handle creating a new support ticket.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam email - The user's email address.
-   * @bodyParam subject - The subject of the support ticket.
-   * @bodyParam message - The content of the support ticket.
-   * @bodyParam type - The type of the support ticket.
+   * @createTicket
+   * @description Create a new support ticket.
+   * @bodyParam email string - The user's email address.
+   * @bodyParam title string - The title of the support ticket.
+   * @bodyParam content string - The content of the support ticket.
+   * @bodyParam type string - The type of the support ticket.
+   * @responseBody 201 - { "message": "Support ticket created successfully", "ticket": {...} }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async createTicket({ request, response }: HttpContext) {
-    const { email, subject, message, type } = request.only(['email', 'subject', 'message', 'type'])
-
     try {
-      await this.supportTicketService.createTicket(email, subject, message, type)
-      return response.status(201).json({ message: 'Support ticket created successfully' })
+      const { email, title, content, type } = request.only(['email', 'title', 'content', 'type'])
+      const ticket = await this.supportTicketService.createTicket(email, title, content, type)
+      return response.status(201).json({ message: 'Support ticket created successfully', ticket })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle getting paginated support tickets.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of tickets per page.
+   * @getPaginatedTickets
+   * @description Get paginated support tickets.
+   * @queryParam page number - The page number for pagination.
+   * @queryParam limit number - The number of tickets per page.
+   * @responseBody 200 - { "data": [...], "meta": {...} }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async getPaginatedTickets({ request, response }: HttpContext) {
-    const { page = 1, limit = 10 } = request.only(['page', 'limit'])
     try {
-      const tickets = await this.supportTicketService.getPaginatedTickets(
-        Number(page),
-        Number(limit)
-      )
-      return response.status(200).json({ tickets })
+      const page = request.input('page', 1)
+      const limit = request.input('limit', 10)
+      const { data, meta } = await this.supportTicketService.getPaginatedTickets(Number(page), Number(limit))
+      return response.ok({ data, meta })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle getting all support tickets.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
+   * @getAllTickets
+   * @description Get all support tickets.
+   * @responseBody 200 - { "tickets": [...] }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async getAllTickets({ response }: HttpContext) {
     try {
       const tickets = await this.supportTicketService.getAllTickets()
-      return response.status(200).json({ tickets, status: 'success' })
+      return response.ok({ tickets })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle getting a support ticket by ID.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the support ticket.
+   * @getTicketById
+   * @description Get a support ticket by ID.
+   * @paramParam id string - The ID of the support ticket.
+   * @responseBody 200 - { "ticket": {...} }
+   * @responseBody 404 - { "message": "Ticket not found" }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async getTicketById({ params, response }: HttpContext) {
-    const { id } = params
     try {
-      const ticket = await this.supportTicketService.getTicketById(id)
-      return response.status(200).json({ ticket })
+      const ticket = await this.supportTicketService.getTicketById(params.id)
+      if (!ticket) {
+        return response.notFound({ message: 'Ticket not found' })
+      }
+      return response.ok({ ticket })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle getting support tickets by title.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam title - The title of the support tickets.
+   * @getTicketsByTitle
+   * @description Get support tickets by title.
+   * @queryParam title string - The title to search for.
+   * @responseBody 200 - { "tickets": [...] }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async getTicketsByTitle({ request, response }: HttpContext) {
-    const { title } = request.only(['title'])
     try {
+      const title = request.input('title')
       const tickets = await this.supportTicketService.getTicketsByTitle(title)
-      return response.status(200).json({ tickets })
+      return response.ok({ tickets })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle getting support tickets by email.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam email - The user's email address.
+   * @getTicketsByEmail
+   * @description Get support tickets by email.
+   * @queryParam email string - The email to search for.
+   * @responseBody 200 - { "tickets": [...] }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async getTicketsByEmail({ request, response }: HttpContext) {
-    const { email } = request.only(['email'])
     try {
+      const email = request.input('email')
       const tickets = await this.supportTicketService.getTicketsByEmail(email)
-      return response.status(200).json({ tickets })
+      return response.ok({ tickets })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle getting support tickets by status.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam status - The status of the support tickets.
+   * @getTicketsByStatus
+   * @description Get support tickets by status.
+   * @queryParam status string - The status to search for.
+   * @responseBody 200 - { "tickets": [...] }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async getTicketsByStatus({ request, response }: HttpContext) {
-    const { status } = request.only(['status'])
     try {
+      const status = request.input('status')
       const tickets = await this.supportTicketService.getTicketsByStatus(status)
-      return response.status(200).json({ tickets })
+      return response.ok({ tickets })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle updating a support ticket status.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the support ticket.
-   * @bodyParam status - The new status of the support ticket.
+   * @updateTicket
+   * @description Update a support ticket status.
+   * @paramParam id string - The ID of the support ticket.
+   * @bodyParam status string - The new status of the support ticket.
+   * @responseBody 200 - { "ticket": {...} }
+   * @responseBody 400 - { "message": "Error message" }
+   * @responseBody 404 - { "message": "Ticket not found" }
    */
   async updateTicket({ params, request, response }: HttpContext) {
-    const { id } = params
-    const { status } = request.only(['status'])
     try {
-      const ticket = await this.supportTicketService.updateTicket(id, status)
-      return response.status(200).json({ ticket })
+      const { status } = request.only(['status'])
+      if (!Object.values(SupportTicketStatus).includes(status)) {
+        return response.badRequest({ message: 'Invalid status provided' })
+      }
+      const ticket = await this.supportTicketService.updateTicket(params.id, status)
+      if (!ticket) {
+        return response.notFound({ message: 'Ticket not found' })
+      }
+      return response.ok({ ticket })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 
   /**
-   * Handle sending a default email notification.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam email - The email address to send the notification to.
+   * @deleteTicket
+   * @description Delete a support ticket.
+   * @paramParam id string - The ID of the support ticket.
+   * @responseBody 200 - { "message": "Ticket deleted successfully" }
+   * @responseBody 400 - { "message": "Error message" }
+   * @responseBody 404 - { "message": "Ticket not found" }
+   */
+  //async deleteTicket({ params, response }: HttpContext) {
+  //  try {
+  //    const result = await this.supportTicketService.deleteTicket(params.id)
+  //    if (!result) {
+  //      return response.notFound({ message: 'Ticket not found' })
+  //    }
+  //    return response.ok({ message: 'Ticket deleted successfully' })
+  //  } catch (error) {
+  //    return response.status(400).json({ message: error.message })
+  //  }
+  //}
+
+  /**
+   * @sendDefaultEmail
+   * @description Send a default email notification.
+   * @bodyParam email string - The email address to send the notification to.
+   * @responseBody 200 - { "message": "Email sent successfully" }
+   * @responseBody 400 - { "message": "Error message" }
    */
   async sendDefaultEmail({ request, response }: HttpContext) {
-    const { email } = request.only(['email'])
     try {
-      const result = await this.supportTicketService.sendDefaultEmail(email)
-      return response.status(200).json(result)
+      const { email } = request.only(['email'])
+      await this.supportTicketService.sendDefaultEmail(email)
+      return response.ok({ message: 'Email sent successfully' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.status(400).json({ message: error.message })
     }
   }
 }

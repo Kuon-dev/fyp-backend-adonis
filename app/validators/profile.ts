@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+const isValidPhoneNumber = (value: string) => {
+  const phoneNumber = value.replace(/\D/g, '')
+  return phoneNumber.length === 10
+}
+
 export const updateProfileSchema = z.object({
   name: z.string().optional(),
   phoneNumber: z.string().optional(),

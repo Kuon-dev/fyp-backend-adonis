@@ -40,11 +40,9 @@ router.group(() => {
       .use(middleware.auth({ role: 'USER' }))
 
     // Support routes
+    router.post('/support/ticket', [SupportController, 'createTicket'])
     router.group(() => {
-      router.post('/ticket', [SupportController, 'createTicket'])
-      router
-        .get('/tickets', [SupportController, 'getAllTickets'])
-        .use(middleware.auth({ role: 'ADMIN' }))
+      router.get('/tickets', [SupportController, 'getAllTickets'])
       router.get('/tickets/paginated', [SupportController, 'getPaginatedTickets'])
       router.get('/ticket/:id', [SupportController, 'getTicketById'])
       router.get('/tickets/title', [SupportController, 'getTicketsByTitle'])
@@ -52,7 +50,7 @@ router.group(() => {
       router.get('/tickets/status', [SupportController, 'getTicketsByStatus'])
       router.put('/ticket/:id', [SupportController, 'updateTicket'])
       router.post('/email', [SupportController, 'sendDefaultEmail'])
-    }).prefix('/support')
+    }).prefix('/support').use(middleware.auth({ role: 'ADMIN' }))
 
     // Repo routes
     router.group(() => {
