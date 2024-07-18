@@ -1,9 +1,7 @@
 import { z } from 'zod'
-
-const isValidPhoneNumber = (value: string) => {
-  const phoneNumber = value.replace(/\D/g, '')
-  return phoneNumber.length === 10
-}
+import {
+  isValidPhoneNumber,
+} from 'libphonenumber-js'
 
 export const updateProfileSchema = z.object({
   name: z.string().optional(),

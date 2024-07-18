@@ -1,5 +1,5 @@
 import { Kysely, sql, SelectQueryBuilder, Expression, SqlBool } from 'kysely';
-import { Language, Visibility } from '@prisma/client';
+import { Language, Visibility, SellerVerificationStatus } from '@prisma/client';
 import { DB } from '#database/kysely/types';
 import { kyselyDb } from '#database/kysely';
 import logger from '@adonisjs/core/services/logger'
@@ -25,7 +25,7 @@ interface CodeRepoSearchResult {
   createdAt: Date;
 }
 
-type CodeRepoSearchQuery = SelectQueryBuilder<DB, 'CodeRepo' | 'TagsOnRepos' | 'Tag', any>;
+type CodeRepoSearchQuery = SelectQueryBuilder<DB, 'CodeRepo' | 'TagsOnRepos' | 'Tag' | 'User' | 'SellerProfile', any>;
 
 export class CodeRepoSearchBuilder {
   private db: Kysely<DB>;
@@ -39,6 +39,8 @@ export class CodeRepoSearchBuilder {
     this.query = this.db.selectFrom('CodeRepo')
       .leftJoin('TagsOnRepos', 'CodeRepo.id', 'TagsOnRepos.codeRepoId')
       .leftJoin('Tag', 'TagsOnRepos.tagId', 'Tag.id')
+      .innerJoin('User', 'CodeRepo.userId', 'User.id')
+      .innerJoin('SellerProfile', 'User.id', 'SellerProfile.userId')
       .select([
         'CodeRepo.id',
         'CodeRepo.name',
@@ -49,13 +51,15 @@ export class CodeRepoSearchBuilder {
         'CodeRepo.createdAt',
         sql<string[]>`array_agg(DISTINCT "Tag"."name")`.as('tags')
       ])
+      .where('SellerProfile.verificationStatus', '=', SellerVerificationStatus.APPROVED)
       .groupBy([
         'CodeRepo.id',
         'CodeRepo.name',
         'CodeRepo.description',
         'CodeRepo.language',
         'CodeRepo.price',
-        'CodeRepo.visibility'
+        'CodeRepo.visibility',
+        'CodeRepo.createdAt'
       ]);
   }
 
@@ -142,8 +146,6 @@ export class CodeRepoSearchBuilder {
       logger.error({ error }, 'Error saving search history');
     });
 
-    //logger.info({ sql: this.query.compile().sql, bindings: this.query.compile().parameters }, 'Generated SQL query');
-
     return this.query;
   }
 }
@@ -158,8 +160,6 @@ export default class CodeRepoSearchService {
   async search(criteria: SearchCriteria, userId?: string, page: number = 1, pageSize: number = 10) {
     const offset = (page - 1) * pageSize;
 
-    //logger.info({ criteria, userId, page, pageSize }, 'Search method called with parameters');
-
     const builder = new CodeRepoSearchBuilder(this.db)
       .withQuery(criteria.query)
       .withTags(criteria.tags)
@@ -171,15 +171,17 @@ export default class CodeRepoSearchService {
     try {
       const query = builder.build();
 
-      //logger.info({ query: query.compile().sql, bindings: query.compile().parameters }, 'Built query');
-
       // Create a separate count query without GROUP BY
       const countQuery = this.db.selectFrom('CodeRepo')
         .leftJoin('TagsOnRepos', 'CodeRepo.id', 'TagsOnRepos.codeRepoId')
         .leftJoin('Tag', 'TagsOnRepos.tagId', 'Tag.id')
+        .innerJoin('User', 'CodeRepo.userId', 'User.id')
+        .innerJoin('SellerProfile', 'User.id', 'SellerProfile.userId')
         .select(sql<number>`count(distinct "CodeRepo"."id")`.as('count'))
         .where((eb) => {
-          const conditions: Expression<SqlBool>[] = [];
+          const conditions: Expression<SqlBool>[] = [
+            eb('SellerProfile.verificationStatus', '=', SellerVerificationStatus.APPROVED)
+          ];
 
           if (criteria.tags && criteria.tags.length > 0) {
             conditions.push(eb('Tag.name', 'in', criteria.tags));
@@ -210,19 +212,10 @@ export default class CodeRepoSearchService {
 
       const resultsQuery = query.limit(pageSize).offset(offset);
 
-      //logger.info({
-      //  countSQL: countQuery.compile().sql,
-      //  countBindings: countQuery.compile().parameters,
-      //  resultsSQL: resultsQuery.compile().sql,
-      //  resultsBindings: resultsQuery.compile().parameters
-      //}, 'Generated SQL queries');
-
       const [totalCountResult, results] = await Promise.all([
         countQuery.executeTakeFirst(),
         resultsQuery.execute() as Promise<CodeRepoSearchResult[]>,
       ]);
-
-      //logger.info({ totalCountResult, results }, 'Query results');
 
       const total = Number(totalCountResult?.count || 0);
 
@@ -231,8 +224,6 @@ export default class CodeRepoSearchService {
         ...repo,
         tags: repo.tags?.filter(Boolean) || [] // Remove null values and ensure it's an array
       }));
-
-      //logger.info({ total, resultCount: formattedResults.length }, 'Search results');
 
       return {
         data: formattedResults,

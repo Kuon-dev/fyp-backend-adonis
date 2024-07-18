@@ -24,15 +24,11 @@ export default class StripeFacade {
   async createPaymentIntent(
     amount: number,
     currency: string,
-    accountId: string
   ): Promise<Stripe.PaymentIntent> {
     try {
       const paymentIntent = await this.stripe.paymentIntents.create({
         amount,
         currency,
-        transfer_data: {
-          destination: accountId,
-        },
       })
       return paymentIntent
     } catch (error) {
@@ -51,7 +47,7 @@ export default class StripeFacade {
       repoId: string
     ) {
       try {
-        const paymentIntent = await this.createPaymentIntent(amount, currency, sellerId)
+        const paymentIntent = await this.createPaymentIntent(amount, currency)
 
         // Update the payment intent with metadata
         const updatedPaymentIntent = await this.stripe.paymentIntents.update(paymentIntent.id, {

@@ -72,6 +72,7 @@ router.group(() => {
     router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
     router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
     router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
+    router.get('/repo/:id', [RepoController, 'getById'])
 
     // Admin routes
     router.group(() => {
@@ -97,7 +98,7 @@ router.group(() => {
     }).prefix('/users')
 
     router.post('/checkout', [CheckoutController, 'initCheckout'])
-    router.get('/checkout/:sessionId', [CheckoutController, 'processPayment'])
+    router.post('/checkout/process-payment', [CheckoutController, 'processPayment'])
 
     // Payout request routes
     router.group(() => {

@@ -408,13 +408,18 @@ export default class SellerService {
     }
   }
 
+  public async checkIfSellerVerified(userId: string): Promise<boolean> {
+    const profile = await this.getSellerProfile(userId)
+    return profile?.verificationStatus === SellerVerificationStatus.APPROVED
+  }
+
   public async updateBalance(
     sellerId: string,
     amount: number,
     tx?: PrismaTransactionalClient
   ) {
     const db = tx || prisma
-    
+
     return await db.sellerProfile.update({
       where: { id: sellerId },
       data: {

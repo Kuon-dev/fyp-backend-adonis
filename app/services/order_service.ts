@@ -36,4 +36,10 @@ export default class OrderService {
       data: { status },
     })
   }
+
+  async getOrderByStripePaymentIntentId(paymentIntentId: string) {
+    return await prisma.order.findFirst({
+      where: { stripePaymentIntentId: paymentIntentId },
+    })
+  }
 }

@@ -40,7 +40,7 @@ export default class RepoService {
     return repo
   }
 
-  public async getRepoById(id: string, userId: string | null): Promise<PartialCodeRepo | null> {
+  public async getRepoById(id: string, userId?: string | null): Promise<PartialCodeRepo | null> {
     const repo = await prisma.codeRepo.findUnique({
       where: { id },
       include: {
@@ -57,6 +57,12 @@ export default class RepoService {
           },
         },
         orders: true,
+        user: {
+          select: {
+            id: true,
+            sellerProfile: true,
+          },
+        },
       },
     })
 

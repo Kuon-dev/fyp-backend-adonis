@@ -38,7 +38,7 @@ export default class CheckoutController {
       }
       const { repoId } = initCheckoutSchema.parse(request.body())
 
-      const result = await this.checkoutService.initCheckout(repoId)
+      const result = await this.checkoutService.initCheckout(repoId, user.id)
       return response.ok(result)
     } catch (error) {
       logger.error({ err: error }, 'Error in initCheckout')

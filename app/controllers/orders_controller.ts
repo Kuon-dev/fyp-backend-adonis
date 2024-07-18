@@ -91,8 +91,6 @@ export default class OrderController {
    * @responseBody 200 - { "data": [...], "meta": { ... } }
    */
   public async index({ request, response }: HttpContext) {
-    const page = request.input('page', 1)
-    const limit = request.input('limit', 10)
     const userId = request.user?.id
 
     if (!userId) {
@@ -103,9 +101,19 @@ export default class OrderController {
     // In a real-world scenario, you should implement this method in the OrderService
     const orders = await prisma.order.findMany({
       where: { userId },
-      skip: (page - 1) * limit,
-      take: limit,
       orderBy: { createdAt: 'desc' },
+      include: {
+        codeRepo: {
+          select: {
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      }
     })
 
     const total = await prisma.order.count({ where: { userId } })
@@ -114,9 +122,6 @@ export default class OrderController {
       data: orders,
       meta: {
         total,
-        page,
-        limit,
-        lastPage: Math.ceil(total / limit),
       },
     })
   }
