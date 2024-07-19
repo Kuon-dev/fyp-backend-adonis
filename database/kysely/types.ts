@@ -196,6 +196,14 @@ export type User = {
     bannedUntil: Timestamp | null;
     role: Generated<Role>;
 };
+export type UserRepoAccess = {
+    id: string;
+    userId: string;
+    repoId: string;
+    orderId: string;
+    grantedAt: Generated<Timestamp>;
+    expiresAt: Timestamp | null;
+};
 export type Vote = {
     id: string;
     userId: string;
@@ -226,5 +234,6 @@ export type DB = {
     Tag: Tag;
     TagsOnRepos: TagsOnRepos;
     User: User;
+    UserRepoAccess: UserRepoAccess;
     Vote: Vote;
 };

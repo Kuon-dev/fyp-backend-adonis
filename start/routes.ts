@@ -64,7 +64,6 @@ router.group(() => {
       router
         .get('/user', [RepoController, 'getByUserSession'])
         .use(middleware.auth({ role: 'USER' }))
-      router.get('/all', [RepoController, 'getAll'])
       router.get('/featured', [RepoController, 'getFeatured'])
     }).prefix('/repos')
 

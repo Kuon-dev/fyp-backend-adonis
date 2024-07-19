@@ -22,9 +22,9 @@ function generateUniqueName(
   let attempt = 0
 
   while (attempt < maxAttempts) {
-    const userName = user.profile?.name || user.email.split('@')[0]
+    const userName = user.profile?.name ?? 'user'
     const companyName = faker.company.name()
-    let name = `${userName}_${companyName}`.replace(/\s+/g, '_').toLowerCase()
+    let name = `${userName} - ${companyName}`.replace(/\s+/g, '_').toLowerCase()
 
     if (!existingNames.has(name)) {
       existingNames.add(name)

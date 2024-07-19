@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker'
 import { generateIdFromEntropySize } from 'lucia'
-import { Order, OrderStatus, User, CodeRepo, SellerProfile } from '@prisma/client'
+import { Order, OrderStatus, User, CodeRepo, SellerProfile, UserRepoAccess } from '@prisma/client'
 import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
 
@@ -81,6 +81,64 @@ async function updateSalesAggregateAndSellerBalance(
   }
 }
 
+//async function processBatch(orders: Omit<Order, 'id'>[], users: ExtendedUser[], codeRepos: CodeRepo[]) {
+//  const createdOrders: Order[] = []
+//  for (const orderData of orders) {
+//    try {
+//      await prisma.$transaction(async (tx) => {
+//        const createdOrder = await tx.order.create({
+//          data: {
+//            ...orderData,
+//            id: generateIdFromEntropySize(32),
+//          },
+//        })
+//
+//        const codeRepo = codeRepos.find(repo => repo.id === createdOrder.codeRepoId)
+//        if (codeRepo) {
+//          const seller = users.find(user => user.id === codeRepo.userId)
+//          if (seller && seller.sellerProfile) {
+//            await updateSalesAggregateAndSellerBalance(createdOrder, seller.id, seller.sellerProfile)
+//          }
+//        }
+//
+//        createdOrders.push(createdOrder)
+//        console.log(`Created order: ${createdOrder.id}`)
+//      })
+//    } catch (error) {
+//      console.error(`Error creating order:`, error)
+//    }
+//  }
+//  return createdOrders
+//}
+
+async function grantRepoAccess(
+  tx: any,
+  userId: string,
+  repoId: string,
+  orderId: string
+): Promise<UserRepoAccess> {
+  return tx.userRepoAccess.upsert({
+    where: {
+      userId_repoId: {
+        userId,
+        repoId,
+      },
+    },
+    update: {
+      orderId, // Update the orderId if the access already exists
+      grantedAt: new Date(), // Update the grantedAt timestamp
+      // You can update other fields here if needed
+    },
+    create: {
+      id: generateIdFromEntropySize(32),
+      userId,
+      repoId,
+      orderId,
+      grantedAt: new Date(),
+    },
+  })
+}
+
 async function processBatch(orders: Omit<Order, 'id'>[], users: ExtendedUser[], codeRepos: CodeRepo[]) {
   const createdOrders: Order[] = []
   for (const orderData of orders) {
@@ -98,6 +156,12 @@ async function processBatch(orders: Omit<Order, 'id'>[], users: ExtendedUser[], 
           const seller = users.find(user => user.id === codeRepo.userId)
           if (seller && seller.sellerProfile) {
             await updateSalesAggregateAndSellerBalance(createdOrder, seller.id, seller.sellerProfile)
+          }
+
+          // Grant repo access if the order status is SUCCEEDED
+          if (createdOrder.status === OrderStatus.SUCCEEDED) {
+            await grantRepoAccess(tx, createdOrder.userId, createdOrder.codeRepoId, createdOrder.id)
+            console.log(`Granted access to repo ${createdOrder.codeRepoId} for user ${createdOrder.userId}`)
           }
         }
 

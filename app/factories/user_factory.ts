@@ -47,14 +47,18 @@ export class UserFactory {
   /**
    * Create a regular user
    * @param {UserFactoryData} data - User data
+   * @param {PrismaTransactionalClient} [tx] - Optional transaction client
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
-  static async createUser(data: UserFactoryData): Promise<{ user: User; profile: Profile }> {
+  static async createUser(
+    data: UserFactoryData,
+    tx?: PrismaTransactionalClient
+  ): Promise<{ user: User; profile: Profile }> {
     try {
       const validatedData = userSchema.parse(data)
-      return this.createBaseUser({ ...validatedData, role: Role.USER })
+      return this.createBaseUser({ ...validatedData, role: Role.USER }, tx)
     } catch (error) {
-      //logger.error('Error creating user', { error })
+      console.error('Error creating user', error)
       throw new Error('Failed to create user')
     }
   }
@@ -62,19 +66,22 @@ export class UserFactory {
   /**
    * Create a seller user with associated regular profile and seller profile
    * @param {SellerFactoryData} data - Seller data
+   * @param {PrismaTransactionalClient} [tx] - Optional transaction client
    * @returns {Promise<{user: User, profile: Profile, sellerProfile: SellerProfile}>} Created user, regular profile, and seller profile
    */
   static async createSeller(
-    data: SellerFactoryData
+    data: SellerFactoryData,
+    tx?: PrismaTransactionalClient
   ): Promise<{ user: User; profile: Profile; sellerProfile: SellerProfile }> {
     try {
       const validatedData = sellerSchema.parse(data)
-      return prisma.$transaction(async (tx) => {
+
+      const createSellerOperation = async (ptx: PrismaTransactionalClient) => {
         const { user, profile } = await this.createBaseUser(
           { ...validatedData, role: Role.SELLER },
-          tx
+          ptx
         )
-        const sellerProfile = await tx.sellerProfile.create({
+        const sellerProfile = await ptx.sellerProfile.create({
           data: {
             userId: user.id,
             businessName: validatedData.businessName ?? '',
@@ -86,10 +93,11 @@ export class UserFactory {
           },
         })
         return { user, profile, sellerProfile }
-      })
+      }
+
+      return tx ? createSellerOperation(tx) : prisma.$transaction(createSellerOperation)
     } catch (error) {
-      console.log(error)
-      //logger.error('Error creating seller', { error })
+      console.error('Error creating seller', error)
       throw new Error('Failed to create seller')
     }
   }
@@ -98,28 +106,33 @@ export class UserFactory {
    * Add a bank account to a seller profile
    * @param {string} sellerId - ID of the seller
    * @param {BankAccountData} bankAccountData - Bank account data
+   * @param {PrismaTransactionalClient} [tx] - Optional transaction client
    * @returns {Promise<BankAccount>} Created bank account
    */
   static async addBankAccount(
     sellerId: string,
-    bankAccountData: BankAccountData
+    bankAccountData: BankAccountData,
+    tx?: PrismaTransactionalClient
   ): Promise<BankAccount> {
     try {
       const validatedData = bankAccountSchema.parse(bankAccountData)
-      return prisma.$transaction(async (tx) => {
-        const sellerProfile = await tx.sellerProfile.findUnique({ where: { userId: sellerId } })
+
+      const addBankAccountOperation = async (ptx: PrismaTransactionalClient) => {
+        const sellerProfile = await ptx.sellerProfile.findUnique({ where: { userId: sellerId } })
         if (!sellerProfile) {
           throw new Error('Seller profile not found')
         }
-        return tx.bankAccount.create({
+        return ptx.bankAccount.create({
           data: {
             ...validatedData,
             sellerProfileId: sellerProfile.id,
           },
         })
-      })
+      }
+
+      return tx ? addBankAccountOperation(tx) : prisma.$transaction(addBankAccountOperation)
     } catch (error) {
-      //logger.error('Error adding bank account', { error, sellerId })
+      console.error('Error adding bank account', error, sellerId)
       throw new Error('Failed to add bank account')
     }
   }
@@ -127,14 +140,18 @@ export class UserFactory {
   /**
    * Create a moderator user
    * @param {UserFactoryData} data - User data
+   * @param {PrismaTransactionalClient} [tx] - Optional transaction client
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
-  static async createModerator(data: UserFactoryData): Promise<{ user: User; profile: Profile }> {
+  static async createModerator(
+    data: UserFactoryData,
+    tx?: PrismaTransactionalClient
+  ): Promise<{ user: User; profile: Profile }> {
     try {
       const validatedData = userSchema.parse(data)
-      return this.createBaseUser({ ...validatedData, role: Role.MODERATOR })
+      return this.createBaseUser({ ...validatedData, role: Role.MODERATOR }, tx)
     } catch (error) {
-      //logger.error('Error creating moderator', { error })
+      console.error('Error creating moderator', error)
       throw new Error('Failed to create moderator')
     }
   }
@@ -142,14 +159,18 @@ export class UserFactory {
   /**
    * Create an admin user
    * @param {UserFactoryData} data - User data
+   * @param {PrismaTransactionalClient} [tx] - Optional transaction client
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
-  static async createAdmin(data: UserFactoryData): Promise<{ user: User; profile: Profile }> {
+  static async createAdmin(
+    data: UserFactoryData,
+    tx?: PrismaTransactionalClient
+  ): Promise<{ user: User; profile: Profile }> {
     try {
       const validatedData = userSchema.parse(data)
-      return this.createBaseUser({ ...validatedData, role: Role.ADMIN })
+      return this.createBaseUser({ ...validatedData, role: Role.ADMIN }, tx)
     } catch (error) {
-      //logger.error('Error creating admin', { error })
+      console.error('Error creating admin', error)
       throw new Error('Failed to create admin')
     }
   }
@@ -157,48 +178,36 @@ export class UserFactory {
   /**
    * Private method to create a base user with a profile
    * @param {UserFactoryData & { role: Role }} data - User data with role
-   * @param {any} tx - Optional transaction object
+   * @param {PrismaTransactionalClient} [tx] - Optional transaction client
    * @returns {Promise<{user: User, profile: Profile}>} Created user and profile
    */
   private static async createBaseUser(
     data: UserFactoryData & { role: Role },
     tx?: PrismaTransactionalClient
   ): Promise<{ user: User; profile: Profile }> {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email },
-    })
+    const createUserOperation = async (ptx: PrismaTransactionalClient) => {
+      const existingUser = await ptx.user.findUnique({
+        where: { email: data.email },
+      })
 
-    if (existingUser) {
-      throw new Error(`User with email ${data.email} already exists`)
-    }
+      if (existingUser) {
+        throw new Error(`User with email ${data.email} already exists`)
+      }
 
-    if (tx) {
       const passwordHash = await this.hashPassword(data.password)
       const id = generateIdFromEntropySize(32)
 
-      const user = await tx.user.create({
+      const user = await ptx.user.create({
         data: { id, email: data.email, passwordHash, role: data.role },
       })
-
-      const profile = await tx.profile.create({
+      const profile = await ptx.profile.create({
         data: { userId: id, name: data.fullname },
       })
 
       return { user, profile }
-    } else
-      return prisma.$transaction(async (ptx: PrismaTransactionalClient) => {
-        const passwordHash = await this.hashPassword(data.password)
-        const id = generateIdFromEntropySize(32)
+    }
 
-        const user = await ptx.user.create({
-          data: { id, email: data.email, passwordHash, role: data.role },
-        })
-        const profile = await ptx.profile.create({
-          data: { userId: id, name: data.fullname },
-        })
-
-        return { user, profile }
-      })
+    return tx ? createUserOperation(tx) : prisma.$transaction(createUserOperation)
   }
 
   /**

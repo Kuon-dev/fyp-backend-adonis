@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -61,6 +58,7 @@ model User {
   SearchHistory  SearchHistory[]
   SalesAggregate SalesAggregate[]
   Vote           Vote[]
+  repoAccesses   UserRepoAccess[]
 }
 
 model Profile {
@@ -88,7 +86,7 @@ model SellerProfile {
   Payout             Payout[]
   balance            Float                    @default(0)
   PayoutRequest      PayoutRequest[]
-  lastPayoutDate     DateTime? // New field
+  lastPayoutDate     DateTime?
 }
 
 enum SellerVerificationStatus {
@@ -116,14 +114,14 @@ model PayoutRequest {
   id              String              @id @default(cuid())
   sellerProfile   SellerProfile       @relation(fields: [sellerProfileId], references: [id])
   sellerProfileId String
-  totalAmount     Float // Updated field
+  totalAmount     Float
   status          PayoutRequestStatus @default(PENDING)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   processedAt     DateTime?
   payout          Payout?
-  lastPayoutDate  DateTime? // New field
-  orders          Order[] // New relation
+  lastPayoutDate  DateTime?
+  orders          Order[]
 }
 
 enum PayoutRequestStatus {
@@ -138,7 +136,7 @@ model Payout {
   sellerProfileId String
   payoutRequest   PayoutRequest @relation(fields: [payoutRequestId], references: [id])
   payoutRequestId String        @unique
-  totalAmount     Float // Updated field
+  totalAmount     Float
   currency        String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -178,6 +176,7 @@ model CodeRepo {
   tags        TagsOnRepos[]
   codeChecks  CodeCheck[]
   orders      Order[]
+  userAccesses UserRepoAccess[]
 }
 
 model Tag {
@@ -254,7 +253,8 @@ model Order {
   stripePaymentIntentId String?
   stripePaymentMethodId String?
   payoutRequest         PayoutRequest? @relation(fields: [payoutRequestId], references: [id])
-  payoutRequestId       String? // New field
+  payoutRequestId       String?
+  userRepoAccesses      UserRepoAccess[]
 }
 
 enum OrderStatus {
@@ -377,4 +377,18 @@ model Media {
   type      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model UserRepoAccess {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  repo      CodeRepo @relation(fields: [repoId], references: [id])
+  repoId    String
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+  grantedAt DateTime @default(now())
+  expiresAt DateTime?
+
+  @@unique([userId, repoId])
 }

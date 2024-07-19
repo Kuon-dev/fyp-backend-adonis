@@ -263,21 +263,6 @@ export default class RepoService {
     return await query.execute()
   }
 
-  /**
-   * Retrieve all Repos without filtering by visibility.
-   *
-   * @returns Promise<CodeRepo[]> - Array of all CodeRepo objects.
-   */
-  public async getAllRepos(): Promise<CodeRepo[]> {
-    return await prisma.codeRepo.findMany({
-      include: {
-        reviews: true,
-        tags: true,
-        orders: true,
-      },
-    })
-  }
-
   public async getFeaturedRepos(limit: number = 5): Promise<CodeRepo[]> {
     const featuredRepos = await prisma.codeRepo.findMany({
       where: {
@@ -309,38 +294,6 @@ export default class RepoService {
     return reposWithRatings.sort(
       (a, b) => b.avgRating - a.avgRating || b.reviews.length - a.reviews.length
     )
-  }
-
-  /**
-   * Grant access to a repo for a user.
-   *
-   * @param repoId - The ID of the repo to grant access to.
-   * @param userId - The ID of the user to grant access to.
-   * @param tx - Optional transaction client for database operations.
-   * @returns Promise<boolean> - True if access was granted successfully, false otherwise.
-   */
-  public async grantAccess(
-    repoId: string,
-    userId: string,
-    tx?: PrismaTransactionalClient
-  ): Promise<boolean> {
-    const db = tx || prisma
-    try {
-      // Here we're assuming that granting access means creating an 'Order' with a 'SUCCEEDED' status
-      // You might want to adjust this logic based on your specific requirements
-      await db.order.create({
-        data: {
-          userId: userId,
-          codeRepoId: repoId,
-          status: OrderStatus.SUCCEEDED,
-          totalAmount: 0, // You might want to set this to the actual price of the repo
-        },
-      })
-      return true
-    } catch (error) {
-      console.error('Error granting access:', error)
-      return false
-    }
   }
 
   /**

@@ -234,20 +234,6 @@ export default class RepoController {
   }
 
   /**
-   * Retrieve all Repos without filtering by visibility.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   */
-  public async getAll({ response }: HttpContext) {
-    try {
-      const repos = await this.repoService.getAllRepos()
-      return response.status(200).json(repos)
-    } catch (error) {
-      return response.abort({ message: error.message }, 400)
-    }
-  }
-
-  /**
    * Retrieve featured repos.
    *
    * @param {HttpContext} ctx - The HTTP context object.
