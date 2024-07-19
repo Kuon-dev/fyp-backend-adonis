@@ -274,8 +274,8 @@ async function createSellerWithSpecialCases(
 
   let userWithProfile: UserWithProfile = await UserFactory.createSeller(sellerData)
 
-  if (index % 3 === 0) {
-    // Every 3rd seller is verified
+  if (index % 2 === 0) {
+    // Every 2rd seller is verified
     await prisma.user.update({
       where: { id: userWithProfile.user.id },
       data: {

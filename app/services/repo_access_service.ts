@@ -17,6 +17,16 @@ export default class RepoAccessService {
     repoId: string,
     tx: PrismaTransactionalClient
   ): Promise<boolean> {
+
+    const user = await tx.user.findUnique({where: {id: userId}})
+    if (!user) {
+      return false
+    }
+
+    if (user.role === 'ADMIN') {
+      return true
+    }
+
     const access = await tx.userRepoAccess.findUnique({
       where: {
         userId_repoId: {

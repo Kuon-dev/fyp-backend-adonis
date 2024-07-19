@@ -1,6 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
-import { Exception } from '@adonisjs/core/exceptions'
 import { prisma } from '#services/prisma_service'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import { z } from 'zod'
@@ -96,19 +95,19 @@ export default class RepoController {
     const user = request.user
     if (!user) throw new UnAuthorizedException('User not found in request object')
     const { id } = params
-
     try {
       return await prisma.$transaction(async (tx) => {
-        const repo = await this.repoService.getRepoById(id, user.id)
-
+        const repo = await this.repoService.getRepoById(id)
         if (!repo) {
           return response.notFound({ message: 'Repo not found' })
         }
-
+        
         const hasAccess = await this.repoAccessService.hasAccess(user.id, id, tx)
+        const isOwner = repo.userId === user.id
+        const isAdmin = user.role === 'ADMIN'
 
-        if (repo.visibility === 'private' && !hasAccess && repo.userId !== user.id) {
-          return response.forbidden({ message: 'You do not have access to this repo' })
+        if (!hasAccess && !isOwner && !isAdmin) {
+          return response.forbidden({ message: 'You do not have access to this repository' })
         }
 
         const repoCodeCheck = await tx.codeCheck.findFirst({
@@ -120,15 +119,9 @@ export default class RepoController {
           },
         })
 
-        const repoDetails =
-          repo.visibility === 'private' && !hasAccess && repo.userId !== user.id
-            ? { id: repo.id, name: repo.name, visibility: repo.visibility }
-            : repo
-
         return response.ok({
-          repo: repoDetails,
+          repo,
           repoCodeCheck: repoCodeCheck ?? null,
-          hasAccess: hasAccess || repo.userId === user.id,
         })
       })
     } catch (error) {
@@ -145,12 +138,17 @@ export default class RepoController {
    * @param {HttpContext} ctx - The HTTP context object.
    * @paramParam {string} id - The ID of the Repo.
    * @responseBody 200 - { repo: Object, repoCodeCheck: Object|null }
-   * @responseBody 400 - { message: string } - Bad request error
+   * @responseBody 404 - { message: string } - Not found error
+   * @responseBody 500 - { message: string } - Internal server error
    */
   public async getByIdPublic({ params, response }: HttpContext) {
     const { id } = params
     try {
       const repo = await this.repoService.getRepoByIdPublic(id)
+      if (!repo) {
+        return response.notFound({ message: 'Repo not found' })
+      }
+
       const repoCodeCheck = await prisma.codeCheck.findFirst({
         where: {
           repoId: id,
@@ -159,12 +157,22 @@ export default class RepoController {
           createdAt: 'desc',
         },
       })
-      return response.status(200).json({
-        repo: repo,
+
+      // Transform the repo object to match the expected format
+      const transformedRepo = {
+        ...repo,
+        tags: repo.tags?.map(t => ({ tag: { name: t.tag.name } }))
+      }
+
+      return response.ok({
+        repo: transformedRepo,
         repoCodeCheck: repoCodeCheck ?? null,
       })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      console.error('Error retrieving public repo:', error)
+      return response.internalServerError({
+        message: 'An error occurred while retrieving the repo',
+      })
     }
   }
 
@@ -188,7 +196,7 @@ export default class RepoController {
       const data = updateRepoSchema.parse(request.body())
 
       const repo = await this.repoService.getRepoById(id, request.user.id)
-      if (!repo) {
+      if (!repo || repo.deletedAt) {
         return response.notFound({ message: 'Repo not found' })
       }
       if (repo.userId !== request.user.id) {
@@ -211,7 +219,6 @@ export default class RepoController {
    * @param {HttpContext} ctx - The HTTP context object.
    * @paramParam {string} id - The ID of the Repo to delete.
    * @responseBody 200 - { message: string } - Success message
-   * @responseBody 400 - { message: string } - Bad request error
    * @responseBody 401 - { message: string } - Unauthorized error
    * @responseBody 403 - { message: string } - Forbidden error
    * @responseBody 404 - { message: string } - Not found error
@@ -219,21 +226,24 @@ export default class RepoController {
   public async delete({ request, params, response }: HttpContext) {
     if (!request.user) throw new UnAuthorizedException('User not authenticated')
     const { id } = params
-
     try {
       const repo = await this.repoService.getRepoById(id, request.user.id)
       if (!repo) {
         return response.notFound({ message: 'Repo not found' })
       }
-      if (repo.userId !== request.user.id) {
+      
+      // For admin users, we'll allow deletion regardless of ownership
+      if (request.user.role !== 'ADMIN' && repo.userId !== request.user.id) {
         return response.forbidden({ message: 'You do not have permission to delete this repo' })
       }
-
-      await this.repoService.deleteRepo(id)
+      await this.repoService.softDeleteRepo(id)
       return response.ok({ message: 'Repo deleted successfully' })
     } catch (error) {
-      console.log(error)
-      return response.badRequest({ message: error.message })
+      console.error('Error in delete method:', error)
+      if (error instanceof Error && error.message === 'Repo not found') {
+        return response.notFound({ message: 'Repo not found' })
+      }
+      return response.internalServerError({ message: 'An unexpected error occurred' })
     }
   }
 

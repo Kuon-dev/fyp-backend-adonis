@@ -7,14 +7,13 @@ import { seedPayoutsAndRequests } from './payout-seeder.js'
 import { seedSupportTickets } from './support-seeder.js'
 
 async function main() {
-  //await generateUsers(100)
-  //console.log('Users generated')
-  //await seedCodeRepos(200)
-  //await seedReviewsAndComments(300)
-  //await seedOrders(2000)
-  //await seedPayoutsAndRequests(50)
-  //console.log('Orders generated')
-
+  await generateUsers(100)
+  console.log('Users generated')
+  await seedCodeRepos(200)
+  await seedReviewsAndComments(300)
+  await seedOrders(2000)
+  await seedPayoutsAndRequests(50)
+  console.log('Orders generated')
   await seedSupportTickets(200)
 }
 

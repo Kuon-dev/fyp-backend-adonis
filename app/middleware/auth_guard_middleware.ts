@@ -14,7 +14,6 @@ export default class AuthGuardMiddleware {
 
     const userRole = user.role
     const requiredRole = options.role
-    console.log(userRole, requiredRole)
 
     if (!this.hasAccess(userRole, requiredRole)) {
       throw new UnAuthorizedException('Insufficient permissions')

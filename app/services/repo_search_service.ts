@@ -57,6 +57,7 @@ export class CodeRepoSearchBuilder {
         sql<string[]>`array_agg(DISTINCT "Tag"."name")`.as('tags'),
       ])
       .where('SellerProfile.verificationStatus', '=', SellerVerificationStatus.APPROVED)
+      .where('CodeRepo.deletedAt', 'is', null) // Exclude soft-deleted repos
       .groupBy([
         'CodeRepo.id',
         'CodeRepo.name',
@@ -188,6 +189,7 @@ export default class CodeRepoSearchService {
         .where((eb) => {
           const conditions: Expression<SqlBool>[] = [
             eb('SellerProfile.verificationStatus', '=', SellerVerificationStatus.APPROVED),
+            eb('CodeRepo.deletedAt', 'is', null), // Exclude soft-deleted repos
           ]
 
           if (criteria.tags && criteria.tags.length > 0) {
