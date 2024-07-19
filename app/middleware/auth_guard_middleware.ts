@@ -14,6 +14,7 @@ export default class AuthGuardMiddleware {
 
     const userRole = user.role
     const requiredRole = options.role
+    console.log(userRole, requiredRole)
 
     if (!this.hasAccess(userRole, requiredRole)) {
       throw new UnAuthorizedException('Insufficient permissions')
@@ -38,9 +39,9 @@ export default class AuthGuardMiddleware {
   private hasAccess(userRole: Role, requiredRole: Role): boolean {
     const roleHierarchy = {
       [Role.USER]: 1,
-      [Role.SELLER]: 1, // Same level as USER
-      [Role.MODERATOR]: 2,
-      [Role.ADMIN]: 3,
+      [Role.SELLER]: 2,
+      [Role.MODERATOR]: 3,
+      [Role.ADMIN]: 4,
     }
 
     return roleHierarchy[userRole] >= roleHierarchy[requiredRole]

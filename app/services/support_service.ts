@@ -63,31 +63,31 @@ export default class SupportTicketService {
    * @param limit - The number of tickets per page.
    * @returns An object containing the tickets and pagination metadata.
    */
-  public async getPaginatedTickets(page: number = 1, limit: number = 10) {
-    const offset = (page - 1) * limit
-    try {
-      const [tickets, total] = await Promise.all([
-        prisma.supportTicket.findMany({
-          skip: offset,
-          take: limit,
-          orderBy: { createdAt: 'desc' },
-        }),
-        prisma.supportTicket.count(),
-      ])
-
-      return {
-        data: tickets,
-        meta: {
-          total,
-          page,
-          limit,
-          lastPage: Math.ceil(total / limit),
-        },
-      }
-    } catch (error: any) {
-      throw new Error(`Failed to retrieve paginated tickets: ${error.message}`)
-    }
-  }
+  //public async getPaginatedTickets(page: number = 1, limit: number = 10) {
+  //  const offset = (page - 1) * limit
+  //  try {
+  //    const [tickets, total] = await Promise.all([
+  //      prisma.supportTicket.findMany({
+  //        skip: offset,
+  //        take: limit,
+  //        orderBy: { createdAt: 'desc' },
+  //      }),
+  //      prisma.supportTicket.count(),
+  //    ])
+  //
+  //    return {
+  //      data: tickets,
+  //      meta: {
+  //        total,
+  //        page,
+  //        limit,
+  //        lastPage: Math.ceil(total / limit),
+  //      },
+  //    }
+  //  } catch (error: any) {
+  //    throw new Error(`Failed to retrieve paginated tickets: ${error.message}`)
+  //  }
+  //}
 
   /**
    * Retrieves all support tickets.

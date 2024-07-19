@@ -43,35 +43,33 @@ router.group(() => {
     router.post('/support/ticket', [SupportController, 'createTicket'])
     router.group(() => {
       router.get('/tickets', [SupportController, 'getAllTickets'])
-      router.get('/tickets/paginated', [SupportController, 'getPaginatedTickets'])
-      router.get('/ticket/:id', [SupportController, 'getTicketById'])
+      //router.get('/tickets/paginated', [SupportController, 'getPaginatedTickets'])
       router.get('/tickets/title', [SupportController, 'getTicketsByTitle'])
       router.get('/tickets/email', [SupportController, 'getTicketsByEmail'])
       router.get('/tickets/status', [SupportController, 'getTicketsByStatus'])
+
+      router.get('/ticket/:id', [SupportController, 'getTicketById'])
       router.put('/ticket/:id', [SupportController, 'updateTicket'])
       router.post('/email', [SupportController, 'sendDefaultEmail'])
     }).prefix('/support').use(middleware.auth({ role: 'ADMIN' }))
 
     // Repo routes
     router.group(() => {
-      router.post('/', [RepoController, 'create'])
-      //router.get('/:id', [RepoController, 'getById'])
-      router.put('/:id', [RepoController, 'update'])
-      router.delete('/:id', [RepoController, 'delete'])
-      router.get('/', [RepoController, 'getPaginated'])
-      router.get('/search', [RepoController, 'search'])
-      router.get('/user/:userId', [RepoController, 'getByUser'])
-      router
-        .get('/user', [RepoController, 'getByUserSession'])
-        .use(middleware.auth({ role: 'USER' }))
+      router.get('/user', [RepoController, 'getByUserSession']).use(middleware.auth({ role: 'USER' }))
       router.get('/featured', [RepoController, 'getFeatured'])
+      router.get('/search', [RepoController, 'search'])
     }).prefix('/repos')
 
     // Comment routes
+    router.get('/repo/:id', [RepoController, 'getById']).use(middleware.auth({ role: 'USER' }))
+    router.delete('/repo/:id', [RepoController, 'delete']).use(middleware.auth({ role: 'USER' }))
+    router.post('/repo', [RepoController, 'create']).use(middleware.auth({ role: 'USER' }))
+    router.put('/repo/:id', [RepoController, 'update']).use(middleware.auth({ role: 'USER' }))
+
     router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
     router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
     router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
-    router.get('/repo/:id', [RepoController, 'getById'])
+
 
     // Admin routes
     router.group(() => {

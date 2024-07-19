@@ -40,7 +40,7 @@ function generateUniqueName(
 async function generateCodeRepos(count: number = 10) {
   const codeRepos: { repo: Omit<CodeRepo, 'id'>; tags: string[] }[] = []
   const users = await prisma.user.findMany({
-    include: { profile: true },
+    include: { sellerProfile: true },
   })
 
   if (users.length === 0) {

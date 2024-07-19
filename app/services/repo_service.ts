@@ -1,4 +1,4 @@
-import { SelectQueryBuilder, expressionBuilder, sql } from 'kysely'
+import { sql } from 'kysely'
 import { CodeRepo, OrderStatus } from '@prisma/client'
 import { kyselyDb } from '#database/kysely'
 import { PrismaTransactionalClient, prisma } from './prisma_service.js'
@@ -17,7 +17,7 @@ export default class RepoService {
   public async createRepo(
     data: Omit<
       CodeRepo,
-      'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'stripeProductId' | 'stripePriceId'
+      'id' | 'createdAt' | 'updatedAt' | 'deletedAt'
     > & { tags: string[] }
   ): Promise<CodeRepo> {
     const repo = await prisma.codeRepo.create({
@@ -146,16 +146,31 @@ export default class RepoService {
     return repo
   }
 
-  /**
-   * Delete a Repo by ID.
-   *
-   * @param id - The ID of the Repo.
-   * @returns Promise<CodeRepo> - The deleted CodeRepo object.
-   */
   public async deleteRepo(id: string): Promise<CodeRepo> {
-    return await prisma.codeRepo.delete({
-      where: { id },
-    })
+    return await prisma.$transaction(async (tx) => {
+      // Check if the repo exists
+      const existingRepo = await tx.codeRepo.findUnique({
+        where: { id },
+        include: { tags: true }
+      });
+
+      if (!existingRepo) {
+        throw new Error('Repo not found');
+      }
+
+      // Delete associated TagsOnRepos entries
+      await tx.tagsOnRepos.deleteMany({
+        where: { codeRepoId: id }
+      });
+
+      // Delete the CodeRepo
+      const deletedRepo = await tx.codeRepo.delete({
+        where: { id },
+        include: { tags: true } // Include tags in the returned object for completeness
+      });
+
+      return deletedRepo;
+    });
   }
 
   /**
@@ -166,6 +181,7 @@ export default class RepoService {
    * @param userId - The ID of the user requesting the pagination (can be null for guests).
    * @returns Promise<{ data: PartialCodeRepo[]; total: number; page: number; limit: number }> - Paginated results.
    */
+
   public async getPaginatedRepos(
     page: number = 1,
     limit: number = 10,

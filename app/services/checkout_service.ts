@@ -7,10 +7,7 @@ import SellerService from '#services/seller_service'
 import SalesService from '#services/sales_service'
 import { Prisma, OrderStatus } from '@prisma/client'
 import { z } from 'zod'
-
-const initCheckoutSchema = z.object({
-  repoId: z.string()
-})
+import RepoAccessService from '#services/repo_access_service'
 
 const processPaymentSchema = z.object({
   paymentIntentId: z.string(),
@@ -23,7 +20,8 @@ export default class CheckoutService {
     protected repoService: RepoService,
     protected orderService: OrderService,
     protected sellerService: SellerService,
-    protected salesService: SalesService
+    protected salesService: SalesService,
+    protected repoAccessService: RepoAccessService
   ) {}
 
   /**
@@ -54,7 +52,7 @@ export default class CheckoutService {
     }
 
     // create order
-    
+
     const paymentIntent = await this.stripeFacade.createPaymentIntentForRepo(
       repoInfo.price,
       'MYR', // Default currency
@@ -109,8 +107,8 @@ export default class CheckoutService {
 
     await this.sellerService.updateBalance(sellerProfile.id, order.totalAmount, tx)
     await this.salesService.updateSalesAggregate(repo.userId, order.totalAmount, tx)
-    
-    const accessGranted = await this.repoService.grantAccess(order.codeRepoId, order.userId, tx)
+
+    const accessGranted = await this.repoAccessService.grantAccess(order.codeRepoId, tx)
     if (!accessGranted) {
       throw new Error('Failed to grant access to the repo')
     }

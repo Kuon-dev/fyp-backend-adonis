@@ -19,22 +19,22 @@ test.group('Support Controller - GET Operations', () => {
     return response.headers()['set-cookie'][0]
   }
 
-  test('admin can get paginated support tickets', async ({ client, assert }) => {
-    const adminToken = await loginAsAdmin(client)
-    const response = await client
-      .get('/api/v1/support/tickets/paginated')
-      .header('Cookie', adminToken)
-      .qs({ page: 1, limit: 10 })
-
-    response.assertStatus(200)
-    assert.properties(response.body(), ['data', 'meta'])
-    assert.isArray(response.body().data)
-    assert.properties(response.body().meta, ['total', 'page', 'pageSize', 'lastPage'])
-
-    for (const ticket of response.body().data) {
-      assert.properties(ticket, ['id', 'email', 'title', 'content', 'status', 'type', 'createdAt', 'updatedAt'])
-    }
-  })
+  //test('admin can get paginated support tickets', async ({ client, assert }) => {
+  //  const adminToken = await loginAsAdmin(client)
+  //  const response = await client
+  //    .get('/api/v1/support/tickets/paginated')
+  //    .header('Cookie', adminToken)
+  //    .qs({ page: 1, limit: 10 })
+  //
+  //  response.assertStatus(200)
+  //  assert.properties(response.body(), ['data', 'meta'])
+  //  assert.isArray(response.body().data)
+  //  assert.properties(response.body().meta, ['total', 'page', 'pageSize', 'lastPage'])
+  //
+  //  for (const ticket of response.body().data) {
+  //    assert.properties(ticket, ['id', 'email', 'title', 'content', 'status', 'type', 'createdAt', 'updatedAt'])
+  //  }
+  //})
 
   test('admin can get all support tickets', async ({ client, assert }) => {
     const adminToken = await loginAsAdmin(client)

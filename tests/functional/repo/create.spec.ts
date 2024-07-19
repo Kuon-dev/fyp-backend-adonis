@@ -22,7 +22,7 @@ test.group('Repository Creation', () => {
     }
     const token = await getAuthToken(client)
 
-    const response = await client.post('/api/v1/repos').header('Cookie', token).json(repoData)
+    const response = await client.post('/api/v1/repo').header('Cookie', token).json(repoData)
 
     response.assertStatus(201)
     assert.properties(response.body(), ['id', 'name', 'description', 'language', 'price', 'status'])
@@ -44,7 +44,7 @@ test.group('Repository Creation', () => {
     const token = await getAuthToken(client)
 
     const response = await client
-      .post('/api/v1/repos')
+      .post('/api/v1/repo')
       .header('Cookie', token)
       .json(invalidRepoData)
 
@@ -71,7 +71,7 @@ test.group('Repository Creation', () => {
       tags: ['test', 'react'],
     }
 
-    const response = await client.post('/api/v1/repos').json(repoData)
+    const response = await client.post('/api/v1/repo').json(repoData)
 
     response.assertStatus(401)
     //response.assertBodyContains({ message: 'User not authenticated' })

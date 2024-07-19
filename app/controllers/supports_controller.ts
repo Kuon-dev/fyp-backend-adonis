@@ -35,16 +35,16 @@ export default class SupportController {
    * @responseBody 200 - { "data": [...], "meta": {...} }
    * @responseBody 400 - { "message": "Error message" }
    */
-  async getPaginatedTickets({ request, response }: HttpContext) {
-    try {
-      const page = request.input('page', 1)
-      const limit = request.input('limit', 10)
-      const { data, meta } = await this.supportTicketService.getPaginatedTickets(Number(page), Number(limit))
-      return response.ok({ data, meta })
-    } catch (error) {
-      return response.status(400).json({ message: error.message })
-    }
-  }
+  //async getPaginatedTickets({ request, response }: HttpContext) {
+  //  try {
+  //    const page = request.input('page', 1)
+  //    const limit = request.input('limit', 10)
+  //    const { data, meta } = await this.supportTicketService.getPaginatedTickets(Number(page), Number(limit))
+  //    return response.ok({ data, meta })
+  //  } catch (error) {
+  //    return response.status(400).json({ message: error.message })
+  //  }
+  //}
 
   /**
    * @getAllTickets
@@ -75,7 +75,7 @@ export default class SupportController {
       if (!ticket) {
         return response.notFound({ message: 'Ticket not found' })
       }
-      return response.ok({ ticket })
+      return response.ok(ticket)
     } catch (error) {
       return response.status(400).json({ message: error.message })
     }

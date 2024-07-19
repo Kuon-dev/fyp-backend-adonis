@@ -10,6 +10,7 @@ import RepoService from '#services/repo_service'
 import CodeCheckService from '#services/code_check_service'
 import CodeRepoSearchService, { SearchCriteria } from '#services/repo_search_service'
 import logger from '@adonisjs/core/services/logger'
+import RepoAccessService from '#services/repo_access_service'
 
 const searchSchema = z.object({
   query: z.string().optional(),
@@ -24,26 +25,26 @@ const searchSchema = z.object({
   pageSize: z.string().default("10").transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(1).optional())
 })
 
-/**
- * Controller class for handling Repo operations.
- */
-
 @inject()
 export default class RepoController {
   constructor(
     protected repoService: RepoService,
+    protected codeRepoSearchService: CodeRepoSearchService,
+    protected repoAccessService: RepoAccessService,
     protected codeCheckService: CodeCheckService,
-    protected codeRepoSearchService: CodeRepoSearchService
   ) {}
 
   /**
    * Create a new Repo.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @bodyParam data - The data for the new Repo.
+   * @bodyParam {Object} data - The data for the new Repo.
+   * @responseBody 201 - { id: string, name: string, ... } - The created repo
+   * @responseBody 400 - { message: string, errors?: Object[] } - Validation error details
+   * @responseBody 401 - { message: string } - Unauthorized error
    */
   public async create({ request, response }: HttpContext) {
-    if (!request.user) throw new UnAuthorizedException('User not found in request object')
+    if (!request.user) throw new UnAuthorizedException('User not authenticated')
 
     try {
       const data = createRepoSchema.parse(request.body())
@@ -55,12 +56,12 @@ export default class RepoController {
         sourceCss: '',
         status: 'pending',
       })
-      return response.status(201).json(repo)
+      return response.created(repo)
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return response.abort({ message: 'Validation error', errors: error.errors }, 400)
+        return response.badRequest({ message: 'Validation error', errors: error.errors })
       }
-      return response.abort({ message: error.message }, 400)
+      return response.badRequest({ message: error.message })
     }
   }
 
@@ -68,30 +69,65 @@ export default class RepoController {
    * Retrieve a Repo by ID.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the Repo.
+   * @paramParam {string} id - The ID of the Repo.
+   * @responseBody 200 - { repo: Object, repoCodeCheck: Object|null, hasAccess: boolean }
+   * @responseBody 401 - { message: string } - Unauthorized error
+   * @responseBody 403 - { message: string } - Forbidden error
+   * @responseBody 404 - { message: string } - Not found error
+   * @responseBody 500 - { message: string } - Internal server error
    */
   public async getById({ params, request, response }: HttpContext) {
+    const user = request.user
+    if (!user) throw new UnAuthorizedException('User not found in request object')
     const { id } = params
 
     try {
-      const repo = await this.repoService.getRepoById(id, request.user?.id ?? null)
-      const repoCodeCheck = await prisma.codeCheck.findFirst({
-        where: {
-          repoId: id,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      })
-      return response.status(200).json({
-        repo: repo,
-        repoCodeCheck: repoCodeCheck ?? null,
+      return await prisma.$transaction(async (tx) => {
+        const repo = await this.repoService.getRepoById(id, user.id)
+
+        if (!repo) {
+          return response.notFound({ message: 'Repo not found' })
+        }
+
+        const hasAccess = await this.repoAccessService.hasAccess(user.id, id, tx)
+
+        if (repo.visibility === 'private' && !hasAccess && repo.userId !== user.id) {
+          return response.forbidden({ message: 'You do not have access to this repo' })
+        }
+
+        const repoCodeCheck = await tx.codeCheck.findFirst({
+          where: {
+            repoId: id,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+
+        const repoDetails = (repo.visibility === 'private' && !hasAccess && repo.userId !== user.id)
+          ? { id: repo.id, name: repo.name, visibility: repo.visibility }
+          : repo
+
+        return response.ok({
+          repo: repoDetails,
+          repoCodeCheck: repoCodeCheck ?? null,
+          hasAccess: hasAccess || repo.userId === user.id,
+        })
       })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      console.error('Error retrieving repo:', error)
+      return response.internalServerError({ message: 'An error occurred while retrieving the repo' })
     }
   }
 
+  /**
+   * Retrieve a public Repo by ID.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @paramParam {string} id - The ID of the Repo.
+   * @responseBody 200 - { repo: Object, repoCodeCheck: Object|null }
+   * @responseBody 400 - { message: string } - Bad request error
+   */
   public async getByIdPublic({ params, response }: HttpContext) {
     const { id } = params
     try {
@@ -117,54 +153,36 @@ export default class RepoController {
    * Update a Repo.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the Repo.
-   * @bodyParam data - The data to update the Repo.
+   * @paramParam {string} id - The ID of the Repo.
+   * @bodyParam {Object} data - The data to update the Repo.
+   * @responseBody 200 - { id: string, name: string, ... } - The updated repo
+   * @responseBody 400 - { message: string, errors?: Object[] } - Validation error details
+   * @responseBody 401 - { message: string } - Unauthorized error
+   * @responseBody 403 - { message: string } - Forbidden error
+   * @responseBody 404 - { message: string } - Not found error
    */
   public async update({ params, request, response }: HttpContext) {
+    if (!request.user) throw new UnAuthorizedException('User not authenticated')
     const { id } = params
 
     try {
       const data = updateRepoSchema.parse(request.body())
 
-      const repo = await this.repoService.updateRepo(id, data)
+      const repo = await this.repoService.getRepoById(id, request.user.id)
+      if (!repo) {
+        return response.notFound({ message: 'Repo not found' })
+      }
+      if (repo.userId !== request.user.id) {
+        return response.forbidden({ message: 'You do not have permission to update this repo' })
+      }
 
-      //if (data.sourceJs) {
-      //  const language = data.language || 'JSX' // Default to JSX if not provided
-      //  const cleanedSource = data.sourceJs.replace(
-      //    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      //    ''
-      //  )
-        //const codeCheckResult = await this.codeCheckService.performCodeCheck(
-        //  cleanedSource,
-        //  language
-        //)
-        //
-        //await prisma.codeCheck.create({
-        //  data: {
-        //    repoId: id,
-        //    securityScore: codeCheckResult.securityScore,
-        //    maintainabilityScore: codeCheckResult.maintainabilityScore,
-        //    readabilityScore: codeCheckResult.readabilityScore,
-        //    overallDescription: codeCheckResult.overallDescription,
-        //    securitySuggestion: codeCheckResult.securitySuggestion,
-        //    maintainabilitySuggestion: codeCheckResult.maintainabilitySuggestion,
-        //    readabilitySuggestion: codeCheckResult.readabilitySuggestion,
-        //
-        //    eslintErrorCount: codeCheckResult.eslintErrorCount,
-        //    eslintFatalErrorCount: codeCheckResult.eslintFatalErrorCount,
-        //    //score: codeCheckResult.score,
-        //    //message: codeCheckResult.suggestion,
-        //    //description: codeCheckResult.description,
-        //  },
-        //})
-      //}
-
-      return response.status(200).json(repo)
+      const updatedRepo = await this.repoService.updateRepo(id, data)
+      return response.ok(updatedRepo)
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return response.abort({ message: 'Validation error', errors: error.errors }, 400)
+        return response.badRequest({ message: 'Validation error', errors: error.errors })
       }
-      return response.abort({ message: error.message }, 400)
+      return response.badRequest({ message: error.message })
     }
   }
 
@@ -172,36 +190,31 @@ export default class RepoController {
    * Delete a Repo by ID.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam id - The ID of the Repo.
+   * @paramParam {string} id - The ID of the Repo to delete.
+   * @responseBody 200 - { message: string } - Success message
+   * @responseBody 400 - { message: string } - Bad request error
+   * @responseBody 401 - { message: string } - Unauthorized error
+   * @responseBody 403 - { message: string } - Forbidden error
+   * @responseBody 404 - { message: string } - Not found error
    */
   public async delete({ request, params, response }: HttpContext) {
+    if (!request.user) throw new UnAuthorizedException('User not authenticated')
     const { id } = params
-    if (!request.user) throw new UnAuthorizedException('User not found in request object')
 
     try {
+      const repo = await this.repoService.getRepoById(id, request.user.id)
+      if (!repo) {
+        return response.notFound({ message: 'Repo not found' })
+      }
+      if (repo.userId !== request.user.id) {
+        return response.forbidden({ message: 'You do not have permission to delete this repo' })
+      }
+
       await this.repoService.deleteRepo(id)
-      return response.status(200).json({ message: 'Repo deleted successfully' })
+      return response.ok({ message: 'Repo deleted successfully' })
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
-    }
-  }
-
-  /**
-   * Retrieve paginated Repos with public visibility.
-   *
-   * @param {HttpContext} ctx - The HTTP context object.
-   * @queryParam page - The page number for pagination.
-   * @queryParam limit - The number of items per page.
-   */
-  public async getPaginated({ request, response }: HttpContext) {
-    const page = request.input('page', 1)
-    const limit = request.input('limit', 10)
-
-    try {
-      const repos = await this.repoService.getPaginatedRepos(page, limit, request.user?.id ?? '')
-      return response.status(200).json(repos)
-    } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      console.log(error)
+      return response.badRequest({ message: error.message })
     }
   }
 
@@ -209,27 +222,44 @@ export default class RepoController {
    * Retrieve Repos by user ID.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @paramParam userId - The user ID to filter by.
+   * @paramParam {string} userId - The user ID to filter by.
+   * @responseBody 200 - Array of repo objects
+   * @responseBody 400 - { message: string } - Bad request error
+   * @responseBody 401 - { message: string } - Unauthorized error
+   * @responseBody 403 - { message: string } - Forbidden error
    */
-  public async getByUser({ params, response }: HttpContext) {
+  public async getByUser({ params, request, response }: HttpContext) {
+    if (!request.user) throw new UnAuthorizedException('User not authenticated')
     const { userId } = params
+
+    if (userId !== request.user.id && request.user.role !== 'ADMIN') {
+      return response.forbidden({ message: 'You do not have permission to view these repos' })
+    }
 
     try {
       const repos = await this.repoService.getReposByUser(userId)
-      return response.status(200).json(repos)
+      return response.ok(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.badRequest({ message: error.message })
     }
   }
 
+  /**
+   * Retrieve Repos for the authenticated user.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @responseBody 200 - Array of repo objects
+   * @responseBody 400 - { message: string } - Bad request error
+   * @responseBody 401 - { message: string } - Unauthorized error
+   */
   public async getByUserSession({ request, response }: HttpContext) {
-    if (!request.user) throw new Exception('User not found in request object')
+    if (!request.user) throw new UnAuthorizedException('User not authenticated')
 
     try {
       const repos = await this.repoService.getReposByUser(request.user.id)
-      return response.status(200).json(repos)
+      return response.ok(repos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.badRequest({ message: error.message })
     }
   }
 
@@ -237,48 +267,39 @@ export default class RepoController {
    * Retrieve featured repos.
    *
    * @param {HttpContext} ctx - The HTTP context object.
-   * @queryParam limit - The number of featured repos to return (default: 5).
+   * @queryParam {number} [limit=5] - The number of featured repos to return.
+   * @responseBody 200 - Array of featured repo objects
+   * @responseBody 400 - { message: string } - Bad request error
    */
   public async getFeatured({ request, response }: HttpContext) {
     const limit = request.input('limit', 5)
 
     try {
       const featuredRepos = await this.repoService.getFeaturedRepos(limit)
-      return response.status(200).json(featuredRepos)
+      return response.ok(featuredRepos)
     } catch (error) {
-      return response.abort({ message: error.message }, 400)
+      return response.badRequest({ message: error.message })
     }
-
-    /**
-     * Get featured repos based on various criteria
-     * @param {number} limit - The number of featured repos to return
-     * @returns {Promise<CodeRepo[]>} - A list of featured repos
-     */
   }
 
- /**
-   * @searchRepos
-   * @description Search for code repositories based on various criteria
-   * @queryParam query - Search query for name and description
-   * @queryParam tags - Array of tag names to filter by
-   * @queryParam minPrice - Minimum price
-   * @queryParam maxPrice - Maximum price
-   * @queryParam language - Filter by programming language
-   * @queryParam visibility - Filter by visibility (public/private)
-   * @queryParam page - Page number for pagination
-   * @queryParam pageSize - Number of items per page
-   * @responseBody 200 - {
-   *   "data": [
-   *     { "id": "...", "name": "...", "description": "...", "language": "...", "price": 0, "visibility": "..." }
-   *   ],
-   *   "meta": { "total": 0, "page": 1, "pageSize": 10, "lastPage": 1 }
-   * }
-   * @responseBody 400 - { "message": "Invalid search criteria" }
+  /**
+   * Search for code repositories based on various criteria.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @queryParam {string} [query] - Search query for name and description
+   * @queryParam {string|string[]} [tags] - Array of tag names to filter by
+   * @queryParam {number} [minPrice] - Minimum price
+   * @queryParam {number} [maxPrice] - Maximum price
+   * @queryParam {Language} [language] - Filter by programming language
+   * @queryParam {number} [page=1] - Page number for pagination
+   * @queryParam {number} [pageSize=10] - Number of items per page
+   * @responseBody 200 - { data: Array<Object>, meta: { total: number, page: number, pageSize: number, lastPage: number } }
+   * @responseBody 400 - { message: string, errors?: Object[] } - Bad request or validation error
+   * @responseBody 500 - { message: string } - Internal server error
    */
   public async search({ request, response }: HttpContext) {
     try {
       const validatedData = searchSchema.parse(request.qs())
-      //logger.info({ validatedData }, 'Search criteria');
 
       const searchCriteria: SearchCriteria = {
         query: validatedData.query,
@@ -305,5 +326,4 @@ export default class RepoController {
       return response.internalServerError({ message: 'An error occurred while processing the search' })
     }
   }
-
 }
