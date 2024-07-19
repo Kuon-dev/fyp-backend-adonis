@@ -3,7 +3,6 @@ import { ApiClient } from '@japa/api-client'
 //import { createRepoSchema } from '#validators/repo'
 
 test.group('Repository Creation', () => {
-
   async function getAuthToken(client: ApiClient): Promise<string> {
     const loginResponse = await client.post('/api/v1/login').json({
       email: 'normalUser@example.com',
@@ -43,10 +42,7 @@ test.group('Repository Creation', () => {
     }
     const token = await getAuthToken(client)
 
-    const response = await client
-      .post('/api/v1/repo')
-      .header('Cookie', token)
-      .json(invalidRepoData)
+    const response = await client.post('/api/v1/repo').header('Cookie', token).json(invalidRepoData)
 
     response.assertStatus(400)
     assert.equal(response.body().message, 'Validation error')

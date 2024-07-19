@@ -1,7 +1,5 @@
 import { z } from 'zod'
-import {
-  isValidPhoneNumber,
-} from 'libphonenumber-js'
+import { isValidPhoneNumber } from 'libphonenumber-js'
 
 export const updateProfileSchema = z.object({
   name: z.string().optional(),

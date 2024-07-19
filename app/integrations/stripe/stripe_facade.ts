@@ -21,10 +21,7 @@ export default class StripeFacade {
    * @param accountId The Stripe Connect account ID to receive the funds
    * @returns The PaymentIntent object
    */
-  async createPaymentIntent(
-    amount: number,
-    currency: string,
-  ): Promise<Stripe.PaymentIntent> {
+  async createPaymentIntent(amount: number, currency: string): Promise<Stripe.PaymentIntent> {
     try {
       const paymentIntent = await this.stripe.paymentIntents.create({
         amount,
@@ -41,50 +38,50 @@ export default class StripeFacade {
   }
 
   async createPaymentIntentForRepo(
-      amount: number,
-      currency: string,
-      sellerId: string,
-      repoId: string
-    ) {
-      try {
-        const paymentIntent = await this.createPaymentIntent(amount, currency)
+    amount: number,
+    currency: string,
+    sellerId: string,
+    repoId: string
+  ) {
+    try {
+      const paymentIntent = await this.createPaymentIntent(amount, currency)
 
-        // Update the payment intent with metadata
-        const updatedPaymentIntent = await this.stripe.paymentIntents.update(paymentIntent.id, {
-          metadata: { repoId, sellerId },
-        })
+      // Update the payment intent with metadata
+      const updatedPaymentIntent = await this.stripe.paymentIntents.update(paymentIntent.id, {
+        metadata: { repoId, sellerId },
+      })
 
-        return updatedPaymentIntent
-      } catch (error) {
-        console.error('Error creating payment intent for repo:', error)
-        throw new Exception('Failed to create payment intent for repo', {
-          code: 'E_STRIPE_PAYMENT_INTENT_CREATION',
-          status: 500,
-        })
-      }
+      return updatedPaymentIntent
+    } catch (error) {
+      console.error('Error creating payment intent for repo:', error)
+      throw new Exception('Failed to create payment intent for repo', {
+        code: 'E_STRIPE_PAYMENT_INTENT_CREATION',
+        status: 500,
+      })
     }
+  }
 
-    async retrievePaymentIntent(paymentIntentId: string) {
-      try {
-        return await this.stripe.paymentIntents.retrieve(paymentIntentId)
-      } catch (error) {
-        console.error('Error retrieving payment intent:', error)
-        throw new Exception('Failed to retrieve payment intent', {
-          code: 'E_STRIPE_PAYMENT_INTENT_RETRIEVAL',
-          status: 500,
-        })
-      }
+  async retrievePaymentIntent(paymentIntentId: string) {
+    try {
+      return await this.stripe.paymentIntents.retrieve(paymentIntentId)
+    } catch (error) {
+      console.error('Error retrieving payment intent:', error)
+      throw new Exception('Failed to retrieve payment intent', {
+        code: 'E_STRIPE_PAYMENT_INTENT_RETRIEVAL',
+        status: 500,
+      })
     }
+  }
 
-    async confirmPaymentIntent(paymentIntentId: string) {
-      try {
-        return await this.stripe.paymentIntents.confirm(paymentIntentId)
-      } catch (error) {
-        console.error('Error confirming payment intent:', error)
-        throw new Exception('Failed to confirm payment intent', {
-          code: 'E_STRIPE_PAYMENT_INTENT_CONFIRMATION',
-          status: 500,
-        })
-      }
+  async confirmPaymentIntent(paymentIntentId: string) {
+    try {
+      return await this.stripe.paymentIntents.confirm(paymentIntentId)
+    } catch (error) {
+      console.error('Error confirming payment intent:', error)
+      throw new Exception('Failed to confirm payment intent', {
+        code: 'E_STRIPE_PAYMENT_INTENT_CONFIRMATION',
+        status: 500,
+      })
     }
+  }
 }

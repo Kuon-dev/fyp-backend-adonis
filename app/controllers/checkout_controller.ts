@@ -45,10 +45,15 @@ export default class CheckoutController {
       if (error instanceof z.ZodError) {
         return response.badRequest({ message: 'Invalid input data', errors: error.errors })
       }
-      if (error instanceof Error && error.message === 'Repo not found or seller profile not available') {
+      if (
+        error instanceof Error &&
+        error.message === 'Repo not found or seller profile not available'
+      ) {
         return response.notFound({ message: error.message })
       }
-      return response.internalServerError({ message: 'An error occurred while initiating checkout' })
+      return response.internalServerError({
+        message: 'An error occurred while initiating checkout',
+      })
     }
   }
 
@@ -84,7 +89,7 @@ export default class CheckoutController {
         if (error instanceof Error && error.message === 'Payment intent not found') {
           return response.notFound({ message: error.message })
         }
-        throw error  // Re-throw to trigger transaction rollback
+        throw error // Re-throw to trigger transaction rollback
       }
     })
 

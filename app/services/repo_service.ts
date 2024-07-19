@@ -9,16 +9,13 @@ type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss'> & {
 }
 
 type RepoCheckoutInfo = {
-  repo: PartialCodeRepo;
-  sellerProfileId: string | null;
+  repo: PartialCodeRepo
+  sellerProfileId: string | null
 }
 
 export default class RepoService {
   public async createRepo(
-    data: Omit<
-      CodeRepo,
-      'id' | 'createdAt' | 'updatedAt' | 'deletedAt'
-    > & { tags: string[] }
+    data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { tags: string[] }
   ): Promise<CodeRepo> {
     const repo = await prisma.codeRepo.create({
       data: {
@@ -151,26 +148,26 @@ export default class RepoService {
       // Check if the repo exists
       const existingRepo = await tx.codeRepo.findUnique({
         where: { id },
-        include: { tags: true }
-      });
+        include: { tags: true },
+      })
 
       if (!existingRepo) {
-        throw new Error('Repo not found');
+        throw new Error('Repo not found')
       }
 
       // Delete associated TagsOnRepos entries
       await tx.tagsOnRepos.deleteMany({
-        where: { codeRepoId: id }
-      });
+        where: { codeRepoId: id },
+      })
 
       // Delete the CodeRepo
       const deletedRepo = await tx.codeRepo.delete({
         where: { id },
-        include: { tags: true } // Include tags in the returned object for completeness
-      });
+        include: { tags: true }, // Include tags in the returned object for completeness
+      })
 
-      return deletedRepo;
-    });
+      return deletedRepo
+    })
   }
 
   /**

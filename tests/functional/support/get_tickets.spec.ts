@@ -2,7 +2,6 @@ import { test } from '@japa/runner'
 import { ApiClient } from '@japa/api-client'
 
 test.group('Support Controller - GET Operations', () => {
-
   async function loginAsAdmin(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
@@ -45,7 +44,16 @@ test.group('Support Controller - GET Operations', () => {
     assert.isArray(response.body().tickets)
 
     for (const ticket of response.body().tickets) {
-      assert.properties(ticket, ['id', 'email', 'title', 'content', 'status', 'type', 'createdAt', 'updatedAt'])
+      assert.properties(ticket, [
+        'id',
+        'email',
+        'title',
+        'content',
+        'status',
+        'type',
+        'createdAt',
+        'updatedAt',
+      ])
     }
   })
 
@@ -53,10 +61,21 @@ test.group('Support Controller - GET Operations', () => {
     const adminToken = await loginAsAdmin(client)
     const allTicket = await client.get('/api/v1/support/tickets').header('Cookie', adminToken)
     const ticketId = allTicket.body().tickets[0].id
-    const response = await client.get(`/api/v1/support/ticket/${ticketId}`).header('Cookie', adminToken)
+    const response = await client
+      .get(`/api/v1/support/ticket/${ticketId}`)
+      .header('Cookie', adminToken)
 
     response.assertStatus(200)
-    assert.properties(response.body(), ['id', 'email', 'title', 'content', 'status', 'type', 'createdAt', 'updatedAt'])
+    assert.properties(response.body(), [
+      'id',
+      'email',
+      'title',
+      'content',
+      'status',
+      'type',
+      'createdAt',
+      'updatedAt',
+    ])
   })
 
   test('admin can get support tickets by title', async ({ client, assert }) => {

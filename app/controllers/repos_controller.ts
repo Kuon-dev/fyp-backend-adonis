@@ -14,15 +14,31 @@ import RepoAccessService from '#services/repo_access_service'
 
 const searchSchema = z.object({
   query: z.string().optional(),
-  tags: z.union([
-    z.string(),
-    z.array(z.string())
-  ]).optional().transform(val => Array.isArray(val) ? val : val ? [val] : undefined),
-  minPrice: z.string().optional().transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(0).optional()),
-  maxPrice: z.string().optional().transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(0).optional()),
+  tags: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((val) => (Array.isArray(val) ? val : val ? [val] : undefined)),
+  minPrice: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseFloat(val) : undefined))
+    .pipe(z.number().min(0).optional()),
+  maxPrice: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseFloat(val) : undefined))
+    .pipe(z.number().min(0).optional()),
   language: z.nativeEnum(Language).optional(),
-  page: z.string().default("1").transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(1).optional()),
-  pageSize: z.string().default("10").transform(val => val ? parseFloat(val) : undefined).pipe(z.number().min(1).optional())
+  page: z
+    .string()
+    .default('1')
+    .transform((val) => (val ? parseFloat(val) : undefined))
+    .pipe(z.number().min(1).optional()),
+  pageSize: z
+    .string()
+    .default('10')
+    .transform((val) => (val ? parseFloat(val) : undefined))
+    .pipe(z.number().min(1).optional()),
 })
 
 @inject()
@@ -31,7 +47,7 @@ export default class RepoController {
     protected repoService: RepoService,
     protected codeRepoSearchService: CodeRepoSearchService,
     protected repoAccessService: RepoAccessService,
-    protected codeCheckService: CodeCheckService,
+    protected codeCheckService: CodeCheckService
   ) {}
 
   /**
@@ -104,9 +120,10 @@ export default class RepoController {
           },
         })
 
-        const repoDetails = (repo.visibility === 'private' && !hasAccess && repo.userId !== user.id)
-          ? { id: repo.id, name: repo.name, visibility: repo.visibility }
-          : repo
+        const repoDetails =
+          repo.visibility === 'private' && !hasAccess && repo.userId !== user.id
+            ? { id: repo.id, name: repo.name, visibility: repo.visibility }
+            : repo
 
         return response.ok({
           repo: repoDetails,
@@ -116,7 +133,9 @@ export default class RepoController {
       })
     } catch (error) {
       console.error('Error retrieving repo:', error)
-      return response.internalServerError({ message: 'An error occurred while retrieving the repo' })
+      return response.internalServerError({
+        message: 'An error occurred while retrieving the repo',
+      })
     }
   }
 
@@ -323,7 +342,9 @@ export default class RepoController {
       if (error instanceof z.ZodError) {
         return response.badRequest({ message: 'Invalid search criteria', errors: error.errors })
       }
-      return response.internalServerError({ message: 'An error occurred while processing the search' })
+      return response.internalServerError({
+        message: 'An error occurred while processing the search',
+      })
     }
   }
 }

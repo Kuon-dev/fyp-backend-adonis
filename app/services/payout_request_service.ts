@@ -11,7 +11,7 @@ export default class PayoutRequestService {
   public async createPayoutRequest(userId: string, data: { totalAmount: number }) {
     const sellerProfile = await prisma.sellerProfile.findUnique({
       where: { userId },
-      include: { user: true }
+      include: { user: true },
     })
     if (!sellerProfile) {
       throw new Error('Seller profile not found')
@@ -26,7 +26,8 @@ export default class PayoutRequestService {
       orderBy: { createdAt: 'desc' },
     })
 
-    const lastPayoutDate = lastPayoutRequest?.createdAt || sellerProfile.lastPayoutDate || new Date(0)
+    const lastPayoutDate =
+      lastPayoutRequest?.createdAt || sellerProfile.lastPayoutDate || new Date(0)
     const cooldownPeriod = DateTime.fromJSDate(lastPayoutDate).plus({ days: COOLDOWN_PERIOD_DAYS })
 
     if (DateTime.now() < cooldownPeriod) {
@@ -132,8 +133,8 @@ export default class PayoutRequestService {
     return await prisma.payoutRequest.findMany({
       where: {
         sellerProfile: {
-          verificationStatus: SellerVerificationStatus.APPROVED
-        }
+          verificationStatus: SellerVerificationStatus.APPROVED,
+        },
       },
       include: {
         sellerProfile: {
@@ -141,7 +142,7 @@ export default class PayoutRequestService {
             user: {
               select: { email: true, role: true, bannedUntil: true, deletedAt: true },
             },
-            bankAccount: true
+            bankAccount: true,
           },
         },
       },

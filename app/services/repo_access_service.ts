@@ -112,15 +112,12 @@ export default class RepoAccessService {
     const accesses = await tx.userRepoAccess.findMany({
       where: {
         userId,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       select: { repoId: true },
     })
 
-    return accesses.map(access => access.repoId)
+    return accesses.map((access) => access.repoId)
   }
 
   /**
@@ -136,14 +133,11 @@ export default class RepoAccessService {
     const accesses = await tx.userRepoAccess.findMany({
       where: {
         repoId,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       select: { userId: true },
     })
 
-    return accesses.map(access => access.userId)
+    return accesses.map((access) => access.userId)
   }
 }

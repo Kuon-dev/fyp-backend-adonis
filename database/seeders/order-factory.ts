@@ -5,18 +5,18 @@ import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
 
 interface ExtendedUser extends User {
-  sellerProfile: SellerProfile | null;
+  sellerProfile: SellerProfile | null
 }
 
 function generateDates() {
-  const now = DateTime.now();
-  const twoMonthsAgo = now.minus({ months: 2 });
-  const createdAt = faker.date.between({ from: twoMonthsAgo.toJSDate(), to: now.toJSDate() });
-  const updatedAt = faker.date.between({ from: createdAt, to: now.toJSDate() });
+  const now = DateTime.now()
+  const twoMonthsAgo = now.minus({ months: 2 })
+  const createdAt = faker.date.between({ from: twoMonthsAgo.toJSDate(), to: now.toJSDate() })
+  const updatedAt = faker.date.between({ from: createdAt, to: now.toJSDate() })
   const deletedAt = faker.datatype.boolean(0.1)
     ? faker.date.between({ from: updatedAt, to: now.toJSDate() })
-    : null;
-  return { createdAt, updatedAt, deletedAt };
+    : null
+  return { createdAt, updatedAt, deletedAt }
 }
 
 function generateOrder(users: ExtendedUser[], codeRepos: CodeRepo[]): Omit<Order, 'id'> {
@@ -139,7 +139,11 @@ async function grantRepoAccess(
   })
 }
 
-async function processBatch(orders: Omit<Order, 'id'>[], users: ExtendedUser[], codeRepos: CodeRepo[]) {
+async function processBatch(
+  orders: Omit<Order, 'id'>[],
+  users: ExtendedUser[],
+  codeRepos: CodeRepo[]
+) {
   const createdOrders: Order[] = []
   for (const orderData of orders) {
     try {
@@ -151,17 +155,23 @@ async function processBatch(orders: Omit<Order, 'id'>[], users: ExtendedUser[], 
           },
         })
 
-        const codeRepo = codeRepos.find(repo => repo.id === createdOrder.codeRepoId)
+        const codeRepo = codeRepos.find((repo) => repo.id === createdOrder.codeRepoId)
         if (codeRepo) {
-          const seller = users.find(user => user.id === codeRepo.userId)
+          const seller = users.find((user) => user.id === codeRepo.userId)
           if (seller && seller.sellerProfile) {
-            await updateSalesAggregateAndSellerBalance(createdOrder, seller.id, seller.sellerProfile)
+            await updateSalesAggregateAndSellerBalance(
+              createdOrder,
+              seller.id,
+              seller.sellerProfile
+            )
           }
 
           // Grant repo access if the order status is SUCCEEDED
           if (createdOrder.status === OrderStatus.SUCCEEDED) {
             await grantRepoAccess(tx, createdOrder.userId, createdOrder.codeRepoId, createdOrder.id)
-            console.log(`Granted access to repo ${createdOrder.codeRepoId} for user ${createdOrder.userId}`)
+            console.log(
+              `Granted access to repo ${createdOrder.codeRepoId} for user ${createdOrder.userId}`
+            )
           }
         }
 
@@ -179,9 +189,9 @@ export async function seedOrders(count: number = 100) {
   let successfullyCreated = 0
   const batchSize = 10 // Adjust this value based on your needs
   try {
-    const users = await prisma.user.findMany({
+    const users = (await prisma.user.findMany({
       include: { sellerProfile: true },
-    }) as ExtendedUser[]
+    })) as ExtendedUser[]
     const codeRepos = await prisma.codeRepo.findMany()
     if (users.length === 0 || codeRepos.length === 0) {
       throw new Error('No users or code repos found. Please seed users and code repos first.')

@@ -4,13 +4,16 @@ import { Prisma, OrderStatus } from '@prisma/client'
 
 @inject()
 export default class OrderService {
-  async createOrder(data: {
-    userId: string
-    repoId: string
-    amount: number
-    status: OrderStatus
-    stripePaymentIntentId: string
-  }, tx?: Prisma.TransactionClient) {
+  async createOrder(
+    data: {
+      userId: string
+      repoId: string
+      amount: number
+      status: OrderStatus
+      stripePaymentIntentId: string
+    },
+    tx?: Prisma.TransactionClient
+  ) {
     const db = tx || prisma
     return await db.order.create({
       data: {

@@ -42,7 +42,6 @@ export default class CheckoutService {
     // check if repo seller is verified
     const isSellerVerified = await this.sellerService.checkIfSellerVerified(repoInfo.userId)
 
-
     if (!isSellerVerified) {
       throw new Error('Repo not found or seller profile not available')
     }
@@ -78,7 +77,9 @@ export default class CheckoutService {
    * @returns An object indicating success and the order ID
    */
   public async processPayment(paymentIntentId: string, tx: Prisma.TransactionClient) {
-    const { paymentIntentId: validatedPaymentIntentId } = processPaymentSchema.parse({ paymentIntentId })
+    const { paymentIntentId: validatedPaymentIntentId } = processPaymentSchema.parse({
+      paymentIntentId,
+    })
 
     const paymentIntent = await this.stripeFacade.retrievePaymentIntent(validatedPaymentIntentId)
     if (!paymentIntent) {

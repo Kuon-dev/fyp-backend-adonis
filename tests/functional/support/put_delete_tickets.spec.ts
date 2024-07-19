@@ -2,7 +2,6 @@ import { test } from '@japa/runner'
 import { ApiClient } from '@japa/api-client'
 
 test.group('Support Controller - PUT and DELETE Operations', () => {
-
   async function loginAsAdmin(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
@@ -32,7 +31,16 @@ test.group('Support Controller - PUT and DELETE Operations', () => {
       })
 
     response.assertStatus(200)
-    assert.properties(response.body().ticket, ['id', 'email', 'title', 'content', 'status', 'type', 'createdAt', 'updatedAt'])
+    assert.properties(response.body().ticket, [
+      'id',
+      'email',
+      'title',
+      'content',
+      'status',
+      'type',
+      'createdAt',
+      'updatedAt',
+    ])
     assert.equal(response.body().ticket.status, 'done')
   })
 
@@ -71,16 +79,13 @@ test.group('Support Controller - PUT and DELETE Operations', () => {
   })
 
   test('unauthenticated user cannot update support ticket', async ({ client }) => {
-
     const adminToken = await loginAsAdmin(client)
     const allTicket = await client.get('/api/v1/support/tickets').header('Cookie', adminToken)
     const ticketId = allTicket.body().tickets[0].id
 
-    const response = await client
-      .put(`/api/v1/support/ticket/${ticketId}`)
-      .json({
-        status: 'done',
-      })
+    const response = await client.put(`/api/v1/support/ticket/${ticketId}`).json({
+      status: 'done',
+    })
 
     response.assertStatus(401)
     //response.assertBodyContains({ message: 'Authentication required' })

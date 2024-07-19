@@ -54,7 +54,9 @@ export default class PayoutRequestController {
     if (!request.user) throw new UnAuthorizedException('User not found in request object')
 
     try {
-      const data = updatePayoutRequestSchema.parse(request.body()) as { status: PayoutRequestStatus }
+      const data = updatePayoutRequestSchema.parse(request.body()) as {
+        status: PayoutRequestStatus
+      }
       const payoutRequest = await this.payoutRequestService.updatePayoutRequest(id, data.status)
       return response.status(200).json(payoutRequest)
     } catch (error) {

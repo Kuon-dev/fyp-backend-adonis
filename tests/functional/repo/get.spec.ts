@@ -2,7 +2,10 @@ import { test } from '@japa/runner'
 import { ApiClient } from '@japa/api-client'
 
 test.group('Repository Get Details', () => {
-  async function getAuthToken(client: ApiClient, email: string = 'normalUser@example.com'): Promise<string> {
+  async function getAuthToken(
+    client: ApiClient,
+    email: string = 'normalUser@example.com'
+  ): Promise<string> {
     const loginResponse = await client.post('/api/v1/login').json({
       email,
       password: 'password',
@@ -10,7 +13,11 @@ test.group('Repository Get Details', () => {
     return loginResponse.headers()['set-cookie'][0]
   }
 
-  async function createTestRepo(client: ApiClient, token: string, visibility: 'public' | 'private' = 'public'): Promise<string> {
+  async function createTestRepo(
+    client: ApiClient,
+    token: string,
+    visibility: 'public' | 'private' = 'public'
+  ): Promise<string> {
     const repoData = {
       name: `Test ${visibility} Repo`,
       description: `A test ${visibility} repository`,
@@ -29,15 +36,26 @@ test.group('Repository Get Details', () => {
     await client.delete(`/api/v1/repo/${repoId}`).header('Cookie', token)
   }
 
-  async function createReview(client: ApiClient, token: string, repoId: string, rating: number): Promise<void> {
-    await client.post('/api/v1/reviews').header('Cookie', token).json({
-      repoId,
-      content: `This is a test review with rating ${rating}`,
-      rating,
-    })
+  async function createReview(
+    client: ApiClient,
+    token: string,
+    repoId: string,
+    rating: number
+  ): Promise<void> {
+    await client
+      .post('/api/v1/reviews')
+      .header('Cookie', token)
+      .json({
+        repoId,
+        content: `This is a test review with rating ${rating}`,
+        rating,
+      })
   }
 
-  test('successfully get public repository details when authenticated', async ({ client, assert }) => {
+  test('successfully get public repository details when authenticated', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
     const repoId = await createTestRepo(client, token, 'public')
 
@@ -45,14 +63,29 @@ test.group('Repository Get Details', () => {
       const response = await client.get(`/api/v1/repo/${repoId}`).header('Cookie', token)
 
       response.assertStatus(200)
-      assert.properties(response.body().repo, ['id', 'name', 'description', 'language', 'price', 'visibility', 'status', 'tags'])
+      assert.properties(response.body().repo, [
+        'id',
+        'name',
+        'description',
+        'language',
+        'price',
+        'visibility',
+        'status',
+        'tags',
+      ])
       assert.equal(response.body().repo.visibility, 'public')
       assert.isTrue(response.body().hasAccess)
       assert.exists(response.body().repo.sourceJs)
       assert.exists(response.body().repo.sourceCss)
       assert.isArray(response.body().repo.tags)
-      assert.include(response.body().repo.tags.map((t: any) => t.tag.name), 'test')
-      assert.include(response.body().repo.tags.map((t: any) => t.tag.name), 'react')
+      assert.include(
+        response.body().repo.tags.map((t: any) => t.tag.name),
+        'test'
+      )
+      assert.include(
+        response.body().repo.tags.map((t: any) => t.tag.name),
+        'react'
+      )
     } finally {
       await deleteTestRepo(client, token, repoId)
     }
@@ -66,7 +99,16 @@ test.group('Repository Get Details', () => {
       const response = await client.get(`/api/v1/repo/${repoId}`).header('Cookie', token)
 
       response.assertStatus(200)
-      assert.properties(response.body().repo, ['id', 'name', 'description', 'language', 'price', 'visibility', 'status', 'tags'])
+      assert.properties(response.body().repo, [
+        'id',
+        'name',
+        'description',
+        'language',
+        'price',
+        'visibility',
+        'status',
+        'tags',
+      ])
       assert.equal(response.body().repo.visibility, 'private')
       assert.isTrue(response.body().hasAccess)
       assert.exists(response.body().repo.sourceJs)
@@ -91,7 +133,10 @@ test.group('Repository Get Details', () => {
     }
   })
 
-  test('successfully get public repository details without authentication', async ({ client, assert }) => {
+  test('successfully get public repository details without authentication', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
     const repoId = await createTestRepo(client, token, 'public')
 
@@ -99,7 +144,15 @@ test.group('Repository Get Details', () => {
       const response = await client.get(`/api/v1/repo/${repoId}/public`)
 
       response.assertStatus(200)
-      assert.properties(response.body().repo, ['id', 'name', 'description', 'language', 'price', 'visibility', 'tags'])
+      assert.properties(response.body().repo, [
+        'id',
+        'name',
+        'description',
+        'language',
+        'price',
+        'visibility',
+        'tags',
+      ])
       assert.equal(response.body().repo.visibility, 'public')
       assert.notExists(response.body().repo.sourceJs)
       assert.notExists(response.body().repo.sourceCss)
@@ -109,7 +162,10 @@ test.group('Repository Get Details', () => {
     }
   })
 
-  test('fail to get private repository details without authentication', async ({ client, assert }) => {
+  test('fail to get private repository details without authentication', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
     const repoId = await createTestRepo(client, token, 'private')
 
@@ -133,58 +189,74 @@ test.group('Repository Get Details', () => {
     assert.equal(response.body().message, 'Repo not found')
   })
 
-test('get repository details with paginated reviews', async ({ client, assert }) => {
-  const token = await getAuthToken(client)
-  const repoId = await createTestRepo(client, token, 'public')
-  try {
-    // Create multiple reviews
-    for (let i = 1; i <= 15; i++) {
-      await createReview(client, token, repoId, i % 5 + 1)
+  test('get repository details with paginated reviews', async ({ client, assert }) => {
+    const token = await getAuthToken(client)
+    const repoId = await createTestRepo(client, token, 'public')
+    try {
+      // Create multiple reviews
+      for (let i = 1; i <= 15; i++) {
+        await createReview(client, token, repoId, (i % 5) + 1)
+      }
+
+      const response = await client
+        .get(`/api/v1/repo/${repoId}/reviews?page=1&limit=10`)
+        .header('Cookie', token)
+
+      response.assertStatus(200)
+      assert.isArray(response.body().data)
+      assert.equal(response.body().data.length, 10)
+      assert.properties(response.body().meta, ['total', 'page', 'pageSize', 'lastPage'])
+
+      // Check if each review has the expected properties
+      response.body().data.forEach((review: any) => {
+        assert.properties(review, ['id', 'content', 'rating', 'userId', 'createdAt', 'updatedAt'])
+      })
+    } finally {
+      await deleteTestRepo(client, token, repoId)
     }
+  })
 
-    const response = await client.get(`/api/v1/repo/${repoId}/reviews?page=1&limit=10`).header('Cookie', token)
+  test('verify sensitive information is not returned for public unauthenticated requests', async ({
+    client,
+    assert,
+  }) => {
+    const token = await getAuthToken(client)
+    const repoId = await createTestRepo(client, token, 'public')
+    try {
+      const response = await client.get(`/api/v1/repo/${repoId}/public`)
 
-    response.assertStatus(200)
-    assert.isArray(response.body().data)
-    assert.equal(response.body().data.length, 10)
-    assert.properties(response.body().meta, ['total', 'page', 'pageSize', 'lastPage'])
+      response.assertStatus(200)
+      assert.exists(response.body().repo)
+      assert.notExists(response.body().repo.sourceJs)
+      assert.notExists(response.body().repo.sourceCss)
+      assert.notExists(response.body().repo.userId)
 
-    // Check if each review has the expected properties
-    response.body().data.forEach((review: any) => {
-      assert.properties(review, ['id', 'content', 'rating', 'userId', 'createdAt', 'updatedAt'])
-    })
-  } finally {
-    await deleteTestRepo(client, token, repoId)
-  }
-})
+      // Check for expected public properties
+      assert.properties(response.body().repo, [
+        'id',
+        'name',
+        'description',
+        'language',
+        'price',
+        'visibility',
+        'tags',
+      ])
 
-test('verify sensitive information is not returned for public unauthenticated requests', async ({ client, assert }) => {
-  const token = await getAuthToken(client)
-  const repoId = await createTestRepo(client, token, 'public')
-  try {
-    const response = await client.get(`/api/v1/repo/${repoId}/public`)
-
-    response.assertStatus(200)
-    assert.exists(response.body().repo)
-    assert.notExists(response.body().repo.sourceJs)
-    assert.notExists(response.body().repo.sourceCss)
-    assert.notExists(response.body().repo.userId)
-
-    // Check for expected public properties
-    assert.properties(response.body().repo, ['id', 'name', 'description', 'language', 'price', 'visibility', 'tags'])
-
-    // Verify that the repoCodeCheck is included but doesn't contain sensitive information
-    assert.exists(response.body().repoCodeCheck)
-    if (response.body().repoCodeCheck) {
-      assert.notExists(response.body().repoCodeCheck.sourceJs)
-      assert.notExists(response.body().repoCodeCheck.sourceCss)
+      // Verify that the repoCodeCheck is included but doesn't contain sensitive information
+      assert.exists(response.body().repoCodeCheck)
+      if (response.body().repoCodeCheck) {
+        assert.notExists(response.body().repoCodeCheck.sourceJs)
+        assert.notExists(response.body().repoCodeCheck.sourceCss)
+      }
+    } finally {
+      await deleteTestRepo(client, token, repoId)
     }
-  } finally {
-    await deleteTestRepo(client, token, repoId)
-  }
-})
+  })
 
-  test('check if tags are correctly returned with repository details', async ({ client, assert }) => {
+  test('check if tags are correctly returned with repository details', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
     const repoId = await createTestRepo(client, token, 'public')
 

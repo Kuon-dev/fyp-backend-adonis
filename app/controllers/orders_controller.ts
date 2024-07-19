@@ -113,7 +113,7 @@ export default class OrderController {
             email: true,
           },
         },
-      }
+      },
     })
 
     const total = await prisma.order.count({ where: { userId } })

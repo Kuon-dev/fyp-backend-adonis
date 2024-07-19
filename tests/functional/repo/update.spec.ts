@@ -51,7 +51,10 @@ test.group('Repository Update and Delete', () => {
     assert.equal(response.body().name, updateData.name)
     assert.equal(response.body().description, updateData.description)
     assert.equal(response.body().price, updateData.price)
-    assert.includeMembers(response.body().tags.map((t: any) => t.tag.name), updateData.tags)
+    assert.includeMembers(
+      response.body().tags.map((t: any) => t.tag.name),
+      updateData.tags
+    )
   })
 
   test('fail to update repository with invalid data', async ({ client, assert }) => {
@@ -111,5 +114,4 @@ test.group('Repository Update and Delete', () => {
     console.log(getResponse.body())
     getResponse.assertStatus(404)
   })
-
 })

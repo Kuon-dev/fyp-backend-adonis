@@ -2,7 +2,6 @@ import { test } from '@japa/runner'
 import { ApiClient } from '@japa/api-client'
 
 test.group('Code Repo Search Controller - Search Operations', () => {
-
   async function loginAsUser(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'normalUser@example.com',
@@ -25,8 +24,18 @@ test.group('Code Repo Search Controller - Search Operations', () => {
     assert.properties(response.body().meta, ['total', 'page', 'pageSize', 'lastPage'])
 
     for (const repo of response.body().data) {
-      assert.properties(repo, ['id', 'name', 'description', 'language', 'price', 'visibility', 'tags'])
-      assert.isTrue(repo.name.toLowerCase().includes('test') || repo.description?.toLowerCase().includes('test'))
+      assert.properties(repo, [
+        'id',
+        'name',
+        'description',
+        'language',
+        'price',
+        'visibility',
+        'tags',
+      ])
+      assert.isTrue(
+        repo.name.toLowerCase().includes('test') || repo.description?.toLowerCase().includes('test')
+      )
     }
   })
 
@@ -81,9 +90,7 @@ test.group('Code Repo Search Controller - Search Operations', () => {
 
   test('search returns only public repositories', async ({ client, assert }) => {
     const userToken = await loginAsUser(client)
-    const response = await client
-      .get('/api/v1/repos/search')
-      .header('Cookie', userToken)
+    const response = await client.get('/api/v1/repos/search').header('Cookie', userToken)
 
     response.assertStatus(200)
     assert.properties(response.body(), ['data', 'meta'])
@@ -140,7 +147,7 @@ test.group('Code Repo Search Controller - Search Operations', () => {
         tags: ['component'],
         minPrice: 10,
         maxPrice: 1000,
-        language: 'TSX'
+        language: 'TSX',
       })
 
     response.assertStatus(200)
@@ -150,7 +157,7 @@ test.group('Code Repo Search Controller - Search Operations', () => {
     for (const repo of response.body().data) {
       assert.isTrue(
         repo.name.toLowerCase().includes('react') ||
-        repo.description?.toLowerCase().includes('react')
+          repo.description?.toLowerCase().includes('react')
       )
       assert.include(repo.tags, 'component')
       assert.isAtLeast(repo.price, 10)

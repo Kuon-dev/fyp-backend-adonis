@@ -2,7 +2,6 @@ import { test } from '@japa/runner'
 import { ApiClient } from '@japa/api-client'
 
 test.group('Support Controller - POST Operations', () => {
-
   async function loginAsAdmin(client: ApiClient) {
     const response = await client.post('/api/v1/login').json({
       email: 'admin@example.com',
@@ -21,7 +20,16 @@ test.group('Support Controller - POST Operations', () => {
 
     response.assertStatus(201)
     response.assertBodyContains({ message: 'Support ticket created successfully' })
-    assert.properties(response.body().ticket, ['id', 'email', 'title', 'content', 'status', 'type', 'createdAt', 'updatedAt'])
+    assert.properties(response.body().ticket, [
+      'id',
+      'email',
+      'title',
+      'content',
+      'status',
+      'type',
+      'createdAt',
+      'updatedAt',
+    ])
     assert.equal(response.body().ticket.email, 'normalUser@example.com')
     assert.equal(response.body().ticket.title, 'Test Ticket')
     assert.equal(response.body().ticket.content, 'This is a test ticket')
@@ -42,12 +50,9 @@ test.group('Support Controller - POST Operations', () => {
 
   test('admin can send default email notification', async ({ client, assert }) => {
     const adminToken = await loginAsAdmin(client)
-    const response = await client
-      .post('/api/v1/support/email')
-      .header('Cookie', adminToken)
-      .json({
-        email: 'normalUser@example.com',
-      })
+    const response = await client.post('/api/v1/support/email').header('Cookie', adminToken).json({
+      email: 'normalUser@example.com',
+    })
 
     response.assertStatus(200)
     response.assertBodyContains({ message: 'Email sent successfully' })

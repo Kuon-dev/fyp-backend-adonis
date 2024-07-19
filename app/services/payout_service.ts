@@ -9,7 +9,12 @@ export default class PayoutService {
    * @param {Object} data - The payout data.
    * @returns {Promise<Payout>} The created payout.
    */
-  public async createPayout(data: { payoutRequestId: string, sellerProfileId: string; amount: number; currency: string }) {
+  public async createPayout(data: {
+    payoutRequestId: string
+    sellerProfileId: string
+    amount: number
+    currency: string
+  }) {
     return prisma.payout.create({
       data: {
         payoutRequestId: data.payoutRequestId,

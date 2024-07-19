@@ -20,7 +20,7 @@ function generateSupportTicket(): Omit<SupportTicket, 'id'> {
   const titlePrefixes = {
     [SupportTicketType.general]: ['Question about', 'Issue with', 'Feedback on'],
     [SupportTicketType.technical]: ['Bug in', 'Error when', 'Problem with'],
-    [SupportTicketType.payment]: ['Payment failed for', 'Refund request for', 'Billing issue with']
+    [SupportTicketType.payment]: ['Payment failed for', 'Refund request for', 'Billing issue with'],
   }
 
   const titlePrefix = faker.helpers.arrayElement(titlePrefixes[type])
@@ -33,7 +33,7 @@ function generateSupportTicket(): Omit<SupportTicket, 'id'> {
     status,
     type,
     createdAt,
-    updatedAt
+    updatedAt,
   }
 }
 
@@ -44,8 +44,8 @@ async function processBatch(tickets: Omit<SupportTicket, 'id'>[]) {
       const createdTicket = await prisma.supportTicket.create({
         data: {
           ...ticketData,
-          id: generateIdFromEntropySize(32)
-        }
+          id: generateIdFromEntropySize(32),
+        },
       })
       createdTickets.push(createdTicket)
       console.log(`Created support ticket: ${createdTicket.id}`)
@@ -67,7 +67,9 @@ export async function seedSupportTickets(count: number = 50) {
       const createdTickets = await processBatch(ticketBatch)
       successfullyCreated += createdTickets.length
     }
-    console.log(`Successfully seeded ${successfullyCreated} out of ${count} requested support tickets`)
+    console.log(
+      `Successfully seeded ${successfullyCreated} out of ${count} requested support tickets`
+    )
   } catch (error) {
     console.error('Error seeding support tickets:', error)
   } finally {

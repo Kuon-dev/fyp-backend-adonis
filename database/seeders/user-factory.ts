@@ -23,10 +23,10 @@ export const generateUsers = async (count: number = 50): Promise<UserWithProfile
 
   // Define role weights
   const roleWeights = {
-    USER: 50,    // 50% chance
-    SELLER: 40,  // 40% chance
-    ADMIN: 5,    // 5% chance
-    MODERATOR: 5 // 5% chance
+    USER: 50, // 50% chance
+    SELLER: 40, // 40% chance
+    ADMIN: 5, // 5% chance
+    MODERATOR: 5, // 5% chance
   }
 
   // Generate additional random users
@@ -92,24 +92,33 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
   await prisma.$transaction(async (px) => {
     // Admin
     forcedUsers.push(
-      await UserFactory.createAdmin({ email: 'admin@example.com', password, fullname: 'Admin User' }, prisma)
+      await UserFactory.createAdmin(
+        { email: 'admin@example.com', password, fullname: 'Admin User' },
+        prisma
+      )
     )
 
     // Normal user
     forcedUsers.push(
-      await UserFactory.createUser({
-        email: 'normalUser@example.com',
-        password,
-        fullname: 'Normal User',
-      }, prisma)
+      await UserFactory.createUser(
+        {
+          email: 'normalUser@example.com',
+          password,
+          fullname: 'Normal User',
+        },
+        prisma
+      )
     )
 
     // Banned user
-    const bannedUser = await UserFactory.createUser({
-      email: 'bannedUser@example.com',
-      password,
-      fullname: 'Banned User',
-    }, prisma)
+    const bannedUser = await UserFactory.createUser(
+      {
+        email: 'bannedUser@example.com',
+        password,
+        fullname: 'Banned User',
+      },
+      prisma
+    )
     await prisma.user.update({
       where: { id: bannedUser.user.id },
       data: { bannedUntil: faker.date.future() },
@@ -118,19 +127,25 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
 
     // Unverified email user (we'll verify it later in this function)
     forcedUsers.push(
-      await UserFactory.createUser({
-        email: 'unverifiedEmailUser@example.com',
-        password,
-        fullname: 'Unverified Email User',
-      }, prisma)
+      await UserFactory.createUser(
+        {
+          email: 'unverifiedEmailUser@example.com',
+          password,
+          fullname: 'Unverified Email User',
+        },
+        prisma
+      )
     )
 
     // Deleted user
-    const deletedUser = await UserFactory.createUser({
-      email: 'deletedUser@example.com',
-      password,
-      fullname: 'Deleted User',
-    }, prisma)
+    const deletedUser = await UserFactory.createUser(
+      {
+        email: 'deletedUser@example.com',
+        password,
+        fullname: 'Deleted User',
+      },
+      prisma
+    )
     await prisma.user.update({
       where: { id: deletedUser.user.id },
       data: { deletedAt: new Date() },
@@ -138,22 +153,29 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
     forcedUsers.push(deletedUser)
 
     // Verified Seller
-    const verifiedSeller = await UserFactory.createSeller({
-      email: 'verifiedSeller@example.com',
-      password,
-      fullname: 'Verified Seller',
-      businessName: faker.company.name(),
-      businessAddress: faker.location.streetAddress(),
-      businessPhone: faker.phone.number(),
-    }, prisma)
+    const verifiedSeller = await UserFactory.createSeller(
+      {
+        email: 'verifiedSeller@example.com',
+        password,
+        fullname: 'Verified Seller',
+        businessName: faker.company.name(),
+        businessAddress: faker.location.streetAddress(),
+        businessPhone: faker.phone.number(),
+      },
+      prisma
+    )
 
-    await UserFactory.addBankAccount(verifiedSeller.user.id, {
-      bankName: faker.finance.accountName(),
-      accountHolderName: faker.person.fullName(),
-      accountNumber: faker.finance.accountNumber(),
-      routingNumber: faker.finance.routingNumber(),
-      swiftCode: faker.finance.bic(),
-    }, prisma)
+    await UserFactory.addBankAccount(
+      verifiedSeller.user.id,
+      {
+        bankName: faker.finance.accountName(),
+        accountHolderName: faker.person.fullName(),
+        accountNumber: faker.finance.accountNumber(),
+        routingNumber: faker.finance.routingNumber(),
+        swiftCode: faker.finance.bic(),
+      },
+      prisma
+    )
 
     await prisma.sellerProfile.update({
       where: { userId: verifiedSeller.user.id },
@@ -166,23 +188,29 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
 
     // Unverified Seller (we'll verify the email later in this function)
     forcedUsers.push(
-      await UserFactory.createSeller({
-        email: 'unverifiedSeller@example.com',
-        password,
-        fullname: 'Unverified Seller',
-        businessName: faker.company.name(),
-        businessAddress: faker.location.streetAddress(),
-        businessPhone: faker.phone.number(),
-      }, prisma)
+      await UserFactory.createSeller(
+        {
+          email: 'unverifiedSeller@example.com',
+          password,
+          fullname: 'Unverified Seller',
+          businessName: faker.company.name(),
+          businessAddress: faker.location.streetAddress(),
+          businessPhone: faker.phone.number(),
+        },
+        prisma
+      )
     )
 
     // Moderator
     forcedUsers.push(
-      await UserFactory.createModerator({
-        email: 'moderator@example.com',
-        password,
-        fullname: 'Moderator User',
-      }, prisma)
+      await UserFactory.createModerator(
+        {
+          email: 'moderator@example.com',
+          password,
+          fullname: 'Moderator User',
+        },
+        prisma
+      )
     )
 
     // Verify all users' emails (except the deleted user)
@@ -198,7 +226,6 @@ async function generateForcedTestUsers(): Promise<UserWithProfile[]> {
 
   return forcedUsers
 }
-
 
 async function createUserWithSpecialCases(
   index: number,

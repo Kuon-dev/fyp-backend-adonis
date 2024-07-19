@@ -413,20 +413,16 @@ export default class SellerService {
     return profile?.verificationStatus === SellerVerificationStatus.APPROVED
   }
 
-  public async updateBalance(
-    sellerId: string,
-    amount: number,
-    tx?: PrismaTransactionalClient
-  ) {
+  public async updateBalance(sellerId: string, amount: number, tx?: PrismaTransactionalClient) {
     const db = tx || prisma
 
     return await db.sellerProfile.update({
       where: { id: sellerId },
       data: {
         balance: {
-          increment: amount
-        }
-      }
+          increment: amount,
+        },
+      },
     })
   }
 }
