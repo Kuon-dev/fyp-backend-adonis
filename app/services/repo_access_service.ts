@@ -1,7 +1,8 @@
 import { inject } from '@adonisjs/core'
-import { PrismaTransactionalClient, prisma } from '#services/prisma_service'
-import { OrderStatus, UserRepoAccess } from '@prisma/client'
+import { PrismaTransactionalClient } from '#services/prisma_service'
+import { OrderStatus, UserRepoAccess, Role } from '@prisma/client'
 import { generateIdFromEntropySize } from 'lucia'
+import logger from '@adonisjs/core/services/logger'
 
 @inject()
 export default class RepoAccessService {
@@ -17,13 +18,12 @@ export default class RepoAccessService {
     repoId: string,
     tx: PrismaTransactionalClient
   ): Promise<boolean> {
-
-    const user = await tx.user.findUnique({where: {id: userId}})
+    const user = await tx.user.findUnique({ where: { id: userId } })
     if (!user) {
       return false
     }
 
-    if (user.role === 'ADMIN') {
+    if (user.role === Role.ADMIN) {
       return true
     }
 
@@ -50,11 +50,18 @@ export default class RepoAccessService {
 
   /**
    * Grant access to a repo for a user based on a successful order
+   * @param userId - The ID of the user
+   * @param repoId - The ID of the repo
    * @param orderId - The ID of the completed order
    * @param tx - Prisma transactional client
    * @returns A boolean indicating whether access was successfully granted
    */
-  public async grantAccess(orderId: string, tx: PrismaTransactionalClient): Promise<boolean> {
+  public async grantAccess(
+    userId: string,
+    repoId: string,
+    orderId: string,
+    tx: PrismaTransactionalClient
+  ): Promise<boolean> {
     try {
       const order = await tx.order.findUnique({
         where: { id: orderId },
@@ -66,7 +73,12 @@ export default class RepoAccessService {
         return false
       }
 
-      await this.upsertUserRepoAccess(order.userId, order.codeRepoId, order.id, tx)
+      if (order.codeRepoId !== repoId || order.userId !== userId) {
+        console.error(`Order ${orderId} does not match the provided user and repo`)
+        return false
+      }
+
+      await this.upsertUserRepoAccess(userId, repoId, orderId, tx)
       return true
     } catch (error) {
       console.error(`Error granting access for order ${orderId}:`, error)
@@ -98,6 +110,7 @@ export default class RepoAccessService {
       update: {
         orderId,
         grantedAt: new Date(),
+        expiresAt: null, // Reset expiration if updating
       },
       create: {
         id: generateIdFromEntropySize(32),
@@ -109,6 +122,7 @@ export default class RepoAccessService {
     })
   }
 
+
   /**
    * Get all repos a user has access to
    * @param userId - The ID of the user
@@ -119,15 +133,20 @@ export default class RepoAccessService {
     userId: string,
     tx: PrismaTransactionalClient
   ): Promise<string[]> {
-    const accesses = await tx.userRepoAccess.findMany({
-      where: {
-        userId,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      select: { repoId: true },
-    })
+    try {
+      const accesses = await tx.userRepoAccess.findMany({
+        where: {
+          userId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { repoId: true },
+      })
 
-    return accesses.map((access) => access.repoId)
+      return accesses.map((access) => access.repoId)
+    } catch (error) {
+      logger.error(`Error retrieving accessible repos for user ${userId}:`, error)
+      throw error
+    }
   }
 
   /**

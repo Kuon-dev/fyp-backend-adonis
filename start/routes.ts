@@ -62,8 +62,10 @@ router
         router
           .group(() => {
             router
-              .get('/user', [RepoController, 'getByUserSession'])
+              .get('/user', [RepoController, 'getByUserSession']) // get seller repos
               .use(middleware.auth({ role: 'USER' }))
+            // get accessed repos
+            router.get('/accessed', [RepoController, 'getByUserAccessed'])
             router.get('/featured', [RepoController, 'getFeatured'])
             router.get('/search', [RepoController, 'search'])
           })

@@ -76,7 +76,7 @@ export default class CheckoutService {
    * @param tx - Prisma transaction client
    * @returns An object indicating success and the order ID
    */
-  public async processPayment(paymentIntentId: string, tx: Prisma.TransactionClient) {
+  public async processPayment(userId: string, paymentIntentId: string, tx: Prisma.TransactionClient) {
     const { paymentIntentId: validatedPaymentIntentId } = processPaymentSchema.parse({
       paymentIntentId,
     })
@@ -109,7 +109,7 @@ export default class CheckoutService {
     await this.sellerService.updateBalance(sellerProfile.id, order.totalAmount, tx)
     await this.salesService.updateSalesAggregate(repo.userId, order.totalAmount, tx)
 
-    const accessGranted = await this.repoAccessService.grantAccess(order.codeRepoId, tx)
+    const accessGranted = await this.repoAccessService.grantAccess(userId, order.codeRepoId, order.id, tx )
     if (!accessGranted) {
       throw new Error('Failed to grant access to the repo')
     }

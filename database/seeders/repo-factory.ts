@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker'
 import { generateIdFromEntropySize } from 'lucia'
 import type { CodeRepo, User, Tag, Profile, SellerProfile } from '@prisma/client'
 import { prisma } from '#services/prisma_service'
-import { generateDates, randomBoolean } from './utils.js'
+import { generateDates, randomBoolean, weightedRandomTrueBoolean } from './utils.js'
 import {
   REPO_TAGS,
   PROJECT_MANAGEMENT,
@@ -116,7 +116,7 @@ async function generateCodeRepos(count: number = 10, config: SeederConfig) {
         createdAt,
         updatedAt,
         deletedAt,
-        visibility: randomBoolean() ? 'public' : 'private',
+        visibility: weightedRandomTrueBoolean() ? 'public' : 'private',
         status: faker.helpers.arrayElement(['pending', 'active', 'rejected']),
         name: generateUniqueName(user, existingNames),
         description: faker.lorem.sentences(),

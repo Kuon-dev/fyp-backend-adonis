@@ -293,6 +293,50 @@ export default class RepoController {
   }
 
   /**
+   * Retrieve repos that the authenticated user has access to, including repo data.
+   *
+   * @param {HttpContext} ctx - The HTTP context object.
+   * @responseBody 200 - { accessibleRepos: Object[] }
+   * @responseBody 401 - { message: string } - Unauthorized error
+   * @responseBody 500 - { message: string } - Internal server error
+   */
+  public async getByUserAccessed({ request, response }: HttpContext) {
+    if (!request.user) {
+      return response.unauthorized({ message: 'User not authenticated' })
+    }
+
+    try {
+      const accessibleRepos = await prisma.$transaction(async (tx) => {
+        const accessibleRepoIds = await this.repoAccessService.getUserAccessibleRepos(request.user!.id, tx)
+        
+        return tx.codeRepo.findMany({
+          where: {
+            id: { in: accessibleRepoIds }
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            language: true,
+            price: true,
+            createdAt: true,
+            updatedAt: true,
+            sourceCss: true,
+            sourceJs: true,
+          }
+        })
+      })
+
+      return response.ok({ accessibleRepos })
+    } catch (error) {
+      logger.error('Error retrieving accessible repos:', error)
+      return response.internalServerError({
+        message: 'An error occurred while retrieving accessible repos',
+      })
+    }
+  }
+
+  /**
    * Retrieve featured repos.
    *
    * @param {HttpContext} ctx - The HTTP context object.

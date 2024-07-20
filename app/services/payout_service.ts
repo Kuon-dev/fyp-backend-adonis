@@ -1,27 +1,32 @@
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
-//import { PayoutStatus } from '@prisma/client'
+import { Payout, PayoutRequest, Prisma } from '@prisma/client'
+import { z } from 'zod'
+
+const createPayoutSchema = z.object({
+  payoutRequestId: z.string().cuid(),
+  sellerProfileId: z.string().cuid(),
+  amount: z.number().positive(),
+  currency: z.string().default('MYR'),
+})
+
+type CreatePayoutData = z.infer<typeof createPayoutSchema>
 
 @inject()
 export default class PayoutService {
   /**
    * Create a new payout.
-   * @param {Object} data - The payout data.
+   * @param {CreatePayoutData} data - The payout data.
    * @returns {Promise<Payout>} The created payout.
    */
-  public async createPayout(data: {
-    payoutRequestId: string
-    sellerProfileId: string
-    amount: number
-    currency: string
-  }) {
+  public async createPayout(data: CreatePayoutData): Promise<Payout> {
+    const validatedData = createPayoutSchema.parse(data)
     return prisma.payout.create({
       data: {
-        payoutRequestId: data.payoutRequestId,
-        sellerProfileId: data.sellerProfileId,
-        totalAmount: data.amount,
-        currency: data.currency,
-        //status: PayoutStatus.COMPLETED,
+        payoutRequestId: validatedData.payoutRequestId,
+        sellerProfileId: validatedData.sellerProfileId,
+        totalAmount: validatedData.amount,
+        currency: validatedData.currency,
       },
     })
   }
@@ -30,8 +35,9 @@ export default class PayoutService {
    * Get a payout by its ID.
    * @param {string} id - The payout ID.
    * @returns {Promise<Payout>} The payout.
+   * @throws {Error} If the payout is not found.
    */
-  public async getPayoutById(id: string) {
+  public async getPayoutById(id: string): Promise<Payout> {
     const payout = await prisma.payout.findUnique({ where: { id } })
     if (!payout) {
       throw new Error('Payout not found')
@@ -44,7 +50,7 @@ export default class PayoutService {
    * @param {string} sellerProfileId - The seller profile ID.
    * @returns {Promise<Payout[]>} An array of payouts.
    */
-  public async getPayoutsBySellerProfile(sellerProfileId: string) {
+  public async getPayoutsBySellerProfile(sellerProfileId: string): Promise<Payout[]> {
     return prisma.payout.findMany({
       where: { sellerProfileId },
       orderBy: { createdAt: 'desc' },
@@ -55,9 +61,10 @@ export default class PayoutService {
    * Process a payout request.
    * @param {string} id - The payout request ID.
    * @param {'approve' | 'reject'} action - The action to take.
-   * @returns {Promise<Payout>} The processed payout.
+   * @returns {Promise<Payout | null>} The processed payout or null if rejected.
+   * @throws {Error} If the payout request is not found or not in a pending state.
    */
-  public async processPayoutRequest(id: string, action: 'approve' | 'reject') {
+  public async processPayoutRequest(id: string, action: 'approve' | 'reject'): Promise<Payout | null> {
     return prisma.$transaction(async (tx) => {
       const payoutRequest = await tx.payoutRequest.findUnique({
         where: { id },
@@ -78,7 +85,7 @@ export default class PayoutService {
             sellerProfileId: payoutRequest.sellerProfileId,
             payoutRequestId: payoutRequest.id,
             totalAmount: payoutRequest.totalAmount,
-            currency: 'MYR', // Assuming USD, adjust as needed
+            currency: 'MYR',
           },
         })
 

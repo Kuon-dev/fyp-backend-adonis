@@ -73,13 +73,11 @@ export default class CheckoutController {
    */
   public async processPayment({ request, response }: HttpContext) {
     const user = request.user
-    if (!user) {
-      return response.unauthorized({ message: 'User not authenticated' })
-    }
+    if (!user) return response.unauthorized({ message: 'User not authenticated' })
     const trx = await prisma.$transaction(async (tx) => {
       try {
         const { paymentIntentId } = processPaymentSchema.parse(request.body())
-        const result = await this.checkoutService.processPayment(paymentIntentId, tx)
+        const result = await this.checkoutService.processPayment(user.id, paymentIntentId, tx)
         return response.ok(result)
       } catch (error) {
         logger.error({ err: error }, 'Error in processPayment')
