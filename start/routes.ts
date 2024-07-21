@@ -18,6 +18,7 @@ const AdminController = () => import('#controllers/admin_controller')
 const SellerController = () => import('#controllers/seller_controller')
 const OrderController = () => import('#controllers/orders_controller')
 const PayoutRequestController = () => import('#controllers/payout_request_controller')
+const DashboardController = () => import('#controllers/dashboard_controller')
 
 // Root route
 router
@@ -92,9 +93,12 @@ router
             router.delete('/:email', [AdminController, 'deleteUser'])
             router.get('/reviews', [AdminController, 'getAllFlaggedReviews'])
             router.get('/payout-requests', [PayoutRequestController, 'getAll'])
+            router.get('/dashboard', [DashboardController, 'getAdminDashboardData'])
           })
           .prefix('/admin')
           .use(middleware.auth({ role: 'ADMIN' }))
+
+        router.get('/user/dashboard', [DashboardController, 'getUserDashboardData']).use(middleware.auth({ role: 'USER' }))
 
         // User routes
         router
