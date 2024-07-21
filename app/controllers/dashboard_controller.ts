@@ -2,11 +2,13 @@ import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import AdminDashboardService from '#services/admin_dashboard_service'
 import UserDashboardService from '#services/user_dashboard_service'
+import ModeratorDashboardService from '#services/moderator_dashboard_service'
 
 @inject()
 export default class DashboardController {
   constructor(
     private adminDashboardService: AdminDashboardService,
+    private moderatorDashboardService: ModeratorDashboardService,
     private userDashboardService: UserDashboardService
   ) {}
 
@@ -27,6 +29,27 @@ export default class DashboardController {
       return response.ok(dashboardData)
     } catch (error) {
       console.error('Error fetching admin dashboard data:', error)
+      return response.internalServerError({ error: 'Internal server error' })
+    }
+  }
+
+  /**
+   * @getModeratorDashboardData
+   * @description Get moderator dashboard data
+   * @responseBody 200 - { contentModerationOverview: {...}, moderationActivity: {...}, ... }
+   * @responseBody 403 - { error: "Unauthorized access" }
+   * @responseBody 500 - { error: "Internal server error" }
+   */
+  public async getModeratorDashboardData({ request, response }: HttpContext) {
+    try {
+      if (request.user?.role !== 'MODERATOR') {
+        return response.forbidden({ error: 'Unauthorized access' })
+      }
+
+      const dashboardData = await this.moderatorDashboardService.getDashboardData(request.user.id)
+      return response.ok(dashboardData)
+    } catch (error) {
+      console.error('Error fetching moderator dashboard data:', error)
       return response.internalServerError({ error: 'Internal server error' })
     }
   }
