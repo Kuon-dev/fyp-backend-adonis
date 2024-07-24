@@ -101,7 +101,7 @@ export default class RepoController {
         if (!repo) {
           return response.notFound({ message: 'Repo not found' })
         }
-        
+
         const hasAccess = await this.repoAccessService.hasAccess(user.id, id, tx)
         const isOwner = repo.userId === user.id
         const isAdmin = user.role === 'ADMIN'
@@ -231,7 +231,7 @@ export default class RepoController {
       if (!repo) {
         return response.notFound({ message: 'Repo not found' })
       }
-      
+
       // For admin users, we'll allow deletion regardless of ownership
       if (request.user.role !== 'ADMIN' && repo.userId !== request.user.id) {
         return response.forbidden({ message: 'You do not have permission to delete this repo' })
@@ -308,7 +308,7 @@ export default class RepoController {
     try {
       const accessibleRepos = await prisma.$transaction(async (tx) => {
         const accessibleRepoIds = await this.repoAccessService.getUserAccessibleRepos(request.user!.id, tx)
-        
+
         return tx.codeRepo.findMany({
           where: {
             id: { in: accessibleRepoIds }
@@ -333,6 +333,26 @@ export default class RepoController {
       return response.internalServerError({
         message: 'An error occurred while retrieving accessible repos',
       })
+    }
+  }
+
+  public async publishRepo({ params, request, response }: HttpContext) {
+    const userId = request.user?.id
+    if (!userId) {
+      return response.unauthorized({ message: 'User not authenticated' })
+    }
+
+    try {
+      const publishedRepo = await this.repoService.publishRepo({ id: params.id, userId })
+      return response.ok({
+        message: 'Repo published successfully',
+        repo: publishedRepo
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return response.badRequest({ message: 'Invalid input data', errors: error.errors })
+      }
+      return response.internalServerError({ message: 'Failed to publish repo', error: error.message })
     }
   }
 
@@ -401,4 +421,6 @@ export default class RepoController {
       })
     }
   }
+
+
 }

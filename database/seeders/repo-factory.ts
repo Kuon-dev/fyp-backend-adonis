@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker'
 import { generateIdFromEntropySize } from 'lucia'
-import type { CodeRepo, User, Tag, Profile, SellerProfile } from '@prisma/client'
+import type { CodeRepo, User, Profile, SellerProfile } from '@prisma/client'
 import { prisma } from '#services/prisma_service'
-import { generateDates, randomBoolean, weightedRandomTrueBoolean } from './utils.js'
+import { generateDates, weightedRandomTrueBoolean } from './utils.js'
 import {
   REPO_TAGS,
   PROJECT_MANAGEMENT,
@@ -25,14 +25,14 @@ const defaultConfig: SeederConfig = {
 
 // Function to generate a unique name
 function generateUniqueName(
-  user: User & { profile: Profile | null },
+  user: User & { profile: Profile | null; sellerProfile: SellerProfile | null },
   existingNames: Set<string>
 ): string {
   const maxAttempts = 100
   let attempt = 0
 
   while (attempt < maxAttempts) {
-    const userName = user.profile?.name ?? 'user'
+    const userName = user.profile?.name ?? user.sellerProfile?.businessName ?? 'seller'
     const companyName = faker.company.name()
     let name = `${userName} - ${companyName}`.replace(/\s+/g, '_').toLowerCase()
 
@@ -47,55 +47,61 @@ function generateUniqueName(
   throw new Error('Unable to generate a unique name after maximum attempts')
 }
 
-// Function to select a user with higher chance of selecting a verified seller
-function selectUser(
-  verifiedSellers: (User & { sellerProfile: SellerProfile | null; profile: Profile | null })[],
-  otherUsers: (User & { sellerProfile: SellerProfile | null; profile: Profile | null })[],
-  userRepoCounts: Map<string, number>,
+// Function to select a seller with higher chance of selecting a verified seller
+function selectSeller(
+  verifiedSellers: (User & { sellerProfile: SellerProfile; profile: Profile | null })[],
+  unverifiedSellers: (User & { sellerProfile: SellerProfile; profile: Profile | null })[],
+  sellerRepoCounts: Map<string, number>,
   config: SeederConfig
 ) {
-  const eligibleVerifiedSellers = verifiedSellers.filter(user => (userRepoCounts.get(user.id) || 0) < config.maxReposPerUser)
-  const eligibleOtherUsers = otherUsers.filter(user => (userRepoCounts.get(user.id) || 0) < config.maxReposPerUser)
+  const eligibleVerifiedSellers = verifiedSellers.filter(seller => (sellerRepoCounts.get(seller.id) || 0) < config.maxReposPerUser)
+  const eligibleUnverifiedSellers = unverifiedSellers.filter(seller => (sellerRepoCounts.get(seller.id) || 0) < config.maxReposPerUser)
 
   if (eligibleVerifiedSellers.length > 0 && Math.random() < config.verifiedSellerProbability) {
     return faker.helpers.arrayElement(eligibleVerifiedSellers)
   }
 
-  const allEligibleUsers = [...eligibleVerifiedSellers, ...eligibleOtherUsers]
-  if (allEligibleUsers.length === 0) {
-    throw new Error('No eligible users available to create more repos')
+  const allEligibleSellers = [...eligibleVerifiedSellers, ...eligibleUnverifiedSellers]
+  if (allEligibleSellers.length === 0) {
+    throw new Error('No eligible sellers available to create more repos')
   }
 
-  return faker.helpers.arrayElement(allEligibleUsers)
+  return faker.helpers.arrayElement(allEligibleSellers)
 }
 
 async function generateCodeRepos(count: number = 10, config: SeederConfig) {
   const codeRepos: { repo: Omit<CodeRepo, 'id'>; tags: string[] }[] = []
-  const allUsers = await prisma.user.findMany({
+  const allSellers = await prisma.user.findMany({
+    where: {
+      sellerProfile: {
+        isNot: null,
+      },
+    },
     include: { sellerProfile: true, profile: true },
   })
 
-  if (allUsers.length === 0) {
-    throw new Error('No users found in the database. Please seed users first.')
+  if (allSellers.length === 0) {
+    throw new Error('No sellers found in the database. Please seed sellers first.')
   }
 
-  const verifiedSellers = allUsers.filter(user => 
-    user.sellerProfile && user.sellerProfile.verificationStatus === 'APPROVED'
-  )
-  const otherUsers = allUsers.filter(user => 
-    !user.sellerProfile || user.sellerProfile.verificationStatus !== 'APPROVED'
-  )
+  const verifiedSellers = allSellers.filter(seller =>
+    seller.sellerProfile && seller.sellerProfile.verificationStatus === 'APPROVED'
+  ) as (User & { sellerProfile: SellerProfile; profile: Profile | null })[]
+
+  const unverifiedSellers = allSellers.filter(seller =>
+    seller.sellerProfile && seller.sellerProfile.verificationStatus !== 'APPROVED'
+  ) as (User & { sellerProfile: SellerProfile; profile: Profile | null })[]
 
   const existingNames = new Set<string>()
   const dbNames = await prisma.codeRepo.findMany({ select: { name: true } })
   dbNames.forEach((r) => existingNames.add(r.name))
 
-  const userRepoCounts = new Map<string, number>()
+  const sellerRepoCounts = new Map<string, number>()
 
   for (let i = 0; i < count; i++) {
     try {
-      const user = selectUser(verifiedSellers, otherUsers, userRepoCounts, config)
-      userRepoCounts.set(user.id, (userRepoCounts.get(user.id) || 0) + 1)
+      const seller = selectSeller(verifiedSellers, unverifiedSellers, sellerRepoCounts, config)
+      sellerRepoCounts.set(seller.id, (sellerRepoCounts.get(seller.id) || 0) + 1)
 
       const selectedRepo = faker.helpers.arrayElement([PROJECT_MANAGEMENT, KANBAN, QUIZ_APP])
       const selectedRepoCss = {
@@ -110,7 +116,7 @@ async function generateCodeRepos(count: number = 10, config: SeederConfig) {
       const { createdAt, updatedAt, deletedAt } = generateDates()
 
       const codeRepo: Omit<CodeRepo, 'id'> = {
-        userId: user.id,
+        userId: seller.id,
         sourceJs: selectedRepo,
         sourceCss: selectedRepoCss[selectedRepo as keyof typeof selectedRepoCss],
         createdAt,
@@ -118,7 +124,7 @@ async function generateCodeRepos(count: number = 10, config: SeederConfig) {
         deletedAt,
         visibility: weightedRandomTrueBoolean() ? 'public' : 'private',
         status: faker.helpers.arrayElement(['pending', 'active', 'rejected']),
-        name: generateUniqueName(user, existingNames),
+        name: generateUniqueName(seller, existingNames),
         description: faker.lorem.sentences(),
         language: faker.helpers.arrayElement(['JSX', 'TSX']),
         price: priceAmount,
@@ -142,7 +148,7 @@ export async function seedCodeRepos(count: number = 50, customConfig?: Partial<S
   const errors: Error[] = []
   const distributionStats = {
     verifiedSellers: 0,
-    otherUsers: 0,
+    unverifiedSellers: 0,
   }
 
   try {
@@ -175,7 +181,7 @@ export async function seedCodeRepos(count: number = 50, customConfig?: Partial<S
           if (createdRepo.user.sellerProfile?.verificationStatus === 'APPROVED') {
             distributionStats.verifiedSellers++
           } else {
-            distributionStats.otherUsers++
+            distributionStats.unverifiedSellers++
           }
         })
       } catch (error) {
@@ -187,7 +193,7 @@ export async function seedCodeRepos(count: number = 50, customConfig?: Partial<S
     console.log(`Successfully seeded ${successfullyCreated} out of ${count} requested code repos`)
     console.log('Distribution of created repos:')
     console.log(`Verified Sellers: ${distributionStats.verifiedSellers}`)
-    console.log(`Other Users: ${distributionStats.otherUsers}`)
+    console.log(`Unverified Sellers: ${distributionStats.unverifiedSellers}`)
     if (errors.length > 0) {
       console.log(`Encountered ${errors.length} errors during seeding`)
     }

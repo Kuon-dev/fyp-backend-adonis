@@ -83,6 +83,7 @@ router
         router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
         router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
         router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
+        router.put('/repo/:id/publish', [RepoController, 'publishRepo'])
 
         // Admin routes
         router

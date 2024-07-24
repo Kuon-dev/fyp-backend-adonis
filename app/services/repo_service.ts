@@ -1,7 +1,11 @@
 import { sql } from 'kysely'
-import { CodeRepo, OrderStatus, Tag } from '@prisma/client'
+import { inject } from '@adonisjs/core'
+import { CodeRepo, CodeRepoStatus, Language, OrderStatus, Tag, Visibility } from '@prisma/client'
 import { kyselyDb } from '#database/kysely'
 import { prisma } from './prisma_service.js'
+import { publishRepoSchema } from '#validators/repo'
+import { z } from 'zod'
+import CodeCheckService from './code_check_service.js'
 
 type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss' | 'userId'> & {
   sourceJs?: string
@@ -14,7 +18,10 @@ type RepoCheckoutInfo = {
   sellerProfileId: string | null
 }
 
+@inject()
 export default class RepoService {
+  constructor(protected codeCheckService: CodeCheckService) {}
+
   public async createRepo(
     data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { tags: string[] }
   ): Promise<CodeRepo> {
@@ -40,7 +47,7 @@ export default class RepoService {
 
  public async getRepoById(id: string, userId?: string | null): Promise<CodeRepo | null> {
     const repo = await prisma.codeRepo.findUnique({
-      where: { 
+      where: {
         id,
         deletedAt: null // Only return non-deleted repos
       },
@@ -149,7 +156,7 @@ export default class RepoService {
       if (!repo) {
         throw new Error('Repo not found')
       }
-      
+
       // Always update the repo, even if it's already deleted
       const softDeletedRepo = await tx.codeRepo.update({
         where: { id },
@@ -159,6 +166,78 @@ export default class RepoService {
         },
       })
       return softDeletedRepo
+    })
+  }
+
+  /**
+   * @publishRepo
+   * @description Publish a repo by updating its status to active, performing necessary checks, and running a code check.
+   * @param data - Object containing repo id and user id.
+   * @returns Promise<CodeRepo> - The updated CodeRepo.
+   * @throws Error if the repo is not found, user is not authorized, or if the operation fails.
+   */
+  public async publishRepo(
+    data: z.infer<typeof publishRepoSchema>
+  ): Promise<CodeRepo> {
+    const { id, userId } = publishRepoSchema.parse(data)
+
+    return await prisma.$transaction(async (tx) => {
+      // Step 1: Fetch the repo and perform initial checks
+      const repo = await tx.codeRepo.findUnique({
+        where: { id },
+        include: { user: true }
+      })
+
+      if (!repo) {
+        throw new Error('Repo not found')
+      }
+
+      if (repo.userId !== userId) {
+        throw new Error('User is not authorized to publish this repo')
+      }
+
+      if (repo.status === CodeRepoStatus.active) {
+        throw new Error('Repo is already published')
+      }
+
+      // Step 2: Validate repo content
+      if (!repo.sourceJs || !repo.sourceCss) {
+        throw new Error('Repo must have both JavaScript and CSS content')
+      }
+
+      // Step 3: Perform code check
+      const codeCheckResult = await this.codeCheckService.performCodeCheck(
+        repo.sourceJs,
+        repo.language as Language
+      )
+
+      // Step 4: Update repo status and visibility
+      const updatedRepo = await tx.codeRepo.update({
+        where: { id },
+        data: {
+          status: CodeRepoStatus.active,
+          visibility: Visibility.public,
+          updatedAt: new Date()
+        }
+      })
+
+      // Step 5: Store code check result
+      await tx.codeCheck.create({
+        data: {
+          repoId: id,
+          securityScore: codeCheckResult.securityScore,
+          maintainabilityScore: codeCheckResult.maintainabilityScore,
+          readabilityScore: codeCheckResult.readabilityScore,
+          securitySuggestion: codeCheckResult.securitySuggestion,
+          maintainabilitySuggestion: codeCheckResult.maintainabilitySuggestion,
+          readabilitySuggestion: codeCheckResult.readabilitySuggestion,
+          overallDescription: codeCheckResult.overallDescription,
+          eslintErrorCount: codeCheckResult.eslintErrorCount,
+          eslintFatalErrorCount: codeCheckResult.eslintFatalErrorCount,
+        }
+      })
+
+      return updatedRepo
     })
   }
 
@@ -257,22 +336,36 @@ export default class RepoService {
     })
   }
 
-  /**
-   * Retrieve Repos by user ID.
-   *
-   * @param userId - The user ID to filter by.
-   * @returns Promise<CodeRepo[]> - Array of CodeRepo objects belonging to the user.
-   */
+/**
+ * Retrieve Repos by user ID.
+ *
+ * @param userId - The user ID to filter by.
+ * @returns Promise<CodeRepo[]> - Array of CodeRepo objects belonging to the user.
+ */
   public async getReposByUser(userId: string): Promise<CodeRepo[]> {
-    const query = kyselyDb.selectFrom('CodeRepo').selectAll().where('userId', '=', userId)
-    return await query.execute()
+  try {
+    const repos = await prisma.codeRepo.findMany({
+      where: {
+        userId: userId,
+        deletedAt: null // Only return non-deleted repos
+      },
+      include: {
+        tags: true // Include tags to match the previous implementation
+      }
+    })
+    return repos
+  } catch (error) {
+    console.error('Error fetching repos by user:', error)
+    throw new Error('Failed to fetch repos by user')
   }
+}
 
   public async getFeaturedRepos(limit: number = 5): Promise<CodeRepo[]> {
     const featuredRepos = await prisma.codeRepo.findMany({
       where: {
         visibility: 'public',
         status: 'active',
+        deletedAt: null,
       },
       include: {
         reviews: true,

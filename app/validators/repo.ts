@@ -35,3 +35,8 @@ export const updateRepoSchema = z.object({
   //stripeProductId: z.string().nullable().optional(),
   //stripePriceId: z.string().nullable().optional(),
 })
+
+export const publishRepoSchema = z.object({
+  id: z.string(),
+  userId: z.string()
+})
