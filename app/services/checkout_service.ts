@@ -1,11 +1,11 @@
 import { inject } from '@adonisjs/core'
-import { prisma } from '#services/prisma_service'
+import { PrismaTransactionalClient, prisma } from '#services/prisma_service'
 import StripeFacade from '#integrations/stripe/stripe_facade'
 import RepoService from '#services/repo_service'
 import OrderService from '#services/order_service'
 import SellerService from '#services/seller_service'
 import SalesService from '#services/sales_service'
-import { Prisma, OrderStatus } from '@prisma/client'
+import { OrderStatus } from '@prisma/client'
 import { z } from 'zod'
 import RepoAccessService from '#services/repo_access_service'
 
@@ -26,35 +26,34 @@ export default class CheckoutService {
 
   /**
    * Initialize the checkout process for a repo
-   * @param repoId - The ID of the repo being purchased
-   * @param userId - The ID of the user making the purchase
-   * @param customerId - The Stripe customer ID of the user
-   * @returns An object containing the Stripe client secret
+   * @param repoId - The ID of the repo being accessed
+   * @param userId - The ID of the user requesting access
+   * @returns An object containing either the Stripe client secret or a success message for free repos
    */
   public async initCheckout(repoId: string, userId: string) {
-    // check if repo exist
     const repoInfo = await this.repoService.getRepoById(repoId)
-
     if (!repoInfo) {
-      throw new Error('Repo not found or seller profile not available')
+      throw new Error('Repo not found')
     }
 
-    // check if repo seller is verified
     const isSellerVerified = await this.sellerService.checkIfSellerVerified(repoInfo.userId)
-
     if (!isSellerVerified) {
-      throw new Error('Repo not found or seller profile not available')
+      throw new Error('Seller profile not available')
     }
 
     if (repoInfo.userId === userId) {
-      throw new Error('You cannot purchase your own repo')
+      throw new Error('You cannot access your own repo through checkout')
     }
 
-    // create order
+    // Handle free repos
+    if (repoInfo.price === 0) {
+      return this.processFreeRepo(repoId, userId)
+    }
 
+    // Proceed with paid repo checkout
     const paymentIntent = await this.stripeFacade.createPaymentIntentForRepo(
       repoInfo.price,
-      'MYR', // Default currency
+      'MYR',
       repoInfo.userId,
       repoInfo.id
     )
@@ -71,12 +70,48 @@ export default class CheckoutService {
   }
 
   /**
+   * Process a free repo access
+   * @param repoId - The ID of the free repo
+   * @param userId - The ID of the user requesting access
+   * @returns An object indicating success and the order ID
+   */
+  private async processFreeRepo(repoId: string, userId: string) {
+    const order = await this.orderService.createOrder({
+      userId: userId,
+      repoId: repoId,
+      amount: 0,
+      status: OrderStatus.SUCCEEDED,
+      stripePaymentIntentId: '', // Use an empty string instead of null
+    })
+
+    const tx = await prisma.$transaction(async (prismaClient) => {
+      const accessGranted = await this.repoAccessService.grantAccess(
+        userId,
+        repoId,
+        order.id,
+        prismaClient as PrismaTransactionalClient
+      )
+      if (!accessGranted) {
+        throw new Error('Failed to grant access to the free repo')
+      }
+      return accessGranted
+    })
+
+    if (!tx) {
+      throw new Error('Transaction failed while processing free repo')
+    }
+
+    return { success: true, orderId: order.id, message: 'Access granted to free repo' }
+  }
+
+  /**
    * Process a successful payment
+   * @param userId - The ID of the user making the payment
    * @param paymentIntentId - The ID of the Stripe payment intent
    * @param tx - Prisma transaction client
    * @returns An object indicating success and the order ID
    */
-  public async processPayment(userId: string, paymentIntentId: string, tx: Prisma.TransactionClient) {
+  public async processPayment(userId: string, paymentIntentId: string, tx: PrismaTransactionalClient) {
     const { paymentIntentId: validatedPaymentIntentId } = processPaymentSchema.parse({
       paymentIntentId,
     })
@@ -86,30 +121,26 @@ export default class CheckoutService {
       throw new Error('Payment intent not found')
     }
 
-    // get order by intent id
     const order = await this.orderService.getOrderByStripePaymentIntentId(paymentIntentId)
     if (!order) {
       throw new Error('Order not found')
     }
 
-    // get repo seller
     const repo = await this.repoService.getRepoById(order.codeRepoId)
     if (!repo) {
       throw new Error('Repo not found')
     }
 
     const sellerProfile = await this.sellerService.getSellerProfile(repo.userId)
-
     if (sellerProfile === null) {
-      throw new Error('seller not available')
+      throw new Error('Seller not available')
     }
 
     await this.orderService.updateOrderStatus(order.id, OrderStatus.SUCCEEDED, tx)
-
     await this.sellerService.updateBalance(sellerProfile.id, order.totalAmount, tx)
     await this.salesService.updateSalesAggregate(repo.userId, order.totalAmount, tx)
 
-    const accessGranted = await this.repoAccessService.grantAccess(userId, order.codeRepoId, order.id, tx )
+    const accessGranted = await this.repoAccessService.grantAccess(userId, order.codeRepoId, order.id, tx)
     if (!accessGranted) {
       throw new Error('Failed to grant access to the repo')
     }

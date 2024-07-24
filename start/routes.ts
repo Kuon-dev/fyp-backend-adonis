@@ -83,7 +83,9 @@ router
         router.get('/repo/:repoId/reviews/:reviewId', [CommentController, 'getCommentsByReview'])
         router.get('/repo/:id/reviews', [ReviewController, 'getPaginatedReviewsByRepo'])
         router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
+        router.get('/repo/:id/server', [RepoController, 'getByIdServer'])
         router.put('/repo/:id/publish', [RepoController, 'publishRepo'])
+        router.put('/repo/:id/check', [RepoController, 'submitCodeCheck'])
 
         // Admin routes
         router
@@ -152,7 +154,7 @@ router
         router
           .post('/code-analysis', [CodeCheckController, 'checkAndStoreCode'])
           .use(middleware.auth({ role: 'USER' }))
-        router.get('/code-analysis/{id}', [CodeCheckController, 'getCodeCheck'])
+        router.get('/code-analysis/:id', [CodeCheckController, 'getCodeCheck'])
 
         // Health check routes
         router.get('/health', [HealthChecksController])

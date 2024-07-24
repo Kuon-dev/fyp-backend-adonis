@@ -1,11 +1,12 @@
 import { sql } from 'kysely'
 import { inject } from '@adonisjs/core'
-import { CodeRepo, CodeRepoStatus, Language, OrderStatus, Tag, Visibility } from '@prisma/client'
+import { CodeRepo, CodeRepoStatus, OrderStatus, Tag, Visibility } from '@prisma/client'
 import { kyselyDb } from '#database/kysely'
 import { prisma } from './prisma_service.js'
 import { publishRepoSchema } from '#validators/repo'
 import { z } from 'zod'
 import CodeCheckService from './code_check_service.js'
+import { RepoExistenceHandler, UserAuthorizationHandler, RepoStatusHandler, RepoContentHandler, CodeCheckHandler, CodeQualityHandler, RepoCheckHandler, RepoCheckContext } from '../handlers/repo.js'
 
 type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss' | 'userId'> & {
   sourceJs?: string
@@ -18,34 +19,88 @@ type RepoCheckoutInfo = {
   sellerProfileId: string | null
 }
 
+type CreateRepoData = Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { tags: string[] }
+
 @inject()
 export default class RepoService {
   constructor(protected codeCheckService: CodeCheckService) {}
 
-  public async createRepo(
-    data: Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { tags: string[] }
-  ): Promise<CodeRepo> {
-    const repo = await prisma.codeRepo.create({
-      data: {
-        ...data,
-        tags: {
-          create: data.tags.map((tagName) => ({
-            tag: {
-              connectOrCreate: {
-                where: { name: tagName },
-                create: { name: tagName },
-              },
-            },
-          })),
-        },
-      },
-      include: { tags: true },
-    })
+  private createPublishChain(): RepoCheckHandler {
+    const repoExistenceHandler = new RepoExistenceHandler()
+    const userAuthorizationHandler = new UserAuthorizationHandler()
+    const repoStatusHandler = new RepoStatusHandler(CodeRepoStatus.active)
+    const repoContentHandler = new RepoContentHandler()
+    const codeCheckHandler = new CodeCheckHandler(this.codeCheckService)
 
-    return repo
+    repoExistenceHandler
+      .setNext(userAuthorizationHandler)
+      .setNext(repoStatusHandler)
+      .setNext(repoContentHandler)
+      .setNext(codeCheckHandler)
+
+    return repoExistenceHandler
   }
 
- public async getRepoById(id: string, userId?: string | null): Promise<CodeRepo | null> {
+  private createSubmitCodeCheckChain(): RepoCheckHandler {
+    const repoExistenceHandler = new RepoExistenceHandler()
+    const userAuthorizationHandler = new UserAuthorizationHandler()
+    const repoContentHandler = new RepoContentHandler()
+    const codeCheckHandler = new CodeCheckHandler(this.codeCheckService)
+    const codeQualityHandler = new CodeQualityHandler()
+
+    repoExistenceHandler
+      .setNext(userAuthorizationHandler)
+      .setNext(repoContentHandler)
+      .setNext(codeCheckHandler)
+      .setNext(codeQualityHandler)
+
+    return repoExistenceHandler
+  }
+
+  public async createRepo(
+    data: CreateRepoData & { userId: string }
+  ): Promise<CodeRepo> {
+    const { userId, tags, ...repoData } = data
+
+    // Validate the input data
+    return await prisma.$transaction(async (tx) => {
+      // Check if the user already has a repo with the same name
+      const existingRepo = await tx.codeRepo.findFirst({
+        where: {
+          userId: userId,
+          name: repoData.name,
+          deletedAt: null // Ensure we don't count deleted repos
+        }
+      })
+
+      if (existingRepo) {
+        throw new Error(`You already have a repo named "${repoData.name}"`)
+      }
+
+      // If no existing repo with the same name, create the new repo
+      const repo = await tx.codeRepo.create({
+        data: {
+          ...repoData,
+          userId,
+          tags: {
+            create: tags.map((tagName) => ({
+              tag: {
+                connectOrCreate: {
+                  where: { name: tagName },
+                  create: { name: tagName },
+                },
+              },
+            })),
+          },
+        },
+        include: { tags: true },
+      })
+
+      return repo
+    })
+  }
+
+ public async getRepoById(id: string, _userId?: string | null): Promise<CodeRepo | null> {
     const repo = await prisma.codeRepo.findUnique({
       where: {
         id,
@@ -176,42 +231,28 @@ export default class RepoService {
    * @returns Promise<CodeRepo> - The updated CodeRepo.
    * @throws Error if the repo is not found, user is not authorized, or if the operation fails.
    */
-  public async publishRepo(
-    data: z.infer<typeof publishRepoSchema>
-  ): Promise<CodeRepo> {
+ public async publishRepo(data: z.infer<typeof publishRepoSchema>): Promise<CodeRepo> {
     const { id, userId } = publishRepoSchema.parse(data)
 
+    const repo = await prisma.codeRepo.findUnique({
+      where: { id },
+      include: { user: true }
+    })
+
+    if (!repo) {
+      throw new Error('Repo not found')
+    }
+
+    const context: RepoCheckContext = { repo, userId }
+    const chain = this.createPublishChain()
+
+    try {
+      await chain.handle(context)
+    } catch (error) {
+      throw new Error(`Failed to publish repo: ${error.message}`)
+    }
+
     return await prisma.$transaction(async (tx) => {
-      // Step 1: Fetch the repo and perform initial checks
-      const repo = await tx.codeRepo.findUnique({
-        where: { id },
-        include: { user: true }
-      })
-
-      if (!repo) {
-        throw new Error('Repo not found')
-      }
-
-      if (repo.userId !== userId) {
-        throw new Error('User is not authorized to publish this repo')
-      }
-
-      if (repo.status === CodeRepoStatus.active) {
-        throw new Error('Repo is already published')
-      }
-
-      // Step 2: Validate repo content
-      if (!repo.sourceJs || !repo.sourceCss) {
-        throw new Error('Repo must have both JavaScript and CSS content')
-      }
-
-      // Step 3: Perform code check
-      const codeCheckResult = await this.codeCheckService.performCodeCheck(
-        repo.sourceJs,
-        repo.language as Language
-      )
-
-      // Step 4: Update repo status and visibility
       const updatedRepo = await tx.codeRepo.update({
         where: { id },
         data: {
@@ -221,19 +262,50 @@ export default class RepoService {
         }
       })
 
-      // Step 5: Store code check result
       await tx.codeCheck.create({
         data: {
           repoId: id,
-          securityScore: codeCheckResult.securityScore,
-          maintainabilityScore: codeCheckResult.maintainabilityScore,
-          readabilityScore: codeCheckResult.readabilityScore,
-          securitySuggestion: codeCheckResult.securitySuggestion,
-          maintainabilitySuggestion: codeCheckResult.maintainabilitySuggestion,
-          readabilitySuggestion: codeCheckResult.readabilitySuggestion,
-          overallDescription: codeCheckResult.overallDescription,
-          eslintErrorCount: codeCheckResult.eslintErrorCount,
-          eslintFatalErrorCount: codeCheckResult.eslintFatalErrorCount,
+          ...context.codeCheckResult!
+        }
+      })
+
+      return updatedRepo
+    })
+  }
+
+  public async submitCodeCheck(repoId: string, userId: string): Promise<CodeRepo> {
+    const repo = await prisma.codeRepo.findUnique({
+      where: { id: repoId },
+      include: { user: true }
+    })
+
+    if (!repo) {
+      throw new Error('Repo not found')
+    }
+
+    const context: RepoCheckContext = { repo, userId }
+    const chain = this.createSubmitCodeCheckChain()
+
+    try {
+      await chain.handle(context)
+    } catch (error) {
+      throw new Error(`Failed to submit code check: ${error.message}`)
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const updatedRepo = await tx.codeRepo.update({
+        where: { id: repoId },
+        data: {
+          status: CodeRepoStatus.active,
+          visibility: Visibility.public,
+          updatedAt: new Date()
+        }
+      })
+
+      await tx.codeCheck.create({
+        data: {
+          repoId: repoId,
+          ...context.codeCheckResult!
         }
       })
 

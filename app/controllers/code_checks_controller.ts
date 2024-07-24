@@ -63,18 +63,18 @@ export default class CodeCheckController {
     }
   }
 
-  public async getCodeCheck({ params, response }: HttpContext) {
+  public async getCodeCheck({ params, response, request }: HttpContext) {
     try {
-      const { repoId } = params
+      const { id } = params
 
       const repoExists = await prisma.codeRepo.findUnique({
-        where: { id: repoId },
+        where: { id },
       })
       if (!repoExists) {
         return response.status(404).json({ message: 'Repository not found.' })
       }
 
-      const result = await this.codeCheckService.getLatestCodeCheck(repoId)
+      const result = await this.codeCheckService.getLatestCodeCheck(id, request.user?.id ?? '')
 
       if (!result) {
         return response
@@ -90,4 +90,6 @@ export default class CodeCheckController {
         .json({ message: 'An error occurred while retrieving the code check result.' })
     }
   }
+
+
 }

@@ -17,8 +17,6 @@ export const createRepoSchema = z.object({
   price: z.number().nonnegative().default(0.0),
   tags: z.array(z.string()),
   visibility: VisibilityEnum.default('public'),
-  //sourceJs: z.string(),
-  //sourceCss: z.string(),
 })
 
 // Schema for updating a repo

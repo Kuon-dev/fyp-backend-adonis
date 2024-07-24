@@ -242,7 +242,7 @@ export default class CodeCheckService {
     }
   }
 
-  public async getLatestCodeCheck(repoId: string): Promise<CodeCheckResult | null> {
+  public async getLatestCodeCheck(repoId: string, userId: string): Promise<CodeCheckResult | null> {
     try {
       const latestCodeCheck = await prisma.codeCheck.findFirst({
         where: { repoId },
@@ -253,19 +253,38 @@ export default class CodeCheckService {
         return null
       }
 
-      return {
+      // Fetch user and repo information
+      const user = await prisma.user.findUnique({ where: { id: userId } })
+      const repo = await prisma.codeRepo.findUnique({ where: { id: repoId } })
+
+      if (!user || !repo) {
+        throw new Error('User or repository not found')
+      }
+
+      // Check if user is admin or repo owner
+      const isAdmin = user.role === 'ADMIN'
+      const isOwner = repo.userId === userId
+
+      // Prepare the result object
+      const result: Partial<CodeCheckResult> = {
         securityScore: latestCodeCheck.securityScore,
         maintainabilityScore: latestCodeCheck.maintainabilityScore,
         readabilityScore: latestCodeCheck.readabilityScore,
-        securitySuggestion: latestCodeCheck.securitySuggestion,
-        maintainabilitySuggestion: latestCodeCheck.maintainabilitySuggestion,
-        readabilitySuggestion: latestCodeCheck.readabilitySuggestion,
-        overallDescription: latestCodeCheck.overallDescription,
         eslintErrorCount: latestCodeCheck.eslintErrorCount,
         eslintFatalErrorCount: latestCodeCheck.eslintFatalErrorCount,
       }
+
+      // Include detailed descriptions only for admin or repo owner
+      if (isAdmin || isOwner) {
+        result.securitySuggestion = latestCodeCheck.securitySuggestion
+        result.maintainabilitySuggestion = latestCodeCheck.maintainabilitySuggestion
+        result.readabilitySuggestion = latestCodeCheck.readabilitySuggestion
+        result.overallDescription = latestCodeCheck.overallDescription
+      }
+
+      return result as CodeCheckResult
     } catch (error) {
-      logger.error({ message: 'Error retrieving latest code check', error, repoId })
+      logger.error({ message: 'Error retrieving latest code check', error, repoId, userId })
       throw new Error(
         `Failed to retrieve latest code check: ${error instanceof Error ? error.message : 'Unknown error'}`
       )

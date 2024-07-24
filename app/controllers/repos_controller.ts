@@ -10,6 +10,7 @@ import CodeCheckService from '#services/code_check_service'
 import CodeRepoSearchService, { SearchCriteria } from '#services/repo_search_service'
 import logger from '@adonisjs/core/services/logger'
 import RepoAccessService from '#services/repo_access_service'
+import { QUIZ_APP, QUIZ_APP_CSS } from '#database/seeders/constants'
 
 const searchSchema = z.object({
   query: z.string().optional(),
@@ -67,8 +68,8 @@ export default class RepoController {
       const repo = await this.repoService.createRepo({
         userId: request.user.id,
         ...data,
-        sourceJs: '',
-        sourceCss: '',
+        sourceJs: QUIZ_APP,
+        sourceCss: QUIZ_APP_CSS,
         status: 'pending',
       })
       return response.created(repo)
@@ -110,6 +111,36 @@ export default class RepoController {
           return response.forbidden({ message: 'You do not have access to this repository' })
         }
 
+        const repoCodeCheck = await tx.codeCheck.findFirst({
+          where: {
+            repoId: id,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+
+        return response.ok({
+          repo,
+          repoCodeCheck: repoCodeCheck ?? null,
+        })
+      })
+    } catch (error) {
+      console.error('Error retrieving repo:', error)
+      return response.internalServerError({
+        message: 'An error occurred while retrieving the repo',
+      })
+    }
+  }
+
+  public async getByIdServer({ params, response }: HttpContext) {
+    const { id } = params
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const repo = await this.repoService.getRepoById(id)
+        if (!repo) {
+          return response.notFound({ message: 'Repo not found' })
+        }
         const repoCodeCheck = await tx.codeCheck.findFirst({
           where: {
             repoId: id,
@@ -352,7 +383,26 @@ export default class RepoController {
       if (error instanceof z.ZodError) {
         return response.badRequest({ message: 'Invalid input data', errors: error.errors })
       }
-      return response.internalServerError({ message: 'Failed to publish repo', error: error.message })
+      return response.internalServerError({ message: error.message, error: error.message })
+    }
+  }
+
+  public async submitCodeCheck({ params, request, response }: HttpContext) {
+    const userId = request.user?.id
+    if (!userId) {
+      return response.unauthorized({ message: 'User not authenticated' })
+    }
+
+    try {
+      const repo = await this.repoService.getRepoById(params.id, userId)
+      if (!repo) {
+        return response.notFound({ message: 'Repo not found' })
+      }
+
+      const checkedRepo = await this.repoService.submitCodeCheck(repo.id, userId)
+      return response.ok(checkedRepo)
+    } catch (error) {
+      return response.internalServerError({ message: error.message })
     }
   }
 
