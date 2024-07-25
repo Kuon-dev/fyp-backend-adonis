@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker'
 import { generateIdFromEntropySize } from 'lucia'
-import type { CodeRepo, User, Profile, SellerProfile } from '@prisma/client'
+import type { CodeRepo, User, Profile, SellerProfile, CodeRepoStatus } from '@prisma/client'
 import { prisma } from '#services/prisma_service'
 import { generateDates, weightedRandomTrueBoolean } from './utils.js'
 import {
@@ -16,11 +16,13 @@ import {
 interface SeederConfig {
   verifiedSellerProbability: number;
   maxReposPerUser: number;
+  activeRepoProbability: number;
 }
 
 const defaultConfig: SeederConfig = {
   verifiedSellerProbability: 0.8,
   maxReposPerUser: 5,
+  activeRepoProbability: 0.8,
 }
 
 // Function to generate a unique name
@@ -114,6 +116,7 @@ async function generateCodeRepos(count: number = 10, config: SeederConfig) {
         parseFloat(faker.commerce.price({ min: 100, max: 10000, dec: 2 }))
       )
       const { createdAt, updatedAt, deletedAt } = generateDates()
+      const status: CodeRepoStatus = Math.random() < config.activeRepoProbability ? 'active' : faker.helpers.arrayElement(['pending', 'rejected'])
 
       const codeRepo: Omit<CodeRepo, 'id'> = {
         userId: seller.id,
@@ -123,7 +126,7 @@ async function generateCodeRepos(count: number = 10, config: SeederConfig) {
         updatedAt,
         deletedAt,
         visibility: weightedRandomTrueBoolean() ? 'public' : 'private',
-        status: faker.helpers.arrayElement(['pending', 'active', 'rejected']),
+        status: status,
         name: generateUniqueName(seller, existingNames),
         description: faker.lorem.sentences(),
         language: faker.helpers.arrayElement(['JSX', 'TSX']),
@@ -150,6 +153,7 @@ export async function seedCodeRepos(count: number = 50, customConfig?: Partial<S
     verifiedSellers: 0,
     unverifiedSellers: 0,
   }
+
 
   try {
     const codeReposWithTags = await generateCodeRepos(count, config)

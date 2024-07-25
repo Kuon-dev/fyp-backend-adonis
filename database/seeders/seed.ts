@@ -9,7 +9,7 @@ import { seedSupportTickets } from './support-seeder.js'
 async function main() {
   await generateUsers(100)
   console.log('Users generated')
-  await seedCodeRepos(200)
+  await seedCodeRepos(400)
   await seedReviewsAndComments(300)
   await seedOrders(2000)
   await seedPayoutsAndRequests(50)

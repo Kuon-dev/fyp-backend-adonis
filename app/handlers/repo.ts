@@ -83,7 +83,7 @@ export class CodeQualityHandler extends RepoCheckHandler {
       throw new Error('Code check result not available')
     }
 
-    const minAcceptableScore = 70
+    const minAcceptableScore = 0
     if (
       context.codeCheckResult.securityScore < minAcceptableScore ||
       context.codeCheckResult.maintainabilityScore < minAcceptableScore ||

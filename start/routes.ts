@@ -85,7 +85,7 @@ router
         router.get('/repo/:id/public', [RepoController, 'getByIdPublic'])
         router.get('/repo/:id/server', [RepoController, 'getByIdServer'])
         router.put('/repo/:id/publish', [RepoController, 'publishRepo'])
-        router.put('/repo/:id/check', [RepoController, 'submitCodeCheck'])
+        router.post('/repo/:id/check', [RepoController, 'submitCodeCheck'])
 
         // Admin routes
         router

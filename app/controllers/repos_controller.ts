@@ -342,7 +342,8 @@ export default class RepoController {
 
         return tx.codeRepo.findMany({
           where: {
-            id: { in: accessibleRepoIds }
+            id: { in: accessibleRepoIds },
+            deletedAt: null,
           },
           select: {
             id: true,

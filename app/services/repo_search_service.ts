@@ -54,10 +54,12 @@ export class CodeRepoSearchBuilder {
         'CodeRepo.price',
         'CodeRepo.visibility',
         'CodeRepo.createdAt',
+        'CodeRepo.status',
         sql<string[]>`array_agg(DISTINCT "Tag"."name")`.as('tags'),
       ])
       .where('SellerProfile.verificationStatus', '=', SellerVerificationStatus.APPROVED)
       .where('CodeRepo.deletedAt', 'is', null) // Exclude soft-deleted repos
+      .where('CodeRepo.status', '=', 'active')
       .groupBy([
         'CodeRepo.id',
         'CodeRepo.name',
