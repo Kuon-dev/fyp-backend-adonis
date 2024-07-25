@@ -1,5 +1,5 @@
 import { Kysely, sql, SelectQueryBuilder, Expression, SqlBool } from 'kysely'
-import { Language, Visibility, SellerVerificationStatus } from '@prisma/client'
+import { Language, Visibility, SellerVerificationStatus, CodeRepoStatus } from '@prisma/client'
 import { DB } from '#database/kysely/types'
 import { kyselyDb } from '#database/kysely'
 import logger from '@adonisjs/core/services/logger'
@@ -59,7 +59,7 @@ export class CodeRepoSearchBuilder {
       ])
       .where('SellerProfile.verificationStatus', '=', SellerVerificationStatus.APPROVED)
       .where('CodeRepo.deletedAt', 'is', null) // Exclude soft-deleted repos
-      .where('CodeRepo.status', '=', 'active')
+      .where('CodeRepo.status', '=', CodeRepoStatus.active)
       .groupBy([
         'CodeRepo.id',
         'CodeRepo.name',

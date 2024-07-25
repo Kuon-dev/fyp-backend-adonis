@@ -14,6 +14,9 @@ import mailConfig from '#config/mail'
 import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import { UserFactory } from '#factories/user_factory'
+import { registrationSchema } from '#validators/auth'
+import { z } from 'zod'
 
 @inject()
 export default class AuthService {
@@ -58,38 +61,41 @@ export default class AuthService {
    * @param {string} fullname - The user's full name.
    * @returns {Promise<string>} - A session cookie if successful.
    */
-  public async handleRegistration(
-    email: string,
-    password: string,
-    fullname: string
-  ): Promise<Response | string> {
-    const passwordHash = await hash(password, {
-      memoryCost: 19456,
-      timeCost: 3,
-      parallelism: 1,
-      outputLen: 64,
-    })
-
-    const id = generateIdFromEntropySize(32)
-
+  /**
+   * Handles registering a new user with the given data.
+   *
+   * @param {z.infer<typeof registrationFormSchema>} data - The registration data.
+   * @returns {Promise<{ user: User, sessionCookie: string }>} - The created user and session cookie.
+   */
+  public async handleRegistration(data: z.infer<typeof registrationSchema>): Promise<{ user: User; sessionCookie: string }> {
     try {
-      await prisma.user.create({
-        data: { id, email, passwordHash, role: 'USER' },
-      })
+      let result;
+      if (data.userType === 'seller') {
+        result = await UserFactory.createSeller({
+          email: data.email,
+          password: data.password,
+          fullname: data.fullname,
+        })
+      } else {
+        result = await UserFactory.createUser({
+          email: data.email,
+          password: data.password,
+          fullname: data.fullname
+        })
+      }
 
-      await prisma.profile.create({
-        data: { userId: id, name: fullname },
-      })
-      const session = await lucia.createSession(id, {})
+      const { user } = result;
+      const session = await lucia.createSession(user.id, {})
       const sessionCookie = lucia.createSessionCookie(session.id)
       const token = sessionCookie.serialize()
       logger.info(token)
 
-      const code = await this.userVerificationService.generateEmailVerificationCode(id, email)
-      await this.userVerificationService.sendVerificationCode(email, code, token)
-      return token
+      const code = await this.userVerificationService.generateEmailVerificationCode(user.id, user.email)
+      await this.userVerificationService.sendVerificationCode(user.email, code, token)
+
+      return { user, sessionCookie: token }
     } catch (e) {
-      console.error('Failed to register user: ', e)
+      logger.error('Failed to register user: ', e)
       throw new Exception('Failed to register user')
     }
   }

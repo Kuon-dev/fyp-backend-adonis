@@ -7,6 +7,7 @@ import {
   ZodRegistrationAuthStrategy,
   PrismaEmailUniqueAuthStrategy,
   EmptyFieldAuthStrategy,
+  registrationSchema,
 } from '#validators/auth'
 import { inject } from '@adonisjs/core'
 import lucia from '#services/lucia_service'
@@ -17,6 +18,7 @@ import { prisma } from '#services/prisma_service'
 import InvalidSessionIdException from '#exceptions/invalid_session_id_exception'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import logger from '@adonisjs/core/services/logger'
+import { z } from 'zod'
 
 /**
  * Controller class for handling user authentication operations.
@@ -75,21 +77,24 @@ export default class AuthController {
   /**
    * @register
    * @description Handle user registration.
-   * @bodyParam email - The user's email address.
-   * @requestBody { "email": "user@example.com", "password": "123123123", "fullname": "John Doe"}
-   * @bodyParam password - The user's password.
-   * @bodyParam fullname - The user's full name.
-   * @responseBody 201 - { "message": "Registration successful" }
+   * @requestBody { 
+   *   "fullname": "John Doe",
+   *   "email": "user@example.com", 
+   *   "password": "123123123", 
+   *   "userType": "buyer" | "seller"
+   * }
+   * @responseBody 201 - { "message": "Registration successful", "user": { "id": "...", "email": "...", "role": "..." } }
    * @responseBody 400 - { "message": "Registration failed" }
    */
   async register({ request, response }: HttpContext) {
-    const { email, password, fullname } = request.only(['email', 'password', 'fullname'])
+    const registrationData = request.only(['fullname', 'email', 'password', 'userType'])
+
     const registrationValidator = new AuthValidator()
     registrationValidator.addStrategy(new ZodRegistrationAuthStrategy())
     registrationValidator.addStrategy(new PrismaEmailUniqueAuthStrategy())
 
     try {
-      await registrationValidator.validate({ email, password, fullname })
+      await registrationValidator.validate(registrationData)
     } catch (e: Error | any) {
       if (Array.isArray(e)) {
         return response.abort({ message: e }, 400)
@@ -99,15 +104,23 @@ export default class AuthController {
     }
 
     try {
-      const sessionCookie = await this.authService.handleRegistration(email, password, fullname)
-      if (sessionCookie instanceof Response) {
-        throw new Error('Registration failed')
-      }
+      const { user, sessionCookie } = await this.authService.handleRegistration(
+        registrationData as z.infer<typeof registrationSchema>
+      )
+
       return response
         .cookie('session', sessionCookie)
         .status(201)
-        .json({ message: 'Registration successful' })
+        .json({ 
+          message: 'Registration successful',
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role
+          }
+        })
     } catch (error) {
+      logger.error(error)
       return response.abort({ message: error.message }, 400)
     }
   }
