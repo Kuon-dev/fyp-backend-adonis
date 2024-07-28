@@ -77,10 +77,10 @@ export default class AuthController {
   /**
    * @register
    * @description Handle user registration.
-   * @requestBody { 
+   * @requestBody {
    *   "fullname": "John Doe",
-   *   "email": "user@example.com", 
-   *   "password": "123123123", 
+   *   "email": "user@example.com",
+   *   "password": "123123123",
    *   "userType": "buyer" | "seller"
    * }
    * @responseBody 201 - { "message": "Registration successful", "user": { "id": "...", "email": "...", "role": "..." } }
@@ -111,7 +111,7 @@ export default class AuthController {
       return response
         .cookie('session', sessionCookie)
         .status(201)
-        .json({ 
+        .json({
           message: 'Registration successful',
           user: {
             id: user.id,
@@ -261,7 +261,9 @@ export default class AuthController {
       ])
       return response.status(200).json({ user, profile, sellerProfile })
     } catch (error) {
-      return response.abort({ message: error.message }, error.status ?? 400)
+      return response
+        .clearCookie('auth_session')
+        .abort({ message: error.message }, error.status ?? 400)
     }
   }
 }

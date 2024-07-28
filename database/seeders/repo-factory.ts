@@ -4,13 +4,11 @@ import type { CodeRepo, User, Profile, SellerProfile, CodeRepoStatus } from '@pr
 import { prisma } from '#services/prisma_service'
 import { generateDates, weightedRandomTrueBoolean } from './utils.js'
 import {
+  BUTTON_COMPONENTS,
+  CARD_COMPONENTS,
+  COMPONENTS_CSS,
+  INPUT_COMPONENTS,
   REPO_TAGS,
-  PROJECT_MANAGEMENT,
-  PROJECT_MANAGEMENT_CSS,
-  KANBAN,
-  KANBAN_CSS,
-  QUIZ_APP,
-  QUIZ_APP_CSS,
 } from './constants.js'
 
 interface SeederConfig {
@@ -25,28 +23,102 @@ const defaultConfig: SeederConfig = {
   activeRepoProbability: 0.8,
 }
 
-// Function to generate a unique name
-function generateUniqueName(
-  user: User & { profile: Profile | null; sellerProfile: SellerProfile | null },
-  existingNames: Set<string>
-): string {
-  const maxAttempts = 100
-  let attempt = 0
+// List of common React component types
+const componentTypes = [
+  'Button', 'Form', 'Modal', 'Navbar', 'Sidebar', 'Card', 'Table', 'Chart', 'Dropdown',
+  'Accordion', 'Carousel', 'Tabs', 'Tooltip', 'Pagination', 'Progress Bar', 'Menu',
+  'Avatar', 'Badge', 'Alert', 'Toast', 'Spinner', 'Stepper', 'DatePicker', 'TimePicker',
+  'Slider', 'Toggle Switch', 'Rating', 'Breadcrumb', 'Tree View', 'Tag Input',
+];
+
+// List of adjectives to describe components
+const adjectives = [
+  'Responsive', 'Animated', 'Customizable', 'Accessible', 'Themeable', 'Interactive',
+  'Lightweight', 'Reusable', 'Flexible', 'Dynamic', 'Modern', 'Sleek', 'Minimalist',
+  'Feature-rich', 'High-performance', 'Scalable', 'Intuitive', 'User-friendly',
+];
+
+// List of frameworks or libraries
+const frameworks = [
+  'React', 'Next.js', 'Redux', 'Material-UI', 'Styled Components', 'Tailwind CSS',
+  'Chakra UI', 'Ant Design', 'Bootstrap', 'Framer Motion', 'React Spring',
+];
+
+function generateRepoName(): string {
+  const adjective = faker.helpers.arrayElement(adjectives);
+  const componentType = faker.helpers.arrayElement(componentTypes);
+  const framework = faker.helpers.arrayElement(frameworks);
+  
+  // Randomly decide whether to include the framework name
+  const includeFramework = Math.random() > 0.5;
+  
+  if (includeFramework) {
+    return `${adjective} ${framework} ${componentType}`;
+  } else {
+    return `${adjective} ${componentType} Component`;
+  }
+}
+
+function generateUniqueName(existingNames: Set<string>): string {
+  const maxAttempts = 100;
+  let attempt = 0;
 
   while (attempt < maxAttempts) {
-    const userName = user.profile?.name ?? user.sellerProfile?.businessName ?? 'seller'
-    const companyName = faker.company.name()
-    let name = `${userName} - ${companyName}`.replace(/\s+/g, '_').toLowerCase()
-
+    const name = generateRepoName();
     if (!existingNames.has(name)) {
-      existingNames.add(name)
-      return name
+      existingNames.add(name);
+      return name;
     }
-
-    attempt++
+    attempt++;
   }
 
-  throw new Error('Unable to generate a unique name after maximum attempts')
+  throw new Error('Unable to generate a unique name after maximum attempts');
+}
+
+function generateRepoDescription(name: string, tags: string[]): string {
+  const componentType = name.split(' ').pop()!.replace('Component', '').trim()
+  const isAnimated = tags.includes('animated') || name.toLowerCase().includes('animated')
+  const isAccessible = tags.includes('accessibility') || name.toLowerCase().includes('accessible')
+  const framework = frameworks.find(fw => name.includes(fw)) || 'React'
+
+  let description = `A ${isAnimated ? 'dynamic and animated' : 'sleek and modern'} ${componentType} component built for ${framework}. `
+
+  description += `This component is designed to be ${faker.helpers.arrayElement(['highly customizable', 'easily integrable', 'performance-optimized'])}`
+  
+  if (isAccessible) {
+    description += ` and fully accessible, adhering to WCAG guidelines. `
+  } else {
+    description += `. `
+  }
+
+  description += `Perfect for ${faker.helpers.arrayElement([
+    'creating engaging user interfaces',
+    'enhancing user experience',
+    'building responsive web applications',
+    'streamlining your development process'
+  ])}, this ${componentType} offers ${faker.helpers.arrayElement([
+    'a range of customization options',
+    'seamless integration with existing projects',
+    'robust functionality out of the box',
+    'a balance of aesthetics and performance'
+  ])}. `
+
+  if (tags.includes('typescript')) {
+    description += `Fully typed with TypeScript for improved developer experience. `
+  }
+
+  if (tags.includes('responsive-design')) {
+    description += `Responsive design ensures compatibility across all device sizes. `
+  }
+
+  description += `Ideal for ${faker.helpers.arrayElement([
+    'both beginners and experienced developers',
+    'rapid prototyping and production-ready applications',
+    'creating consistent and branded user interfaces',
+    'developers looking to enhance their React projects'
+  ])}.`
+
+  return description
 }
 
 // Function to select a seller with higher chance of selecting a verified seller
@@ -105,30 +177,27 @@ async function generateCodeRepos(count: number = 10, config: SeederConfig) {
       const seller = selectSeller(verifiedSellers, unverifiedSellers, sellerRepoCounts, config)
       sellerRepoCounts.set(seller.id, (sellerRepoCounts.get(seller.id) || 0) + 1)
 
-      const selectedRepo = faker.helpers.arrayElement([PROJECT_MANAGEMENT, KANBAN, QUIZ_APP])
-      const selectedRepoCss = {
-        [PROJECT_MANAGEMENT]: PROJECT_MANAGEMENT_CSS,
-        [KANBAN]: KANBAN_CSS,
-        [QUIZ_APP]: QUIZ_APP_CSS,
-      }
+      const selectedRepo = faker.helpers.arrayElement([BUTTON_COMPONENTS, CARD_COMPONENTS, INPUT_COMPONENTS])
 
       const priceAmount = Math.floor(
         parseFloat(faker.commerce.price({ min: 100, max: 10000, dec: 2 }))
       )
       const { createdAt, updatedAt, deletedAt } = generateDates()
       const status: CodeRepoStatus = Math.random() < config.activeRepoProbability ? 'active' : faker.helpers.arrayElement(['pending', 'rejected'])
+      const repoTags = faker.helpers.arrayElements(REPO_TAGS, faker.number.int({ min: 1, max: 8 }))
+      const repoName = generateUniqueName(existingNames)
 
       const codeRepo: Omit<CodeRepo, 'id'> = {
         userId: seller.id,
         sourceJs: selectedRepo,
-        sourceCss: selectedRepoCss[selectedRepo as keyof typeof selectedRepoCss],
+        sourceCss: COMPONENTS_CSS,
         createdAt,
         updatedAt,
         deletedAt,
         visibility: weightedRandomTrueBoolean() ? 'public' : 'private',
         status: status,
-        name: generateUniqueName(seller, existingNames),
-        description: faker.lorem.sentences(),
+        name: generateUniqueName(existingNames),
+        description: generateRepoDescription(repoName, repoTags),
         language: faker.helpers.arrayElement(['JSX', 'TSX']),
         price: priceAmount,
       }
@@ -153,7 +222,6 @@ export async function seedCodeRepos(count: number = 50, customConfig?: Partial<S
     verifiedSellers: 0,
     unverifiedSellers: 0,
   }
-
 
   try {
     const codeReposWithTags = await generateCodeRepos(count, config)

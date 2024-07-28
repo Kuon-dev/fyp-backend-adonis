@@ -289,281 +289,271 @@ const QuizApp = () => {
 render(<QuizApp />);
 `
 
-// TSX Variant
+export const BUTTON_COMPONENTS = `
+import React from "react";
+import render from "react-dom";
 
-export const KANBAN = `
-import React from "react"
-import render from "react-dom"
-
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  priority: 'Low' | 'Medium' | 'High';
-  status: 'To Do' | 'In Progress' | 'Done';
-  dueDate: string;
+function PrimaryButton({ children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white"
+    >
+      {children}
+    </button>
+  );
 }
 
-const KanbanBoard = () => {
-  const [tasks, setTasks] = React.useState<Task[]>([]);
-  const [newTask, setNewTask] = React.useState<Omit<Task, 'id' | 'status'>>({
-    title: '',
-    description: '',
-    priority: 'Medium',
-    dueDate: ''
-  });
-
-  const addTask = () => {
-    if (newTask.title && newTask.description && newTask.dueDate) {
-      setTasks([...tasks, { ...newTask, id: Date.now(), status: 'To Do' }]);
-      setNewTask({ title: '', description: '', priority: 'Medium', dueDate: '' });
-    }
-  };
-
-  const moveTask = (taskId: number, newStatus: 'To Do' | 'In Progress' | 'Done') => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
-  };
-
-  const deleteTask = (id: number) => {
-    setTasks(tasks.filter(task => task.id !== id));
-  };
-
-  const getPriorityColor = (priority: 'Low' | 'Medium' | 'High') => {
-    switch (priority) {
-      case 'Low': return 'bg-green-600';
-      case 'Medium': return 'bg-yellow-600';
-      case 'High': return 'bg-red-600';
-    }
-  };
-
-  const renderTaskList = (status: 'To Do' | 'In Progress' | 'Done') => (
-    <div className="bg-gray-800 p-4 rounded-lg flex-1">
-      <h2 className="text-xl font-bold mb-4">{status}</h2>
-      {tasks.filter(task => task.status === status).map(task => (
-        <div key={task.id} className="bg-gray-700 p-3 rounded mb-2">
-          <h3 className="font-semibold">{task.title}</h3>
-          <p className="text-sm text-gray-400">{task.description}</p>
-          <div className="flex justify-between items-center mt-2">
-            <span className={\`px-2 py-1 rounded text-xs \${getPriorityColor(task.priority)}\`}>
-              {task.priority}
-            </span>
-            <span className="text-xs text-gray-500">{task.dueDate}</span>
-          </div>
-          <div className="mt-2 flex justify-between">
-            <select
-              value={task.status}
-              onChange={(e) => moveTask(task.id, e.target.value as 'To Do' | 'In Progress' | 'Done')}
-              className="p-1 bg-gray-600 rounded text-sm"
-            >
-              <option value="To Do">To Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
-            </select>
-            <button
-              onClick={() => deleteTask(task.id)}
-              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-sm"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
+function SecondaryButton({ children, onClick }) {
   return (
-    <div className="bg-gray-900 text-white p-8 rounded-xl shadow-2xl">
-      <h1 className="text-3xl font-bold mb-6">Kanban Board</h1>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <input
-          type="text"
-          value={newTask.title}
-          onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-          className="p-2 bg-gray-800 rounded"
-          placeholder="Task Title"
-        />
-        <input
-          type="date"
-          value={newTask.dueDate}
-          onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-          className="p-2 bg-gray-800 rounded"
-        />
-      </div>
-      <textarea
-        value={newTask.description}
-        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-        className="p-2 bg-gray-800 rounded w-full mb-4"
-        placeholder="Task Description"
-      />
-      <div className="flex justify-between items-center mb-4">
-        <select
-          value={newTask.priority}
-          onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as 'Low' | 'Medium' | 'High' })}
-          className="p-2 bg-gray-800 rounded"
-        >
-          <option value="Low">Low Priority</option>
-          <option value="Medium">Medium Priority</option>
-          <option value="High">High Priority</option>
-        </select>
-        <button
-          onClick={addTask}
-          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
-        >
-          Add Task
-        </button>
-      </div>
-      <div className="flex space-x-4">
-        {renderTaskList('To Do')}
-        {renderTaskList('In Progress')}
-        {renderTaskList('Done')}
-      </div>
-    </div>
+    <button
+      onClick={onClick}
+      className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-white"
+    >
+      {children}
+    </button>
   );
-};
-
-render(<KanbanBoard />);
-`
-
-export const KANBAN_CSS = `
-/* No additional CSS needed as styles are handled by Tailwind */
-`
-
-export const PROJECT_MANAGEMENT = `
-import React from "react"
-import render from "react-dom"
-
-
-interface Project {
-  id: number;
-  name: string;
-  description: string;
-  status: 'To Do' | 'In Progress' | 'Completed';
-  dueDate: string;
 }
 
-const ProjectManagement = () => {
-  const [projects, setProjects] = React.useState<Project[]>([]);
-  const [newProject, setNewProject] = React.useState<Omit<Project, 'id'>>({
-    name: '',
-    description: '',
-    status: 'To Do',
-    dueDate: ''
-  });
-  const [filter, setFilter] = React.useState<'To Do' | 'In Progress' | 'Completed' | 'All'>('All');
-
-  const addProject = () => {
-    if (newProject.name && newProject.description && newProject.dueDate) {
-      setProjects([...projects, { ...newProject, id: Date.now() }]);
-      setNewProject({ name: '', description: '', status: 'To Do', dueDate: '' });
-    }
-  };
-
-  const updateProjectStatus = (id: number, newStatus: 'To Do' | 'In Progress' | 'Completed') => {
-    setProjects(projects.map(project =>
-      project.id === id ? { ...project, status: newStatus } : project
-    ));
-  };
-
-  const deleteProject = (id: number) => {
-    setProjects(projects.filter(project => project.id !== id));
-  };
-
-  const filteredProjects = filter === 'All'
-    ? projects
-    : projects.filter(project => project.status === filter);
-
-  const getStatusColor = (status: 'To Do' | 'In Progress' | 'Completed') => {
-    switch (status) {
-      case 'To Do': return 'bg-yellow-600';
-      case 'In Progress': return 'bg-blue-600';
-      case 'Completed': return 'bg-green-600';
-    }
-  };
-
+function OutlineButton({ children, onClick }) {
   return (
-    <div className="bg-gray-900 text-white p-8 rounded-xl shadow-2xl">
-      <h1 className="text-3xl font-bold mb-6">Project Management</h1>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <input
-          type="text"
-          value={newProject.name}
-          onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-          className="p-2 bg-gray-800 rounded"
-          placeholder="Project Name"
-        />
-        <input
-          type="date"
-          value={newProject.dueDate}
-          onChange={(e) => setNewProject({ ...newProject, dueDate: e.target.value })}
-          className="p-2 bg-gray-800 rounded"
-        />
-      </div>
-      <textarea
-        value={newProject.description}
-        onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-        className="p-2 bg-gray-800 rounded w-full mb-4"
-        placeholder="Project Description"
+    <button
+      onClick={onClick}
+      className="border border-blue-500 hover:bg-blue-500 hover:text-white text-blue-500 font-bold py-2 px-4 rounded dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-500 dark:hover:text-white"
+    >
+      {children}
+    </button>
+  );
+}
+
+function RoundedButton({ children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full dark:bg-green-600 dark:hover:bg-green-700 dark:text-white"
+    >
+      {children}
+    </button>
+  );
+}
+
+function IconButton({ icon, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-red-500 hover:bg-red-600 text-white font-bold p-2 rounded-full dark:bg-red-600 dark:hover:bg-red-700 dark:text-white"
+    >
+      {icon}
+    </button>
+  );
+}
+
+function ButtonShowcase() {
+  return (
+    <div className="space-y-4 dark:bg-gray-900 p-4">
+      <PrimaryButton onClick={() => alert('Primary clicked')}>Primary Button</PrimaryButton>
+      <SecondaryButton onClick={() => alert('Secondary clicked')}>Secondary Button</SecondaryButton>
+      <OutlineButton onClick={() => alert('Outline clicked')}>Outline Button</OutlineButton>
+      <RoundedButton onClick={() => alert('Rounded clicked')}>Rounded Button</RoundedButton>
+      <IconButton icon="★" onClick={() => alert('Icon clicked')} />
+    </div>
+  );
+}
+
+render(<ButtonShowcase />);
+`;
+
+export const INPUT_COMPONENTS = `
+import React from "react";
+import render from "react-dom";
+
+function TextInput({ placeholder, value, onChange }) {
+  return (
+    <input
+      type="text"
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
+    />
+  );
+}
+
+function PasswordInput({ placeholder, value, onChange }) {
+  return (
+    <input
+      type="password"
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
+    />
+  );
+}
+
+function TextArea({ placeholder, value, onChange }) {
+  return (
+    <textarea
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full h-24 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
+    />
+  );
+}
+
+function SearchInput({ placeholder, value, onChange, onSearch }) {
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className="border border-gray-300 rounded-md pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
       />
       <button
-        onClick={addProject}
-        className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded mb-4"
+        onClick={onSearch}
+        className="absolute left-2 top-1/2 transform -translate-y-1/2 dark:text-gray-400"
       >
-        Add Project
+        🔍
       </button>
-      <div className="mb-4">
-        <label className="mr-2">Filter by Status:</label>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as 'To Do' | 'In Progress' | 'Completed' | 'All')}
-          className="p-2 bg-gray-800 rounded"
-        >
-          <option value="All">All</option>
-          <option value="To Do">To Do</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
-        </select>
-      </div>
-      <ul>
-        {filteredProjects.map(project => (
-          <li key={project.id} className="mb-4 bg-gray-800 p-4 rounded">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold">{project.name}</h3>
-              <span className={\`px-2 py-1 rounded \${getStatusColor(project.status)}\`}>
-                {project.status}
-              </span>
-            </div>
-            <p className="text-gray-400 mt-2">{project.description}</p>
-            <p className="mt-2"><strong>Due Date:</strong> {project.dueDate}</p>
-            <div className="mt-4">
-              <select
-                value={project.status}
-                onChange={(e) => updateProjectStatus(project.id, e.target.value as 'To Do' | 'In Progress' | 'Completed')}
-                className="p-2 bg-gray-700 rounded mr-2"
-              >
-                <option value="To Do">To Do</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-              <button
-                onClick={() => deleteProject(project.id)}
-                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
-};
+}
 
-render(<ProjectManagement />);
-`
+function NumberInput({ placeholder, value, onChange, min, max }) {
+  return (
+    <input
+      type="number"
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      min={min}
+      max={max}
+      className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
+    />
+  );
+}
 
-export const PROJECT_MANAGEMENT_CSS = `
+function InputShowcase() {
+  const [text, setText] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [textArea, setTextArea] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  const [number, setNumber] = React.useState('');
+
+  return (
+    <div className="space-y-4 dark:bg-gray-900 p-4">
+      <TextInput placeholder="Enter text" value={text} onChange={(e) => setText(e.target.value)} />
+      <PasswordInput placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <TextArea placeholder="Enter long text" value={textArea} onChange={(e) => setTextArea(e.target.value)} />
+      <SearchInput placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} onSearch={() => alert('Search: ' + search)} />
+      <NumberInput placeholder="Enter number" value={number} onChange={(e) => setNumber(e.target.value)} min={0} max={100} />
+    </div>
+  );
+}
+
+render(<InputShowcase />);
+`;
+
+export const CARD_COMPONENTS = `
+import React from "react";
+import render from "react-dom";
+
+function SimpleCard({ title, content }) {
+  return (
+    <div className="bg-white shadow-md rounded-lg overflow-hidden dark:bg-gray-800">
+      <div className="px-6 py-4">
+        <div className="font-bold text-xl mb-2 dark:text-white">{title}</div>
+        <p className="text-gray-700 text-base dark:text-gray-300">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function ImageCard({ title, content, imageUrl }) {
+  return (
+    <div className="bg-white shadow-md rounded-lg overflow-hidden dark:bg-gray-800">
+      <img className="w-full h-48 object-cover" src={imageUrl} alt={title} />
+      <div className="px-6 py-4">
+        <div className="font-bold text-xl mb-2 dark:text-white">{title}</div>
+        <p className="text-gray-700 text-base dark:text-gray-300">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({ title, content, actionText, onAction }) {
+  return (
+    <div className="bg-white shadow-md rounded-lg overflow-hidden dark:bg-gray-800">
+      <div className="px-6 py-4">
+        <div className="font-bold text-xl mb-2 dark:text-white">{title}</div>
+        <p className="text-gray-700 text-base mb-4 dark:text-gray-300">{content}</p>
+        <button
+          onClick={onAction}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded dark:bg-blue-600 dark:hover:bg-blue-700"
+        >
+          {actionText}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HoverCard({ title, content }) {
+  return (
+    <div className="bg-white shadow-md rounded-lg overflow-hidden transition-transform duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg dark:bg-gray-800">
+      <div className="px-6 py-4">
+        <div className="font-bold text-xl mb-2 dark:text-white">{title}</div>
+        <p className="text-gray-700 text-base dark:text-gray-300">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function CardWithFooter({ title, content, footerText }) {
+  return (
+    <div className="bg-white shadow-md rounded-lg overflow-hidden flex flex-col dark:bg-gray-800">
+      <div className="px-6 py-4 flex-grow">
+        <div className="font-bold text-xl mb-2 dark:text-white">{title}</div>
+        <p className="text-gray-700 text-base dark:text-gray-300">{content}</p>
+      </div>
+      <div className="px-6 py-4 bg-gray-100 dark:bg-gray-700">
+        <p className="text-gray-600 text-sm dark:text-gray-400">{footerText}</p>
+      </div>
+    </div>
+  );
+}
+
+function CardShowcase() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 dark:bg-gray-900 p-4">
+      <SimpleCard title="Simple Card" content="This is a basic card component." />
+      <ImageCard
+        title="Image Card"
+        content="This card includes an image."
+        imageUrl="https://via.placeholder.com/300x200"
+      />
+      <ActionCard
+        title="Action Card"
+        content="This card has an action button."
+        actionText="Click me"
+        onAction={() => alert('Action clicked')}
+      />
+      <HoverCard title="Hover Card" content="This card has a hover effect." />
+      <CardWithFooter
+        title="Card with Footer"
+        content="This card includes a footer section."
+        footerText="Footer information"
+      />
+    </div>
+  );
+}
+
+render(<CardShowcase />);
+`;
+
+export const COMPONENTS_CSS = `
 /* No additional CSS needed as styles are handled by Tailwind */
 `

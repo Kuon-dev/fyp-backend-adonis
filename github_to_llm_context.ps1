@@ -89,11 +89,11 @@ function Process-File {
 
 # Main script
 $ignorePatterns = Parse-GitIgnore
-$directories = @(".\app", ".\prisma")
-$files = $directories | ForEach-Object { 
+$directories = @(".\app", ".\prisma", ".\database", ".\config")
+$files = $directories | ForEach-Object {
     Get-ChildItem -Path $_ -Recurse -File | Where-Object { -not (Test-Ignored $_ $ignorePatterns) }
 }
 
 $output = $files | ForEach-Object { Process-File $_ }
-$output | Out-File -FilePath "context_focused.xml" -Encoding utf8
+$output | Out-File -FilePath ".\docs\context.xml" -Encoding utf8
 Write-Host "Context file generated: context_focused.xml"

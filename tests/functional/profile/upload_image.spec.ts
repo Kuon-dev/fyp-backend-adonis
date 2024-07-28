@@ -15,25 +15,25 @@ test.group('Profile Update', () => {
     return loginResponse.headers()['set-cookie'][0]
   }
 
-  //test('successfully update profile with image', async ({ client, assert }) => {
-  //  const token = await getAuthToken(client)
-  //
-  //  const response = await client
-  //    .put('/api/v1/profile')
-  //    .header('Cookie', token)
-  //    .header('Content-Type', 'multipart/form-data')
-  //    .file('profileImg', IMAGE_PATH)
-  //    .field('name', 'John Doe')
-  //    .field('phoneNumber', '1234567890')
-  //
-  //  response.assertStatus(200)
-  //  response.assertBodyContains({ message: 'Profile updated successfully', status: 'success' })
-  //
-  //  const updatedProfile = await client.get('/api/v1/me').header('Cookie', token)
-  //  assert.equal(updatedProfile.body().profile.name, 'Jane Doe')
-  //  assert.equal(updatedProfile.body().profile.phoneNumber, '0987654321')
-  //  assert.isNotNull(updatedProfile.body().profile.profileImg)
-  //})
+  test('successfully update profile with image', async ({ client, assert }) => {
+    const token = await getAuthToken(client)
+
+    const response = await client
+      .put('/api/v1/profile')
+      .header('Cookie', token)
+      .header('Content-Type', 'multipart/form-data')
+      .file('profileImg', IMAGE_PATH)
+      .field('name', 'John Doe')
+      .field('phoneNumber', '1234567890')
+
+    response.assertStatus(200)
+    response.assertBodyContains({ message: 'Profile updated successfully', status: 'success' })
+
+    const updatedProfile = await client.get('/api/v1/me').header('Cookie', token)
+    assert.equal(updatedProfile.body().profile.name, 'Jane Doe')
+    assert.equal(updatedProfile.body().profile.phoneNumber, '0987654321')
+    assert.isNotNull(updatedProfile.body().profile.profileImg)
+  })
 
   test('successfully update profile without image', async ({ client, assert }) => {
     const token = await getAuthToken(client)

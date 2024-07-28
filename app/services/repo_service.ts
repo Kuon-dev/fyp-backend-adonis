@@ -19,6 +19,10 @@ type RepoCheckoutInfo = {
   sellerProfileId: string | null
 }
 
+interface CodeRepoWithTags extends CodeRepo {
+  tags: string[]
+}
+
 type CreateRepoData = Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { tags: string[] }
 
 @inject()
@@ -100,17 +104,30 @@ export default class RepoService {
     })
   }
 
- public async getRepoById(id: string, _userId?: string | null): Promise<CodeRepo | null> {
+  public async getRepoById(id: string, _userId?: string | null): Promise<CodeRepoWithTags | null> {
     const repo = await prisma.codeRepo.findUnique({
       where: {
         id,
         deletedAt: null // Only return non-deleted repos
       },
       include: {
-        tags: true, // Include tags to match the test expectations
+        tags: {
+          include: {
+            tag: true // Include the actual tag data
+          }
+        }
       }
     })
-    return repo
+
+    if (!repo) return null
+
+    // Transform the tags to return only the tag names
+    const transformedRepo: CodeRepoWithTags = {
+      ...repo,
+      tags: repo.tags.map(tagRelation => tagRelation.tag.name)
+    }
+
+    return transformedRepo
   }
 
   public async updateRepo(
