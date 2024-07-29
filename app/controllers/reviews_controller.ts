@@ -4,6 +4,7 @@ import { ReviewService } from '#services/review_service'
 import { z } from 'zod'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import { VoteType } from '@prisma/client'
+import NotFoundException from '#exceptions/not_found_exception'
 
 const createReviewSchema = z.object({
   content: z.string().min(1).max(1000),
@@ -106,28 +107,8 @@ export default class ReviewController {
    * @param {HttpContext} ctx - The HTTP context object.
    * @queryParam {number} page - Page number for pagination.
    * @queryParam {number} perPage - Number of items per page.
-   * @responseBody 200 - {
-   *   "data": [
-   *     {
-   *       "id": "cuid0987654321",
-   *       "content": "This is a great repository!",
-   *       "userId": "user123",
-   *       "repoId": "cuid1234567890",
-   *       "rating": 5,
-   *       "createdAt": "2023-07-15T10:00:00Z",
-   *       "updatedAt": "2023-07-15T10:00:00Z",
-   *       "upvotes": 10,
-   *       "downvotes": 2
-   *     },
-   *     ...
-   *   ],
-   *   "meta": {
-   *     "total": 100,
-   *     "page": 1,
-   *     "perPage": 10,
-   *     "lastPage": 10
-   *   }
-   * }
+   * @responseBody 200 - { "data": [...], "meta": { ... } }
+   * @responseBody 404 - { "message": "Repo not found" }
    * @responseBody 400 - { "message": "Validation error", "errors": [...] }
    */
   public async getPaginatedReviewsByRepo({ params, request, response }: HttpContext) {
@@ -140,6 +121,9 @@ export default class ReviewController {
     } catch (error) {
       if (error instanceof z.ZodError) {
         return response.status(400).json({ message: 'Validation error', errors: error.errors })
+      }
+      if (error instanceof NotFoundException) {
+        return response.status(404).json({ message: error.message })
       }
       return response.status(400).json({ message: error.message })
     }

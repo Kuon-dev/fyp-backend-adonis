@@ -313,8 +313,8 @@ export default class RepoService {
       const updatedRepo = await tx.codeRepo.update({
         where: { id: repoId },
         data: {
-          status: CodeRepoStatus.active,
-          visibility: Visibility.public,
+          //status: CodeRepoStatus.active,
+          //visibility: Visibility.public,
           updatedAt: new Date()
         }
       })

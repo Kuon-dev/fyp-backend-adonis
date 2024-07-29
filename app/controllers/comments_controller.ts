@@ -3,16 +3,18 @@ import { inject } from '@adonisjs/core'
 import { CommentService } from '#services/comment_service'
 import { z } from 'zod'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
-import { VoteType } from '@prisma/client'
+import { UserCommentFlag, VoteType } from '@prisma/client'
 
 const createCommentSchema = z.object({
   content: z.string().min(1).max(1000),
   reviewId: z.string(),
 })
 
+type UserCommentFlagType = typeof UserCommentFlag[keyof typeof UserCommentFlag];
+
 const updateCommentSchema = z.object({
   content: z.string().max(1000).optional(),
-  flag: z.enum(['NONE']).optional(),
+  flag: z.enum(Object.values(UserCommentFlag) as [UserCommentFlagType, ...UserCommentFlagType[]]).optional(),
 })
 
 const paginationSchema = z.object({

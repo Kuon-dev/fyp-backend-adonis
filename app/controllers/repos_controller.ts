@@ -11,6 +11,7 @@ import CodeRepoSearchService, { SearchCriteria } from '#services/repo_search_ser
 import logger from '@adonisjs/core/services/logger'
 import RepoAccessService from '#services/repo_access_service'
 import { QUIZ_APP, QUIZ_APP_CSS } from '#database/seeders/constants'
+import { UserService } from '#services/user_service'
 
 const searchSchema = z.object({
   query: z.string().optional(),
@@ -45,6 +46,7 @@ const searchSchema = z.object({
 export default class RepoController {
   constructor(
     protected repoService: RepoService,
+    protected userService: UserService,
     protected codeRepoSearchService: CodeRepoSearchService,
     protected repoAccessService: RepoAccessService,
     protected codeCheckService: CodeCheckService
@@ -373,6 +375,10 @@ export default class RepoController {
     if (!userId) {
       return response.unauthorized({ message: 'User not authenticated' })
     }
+
+    // if seller is not verified, don't allow
+    const seller = await prisma.user.findUnique({ where: { id: userId }, include: { sellerProfile: true }})
+    if (seller?.sellerProfile?.verificationStatus !== 'APPROVED') throw new Error('Seller not verified')
 
     try {
       const publishedRepo = await this.repoService.publishRepo({ id: params.id, userId })

@@ -57,7 +57,7 @@ router
             router.post('/email', [SupportController, 'sendDefaultEmail'])
           })
           .prefix('/support')
-          .use(middleware.auth({ role: 'ADMIN' }))
+          .use(middleware.auth({ role: 'MODERATOR' }))
 
         // Repo routes
         router
@@ -99,9 +99,10 @@ router
             router.get('/dashboard', [DashboardController, 'getAdminDashboardData'])
           })
           .prefix('/admin')
-          .use(middleware.auth({ role: 'ADMIN' }))
+          .use(middleware.auth({ role: 'MODERATOR' }))
 
         router.get('/user/dashboard', [DashboardController, 'getUserDashboardData']).use(middleware.auth({ role: 'USER' }))
+        router.get('/mod/dashboard', [DashboardController, 'getModeratorDashboardData']).use(middleware.auth({ role: 'MODERATOR' }))
 
         // User routes
         router

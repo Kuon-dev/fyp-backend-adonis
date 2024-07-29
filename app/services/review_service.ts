@@ -1,6 +1,10 @@
 import { prisma } from '#services/prisma_service'
 import type { Review, Vote, VoteType } from '@prisma/client'
 import logger from '@adonisjs/core/services/logger'
+import UnAuthorizedException from '#exceptions/un_authorized_exception'
+import RepoAccessService from './repo_access_service.js'
+import { inject } from '@adonisjs/core'
+import NotFoundException from '#exceptions/not_found_exception'
 
 interface ReviewCreationData {
   content: string
@@ -14,13 +18,24 @@ interface ReviewUpdateData {
   rating?: number
 }
 
+@inject()
 export class ReviewService {
+
+  constructor(protected repoAccessService: RepoAccessService) {}
   /**
    * Create a new review.
    * @param data - The data to create a review.
    * @returns The created review.
    */
   async createReview(data: ReviewCreationData): Promise<Review> {
+    const hasAccess = await prisma.$transaction(async (tx) => {
+      return this.repoAccessService.hasAccess(data.userId, data.repoId, tx)
+    })
+
+    if (!hasAccess) {
+      throw new UnAuthorizedException('User does not have access to this repo')
+    }
+
     return prisma.review.create({
       data,
     })
@@ -31,7 +46,7 @@ export class ReviewService {
     page: number,
     perPage: number
   ): Promise<{
-    data: Review[]
+    data: (Review & { commentCount: number })[]
     meta: {
       total: number
       page: number
@@ -39,6 +54,14 @@ export class ReviewService {
       lastPage: number
     }
   }> {
+    const repo = await prisma.codeRepo.findUnique({
+      where: { id: repoId }
+    })
+
+    if (!repo) {
+      throw new NotFoundException('Repo not found')
+    }
+
     const reviews = await prisma.review.findMany({
       where: { repoId, deletedAt: null },
       skip: (page - 1) * perPage,
@@ -56,13 +79,23 @@ export class ReviewService {
             },
           },
         },
+        _count: {
+          select: { comments: true }
+        }
       },
     })
+
+    const reviewsWithCommentCount = reviews.map(review => ({
+      ...review,
+      commentCount: review._count.comments
+    }))
+
     const total = await prisma.review.count({
       where: { repoId, deletedAt: null },
     })
+
     return {
-      data: reviews,
+      data: reviewsWithCommentCount,
       meta: {
         total,
         page,

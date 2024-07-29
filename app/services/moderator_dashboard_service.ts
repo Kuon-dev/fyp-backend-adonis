@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
-import { UserCommentFlag, Role } from '@prisma/client'
+import { UserCommentFlag, Role, SupportTicketType, SupportTicketStatus } from '@prisma/client'
 
 @inject()
 export default class ModeratorDashboardService {
@@ -57,11 +57,7 @@ export default class ModeratorDashboardService {
       where: { flag: { not: UserCommentFlag.NONE } }
     })
 
-    const awaitingModeration = await prisma.review.count({
-      where: { flag: { not: UserCommentFlag.NONE } }
-    }) + await prisma.comment.count({
-      where: { flag: { not: UserCommentFlag.NONE } }
-    })
+    const awaitingModeration = flaggedReviews + flaggedComments
 
     const recentFlaggedContent = await prisma.review.findMany({
       where: { flag: { not: UserCommentFlag.NONE } },
@@ -116,20 +112,16 @@ export default class ModeratorDashboardService {
   }
 
   private async getUserReportManagement() {
-    // Note: This method assumes you have a UserReport model. If not, you may need to adjust this.
     const recentReports = await prisma.supportTicket.findMany({
-      where: { type: 'USER_REPORT' },
+      where: { type: SupportTicketType.general },
       take: 10,
       orderBy: { createdAt: 'desc' },
-      include: {
-        user: { select: { email: true } }
-      }
     })
 
     const openReports = await prisma.supportTicket.count({
-      where: { 
-        type: 'USER_REPORT',
-        status: 'todo'
+      where: {
+        type: SupportTicketType.general,
+        status: SupportTicketStatus.todo
       }
     })
 
@@ -147,8 +139,6 @@ export default class ModeratorDashboardService {
       }
     })
 
-    // Trending topics would require more complex text analysis
-    // This is a simplified version looking at frequent words in recent reviews
     const recentReviews = await prisma.review.findMany({
       take: 100,
       orderBy: { createdAt: 'desc' },
@@ -180,8 +170,8 @@ export default class ModeratorDashboardService {
     const usersWithMultipleFlags = await prisma.user.findMany({
       where: {
         OR: [
-          { reviews: { some: { flag: { not: UserCommentFlag.NONE } } } },
-          { comments: { some: { flag: { not: UserCommentFlag.NONE } } } }
+          { Review: { some: { flag: { not: UserCommentFlag.NONE } } } },
+          { Comment: { some: { flag: { not: UserCommentFlag.NONE } } } }
         ]
       },
       take: 10,
@@ -190,13 +180,13 @@ export default class ModeratorDashboardService {
         email: true,
         _count: {
           select: {
-            reviews: { where: { flag: { not: UserCommentFlag.NONE } } },
-            comments: { where: { flag: { not: UserCommentFlag.NONE } } }
+            Review: { where: { flag: { not: UserCommentFlag.NONE } } },
+            Comment: { where: { flag: { not: UserCommentFlag.NONE } } }
           }
         }
       },
       orderBy: {
-        reviews: { _count: 'desc' }
+        Review: { _count: 'desc' }
       }
     })
 
@@ -249,9 +239,9 @@ export default class ModeratorDashboardService {
     const moderatedReviews = await prisma.vote.findMany({
       where: {
         userId: moderatorId,
-        review: { isNot: null }
+        Review: { isNot: null }
       },
-      select: { createdAt: true, review: { select: { createdAt: true } } }
+      select: { createdAt: true, Review: { select: { createdAt: true } } }
     })
 
     const moderatedComments = await prisma.vote.findMany({
@@ -263,7 +253,7 @@ export default class ModeratorDashboardService {
     })
 
     const allModeratedItems = [
-      ...moderatedReviews.map(r => ({ moderatedAt: r.createdAt, createdAt: r.review!.createdAt })),
+      ...moderatedReviews.map(r => ({ moderatedAt: r.createdAt, createdAt: r.Review!.createdAt })),
       ...moderatedComments.map(c => ({ moderatedAt: c.createdAt, createdAt: c.comment!.createdAt }))
     ]
 

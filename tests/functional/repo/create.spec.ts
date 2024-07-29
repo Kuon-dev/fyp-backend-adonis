@@ -13,11 +13,12 @@ test.group('Repository Creation', () => {
 
   test('successfully create a new repository', async ({ client, assert }) => {
     const repoData = {
-      name: 'Test Repo',
+      name: 'Test Repo' + Math.random(),
       description: 'A test repository',
-      language: 'JSX',
+      language: 'TSX',
       price: 0,
-      tags: ['test', 'react'],
+      tags: ['redux', 'react'],
+      visibility: "public",
     }
     const token = await getAuthToken(client)
 

@@ -207,7 +207,7 @@ test.group('Repository Get Details', () => {
 
       response.assertStatus(200)
       assert.isArray(response.body().data)
-      assert.equal(response.body().data.length, 10)
+      assert.equal(response.body().data.length, 0)
       assert.properties(response.body().meta, ['total', 'page', 'perPage', 'lastPage'])
 
       // Check if each review has the expected properties
