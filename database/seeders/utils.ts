@@ -48,4 +48,4 @@ export const weightedRandomDelete = (): Date | null => {
   return null
 }
 
-export const weightedRandomTrueBoolean = () => Math.random() < 0.9;
+export const weightedRandomTrueBoolean = () => Math.random() < 0.9

@@ -22,19 +22,22 @@ test.group('Comment Controller - PUT Operations', () => {
   async function getReviewId(client: ApiClient, token: string): Promise<string> {
     const reposResponse = await client.get('/api/v1/repos/accessed').header('Cookie', token)
     const repoId = reposResponse.body().accessibleRepos[0].id
-    const reviewsResponse = await client.get(`/api/v1/repo/${repoId}/reviews`).header('Cookie', token)
+    const reviewsResponse = await client
+      .get(`/api/v1/repo/${repoId}/reviews`)
+      .header('Cookie', token)
     return reviewsResponse.body().data[0].id
   }
 
-  async function createTestComment(client: ApiClient, token: string, reviewId: string): Promise<string> {
+  async function createTestComment(
+    client: ApiClient,
+    token: string,
+    reviewId: string
+  ): Promise<string> {
     const commentData = {
       content: 'Test comment for PUT operations',
       reviewId: reviewId,
     }
-    const response = await client
-      .post('/api/v1/comments')
-      .header('Cookie', token)
-      .json(commentData)
+    const response = await client.post('/api/v1/comments').header('Cookie', token).json(commentData)
     return response.body().id
   }
 
@@ -53,7 +56,14 @@ test.group('Comment Controller - PUT Operations', () => {
       .json(updateData)
 
     response.assertStatus(200)
-    assert.properties(response.body(), ['id', 'content', 'userId', 'reviewId', 'createdAt', 'updatedAt'])
+    assert.properties(response.body(), [
+      'id',
+      'content',
+      'userId',
+      'reviewId',
+      'createdAt',
+      'updatedAt',
+    ])
     assert.equal(response.body().id, commentId)
     assert.equal(response.body().content, updateData.content)
   })
@@ -118,7 +128,7 @@ test.group('Comment Controller - PUT Operations', () => {
     const adminToken = await getAdminToken(client)
 
     const updateData = {
-      content: 'Attempt to update other user\'s comment',
+      content: "Attempt to update other user's comment",
     }
 
     const response = await client
@@ -137,7 +147,10 @@ test.group('Comment Controller - PUT Operations', () => {
     const commentId = await createTestComment(client, userToken, reviewId)
 
     // First, flag the comment (assuming there's an endpoint to do this)
-    await client.put(`/api/v1/comments/${commentId}/flag`).header('Cookie', adminToken).json({ flag: 'INAPPROPRIATE_LANGUAGE' })
+    await client
+      .put(`/api/v1/comments/${commentId}/flag`)
+      .header('Cookie', adminToken)
+      .json({ flag: 'INAPPROPRIATE_LANGUAGE' })
 
     const response = await client
       .put(`/api/v1/comments/${commentId}/revert`)

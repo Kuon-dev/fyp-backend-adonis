@@ -12,12 +12,7 @@ export default class UserDashboardService {
    */
   public async getDashboardData(userId: string): Promise<object> {
     try {
-      const [
-        purchaseHistory,
-        accountInfo,
-        usageStatistics,
-        recommendations,
-      ] = await Promise.all([
+      const [purchaseHistory, accountInfo, usageStatistics, recommendations] = await Promise.all([
         this.getPurchaseHistory(userId),
         this.getAccountInfo(userId),
         this.getUsageStatistics(userId),
@@ -42,22 +37,22 @@ export default class UserDashboardService {
         where: { userId, status: OrderStatus.SUCCEEDED },
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { codeRepo: { select: { name: true } } }
+        include: { codeRepo: { select: { name: true } } },
       })
 
       const totalSpent = await prisma.order.aggregate({
         where: { userId, status: OrderStatus.SUCCEEDED },
-        _sum: { totalAmount: true }
+        _sum: { totalAmount: true },
       })
 
       const componentsBought = await prisma.order.count({
-        where: { userId, status: OrderStatus.SUCCEEDED }
+        where: { userId, status: OrderStatus.SUCCEEDED },
       })
 
       return {
         recentPurchases,
         totalSpent: totalSpent._sum.totalAmount || 0,
-        componentsBought
+        componentsBought,
       }
     } catch (error) {
       console.error('Error in getPurchaseHistory:', error)
@@ -73,8 +68,8 @@ export default class UserDashboardService {
           email: true,
           emailVerified: true,
           profile: true,
-          createdAt: true
-        }
+          createdAt: true,
+        },
       })
     } catch (error) {
       console.error('Error in getAccountInfo:', error)
@@ -89,20 +84,20 @@ export default class UserDashboardService {
         where: { userId, status: OrderStatus.SUCCEEDED },
         _count: { codeRepoId: true },
         orderBy: { _count: { codeRepoId: 'desc' } },
-        take: 5
+        take: 5,
       })
 
-      const repoIds = frequentlyPurchased.map(fp => fp.codeRepoId)
+      const repoIds = frequentlyPurchased.map((fp) => fp.codeRepoId)
       const repoDetails = await prisma.codeRepo.findMany({
         where: { id: { in: repoIds } },
-        select: { id: true, name: true }
+        select: { id: true, name: true },
       })
 
       return {
-        mostUsedComponents: frequentlyPurchased.map(fp => ({
-          ...repoDetails.find(rd => rd.id === fp.codeRepoId),
-          usageCount: fp._count.codeRepoId
-        }))
+        mostUsedComponents: frequentlyPurchased.map((fp) => ({
+          ...repoDetails.find((rd) => rd.id === fp.codeRepoId),
+          usageCount: fp._count.codeRepoId,
+        })),
       }
     } catch (error) {
       console.error('Error in getUsageStatistics:', error)
@@ -114,20 +109,20 @@ export default class UserDashboardService {
     try {
       const userPurchases = await prisma.order.findMany({
         where: { userId, status: OrderStatus.SUCCEEDED },
-        select: { codeRepoId: true }
+        select: { codeRepoId: true },
       })
 
-      const purchasedRepoIds = userPurchases.map(p => p.codeRepoId)
+      const purchasedRepoIds = userPurchases.map((p) => p.codeRepoId)
 
       const popularComponents = await prisma.codeRepo.findMany({
         where: {
           id: { notIn: purchasedRepoIds },
           status: 'active',
-          visibility: 'public'
+          visibility: 'public',
         },
         orderBy: { orders: { _count: 'desc' } },
         take: 5,
-        select: { id: true, name: true }
+        select: { id: true, name: true },
       })
 
       return { recommendations: popularComponents }

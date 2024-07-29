@@ -1,6 +1,15 @@
 import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
-import { PayoutRequest, PayoutRequestStatus, SellerProfile, SellerVerificationStatus, Payout, Prisma, BankAccount, Order } from '@prisma/client'
+import {
+  PayoutRequest,
+  PayoutRequestStatus,
+  SellerProfile,
+  SellerVerificationStatus,
+  Payout,
+  Prisma,
+  BankAccount,
+  Order,
+} from '@prisma/client'
 import { DateTime } from 'luxon'
 import { z } from 'zod'
 
@@ -22,7 +31,10 @@ export default class PayoutRequestService {
    * @returns {Promise<PayoutRequest>} The created payout request.
    * @throws {Error} If the seller profile is not found, not verified, or other validation errors.
    */
-  public async createPayoutRequest(userId: string, data: CreatePayoutRequestData): Promise<PayoutRequest> {
+  public async createPayoutRequest(
+    userId: string,
+    data: CreatePayoutRequestData
+  ): Promise<PayoutRequest> {
     const validatedData = createPayoutRequestSchema.parse(data)
 
     return prisma.$transaction(async (tx) => {
@@ -39,7 +51,9 @@ export default class PayoutRequestService {
       }
 
       const lastPayoutDate = sellerProfile.lastPayoutDate || new Date(0)
-      const cooldownPeriod = DateTime.fromJSDate(lastPayoutDate).plus({ days: COOLDOWN_PERIOD_DAYS }).startOf('day')
+      const cooldownPeriod = DateTime.fromJSDate(lastPayoutDate)
+        .plus({ days: COOLDOWN_PERIOD_DAYS })
+        .startOf('day')
       const now = DateTime.utc().startOf('day')
 
       if (now < cooldownPeriod) {
@@ -82,7 +96,9 @@ export default class PayoutRequestService {
    * @returns {Promise<{ balance: number; lastPayoutRequestDate: Date | null }>} The seller's balance and last payout request date.
    * @throws {Error} If the seller profile is not found.
    */
-  public async getSellerBalance(userId: string): Promise<{ balance: number; lastPayoutRequestDate: Date | null }> {
+  public async getSellerBalance(
+    userId: string
+  ): Promise<{ balance: number; lastPayoutRequestDate: Date | null }> {
     const sellerProfile = await prisma.sellerProfile.findUnique({
       where: { userId },
       select: { balance: true, lastPayoutDate: true },
@@ -104,7 +120,14 @@ export default class PayoutRequestService {
    * @returns {Promise<PayoutRequest & { sellerProfile: SellerProfile & { bankAccount: BankAccount | null }; orders: Order[] }>} The payout request with related data.
    * @throws {Error} If the payout request is not found.
    */
-  public async getPayoutRequestById(id: string): Promise<PayoutRequest & { sellerProfile: SellerProfile & { bankAccount: BankAccount | null }; orders: Order[] }> {
+  public async getPayoutRequestById(
+    id: string
+  ): Promise<
+    PayoutRequest & {
+      sellerProfile: SellerProfile & { bankAccount: BankAccount | null }
+      orders: Order[]
+    }
+  > {
     const payoutRequest = await prisma.payoutRequest.findUnique({
       where: { id },
       include: {
@@ -126,7 +149,10 @@ export default class PayoutRequestService {
    * @param {Partial<PayoutRequestStatus>} data - The updated status data.
    * @returns {Promise<PayoutRequest>} The updated payout request.
    */
-  public async updatePayoutRequest(id: string, data: Partial<PayoutRequestStatus>): Promise<PayoutRequest> {
+  public async updatePayoutRequest(
+    id: string,
+    data: Partial<PayoutRequestStatus>
+  ): Promise<PayoutRequest> {
     return prisma.payoutRequest.update({
       where: { id },
       data: {
@@ -150,7 +176,10 @@ export default class PayoutRequestService {
    * @param {number} limit - The number of items per page.
    * @returns {Promise<{ data: PayoutRequest[]; meta: { total: number; page: number; limit: number } }>} Paginated payout requests.
    */
-  public async getPaginatedPayoutRequests(page: number, limit: number): Promise<{ data: PayoutRequest[]; meta: { total: number; page: number; limit: number } }> {
+  public async getPaginatedPayoutRequests(
+    page: number,
+    limit: number
+  ): Promise<{ data: PayoutRequest[]; meta: { total: number; page: number; limit: number } }> {
     const totalCount = await prisma.payoutRequest.count()
     const payoutRequests = await prisma.payoutRequest.findMany({
       skip: (page - 1) * limit,
@@ -224,7 +253,11 @@ export default class PayoutRequestService {
    * @returns {Promise<PayoutRequest>} The processed payout request.
    * @throws {Error} If the payout request is not found or not in a pending state.
    */
-  public async processPayoutRequest(id: string, action: 'approve' | 'reject', adminId: string): Promise<PayoutRequest> {
+  public async processPayoutRequest(
+    id: string,
+    action: 'approve' | 'reject',
+    adminId: string
+  ): Promise<PayoutRequest> {
     return prisma.$transaction(async (tx) => {
       const payoutRequest = await tx.payoutRequest.findUnique({
         where: { id },
@@ -284,7 +317,12 @@ export default class PayoutRequestService {
           },
           orders: true,
         },
-      }) as Promise<PayoutRequest & { sellerProfile: SellerProfile & { bankAccount: BankAccount | null }; orders: Order[] }>
+      }) as Promise<
+        PayoutRequest & {
+          sellerProfile: SellerProfile & { bankAccount: BankAccount | null }
+          orders: Order[]
+        }
+      >
     })
   }
 }

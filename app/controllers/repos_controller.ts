@@ -194,7 +194,7 @@ export default class RepoController {
       // Transform the repo object to match the expected format
       const transformedRepo = {
         ...repo,
-        tags: repo.tags?.map(t => ({ tag: { name: t.tag.name } }))
+        tags: repo.tags?.map((t) => ({ tag: { name: t.tag.name } })),
       }
 
       return response.ok({
@@ -340,7 +340,10 @@ export default class RepoController {
 
     try {
       const accessibleRepos = await prisma.$transaction(async (tx) => {
-        const accessibleRepoIds = await this.repoAccessService.getUserAccessibleRepos(request.user!.id, tx)
+        const accessibleRepoIds = await this.repoAccessService.getUserAccessibleRepos(
+          request.user!.id,
+          tx
+        )
 
         return tx.codeRepo.findMany({
           where: {
@@ -357,7 +360,7 @@ export default class RepoController {
             updatedAt: true,
             sourceCss: true,
             sourceJs: true,
-          }
+          },
         })
       })
 
@@ -377,14 +380,18 @@ export default class RepoController {
     }
 
     // if seller is not verified, don't allow
-    const seller = await prisma.user.findUnique({ where: { id: userId }, include: { sellerProfile: true }})
-    if (seller?.sellerProfile?.verificationStatus !== 'APPROVED') throw new Error('Seller not verified')
+    const seller = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { sellerProfile: true },
+    })
+    if (seller?.sellerProfile?.verificationStatus !== 'APPROVED')
+      throw new Error('Seller not verified')
 
     try {
       const publishedRepo = await this.repoService.publishRepo({ id: params.id, userId })
       return response.ok({
         message: 'Repo published successfully',
-        repo: publishedRepo
+        repo: publishedRepo,
       })
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -478,6 +485,4 @@ export default class RepoController {
       })
     }
   }
-
-
 }

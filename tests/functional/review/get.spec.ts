@@ -59,7 +59,15 @@ test.group('Review Controller - GET Operations', () => {
     const response = await client.get(`/api/v1/reviews/${reviewId}`).header('Cookie', userToken)
 
     response.assertStatus(200)
-    assert.properties(response.body(), ['id', 'content', 'userId', 'repoId', 'rating', 'createdAt', 'updatedAt'])
+    assert.properties(response.body(), [
+      'id',
+      'content',
+      'userId',
+      'repoId',
+      'rating',
+      'createdAt',
+      'updatedAt',
+    ])
     assert.equal(response.body().id, reviewId)
   })
 
@@ -75,7 +83,7 @@ test.group('Review Controller - GET Operations', () => {
     response.assertStatus(200)
     assert.properties(response.body(), ['data', 'meta'])
     assert.isArray(response.body().data)
-    assert.isAtMost(response.body().data.length, 10)  // Changed from exact 10 to at most 10
+    assert.isAtMost(response.body().data.length, 10) // Changed from exact 10 to at most 10
     assert.properties(response.body().meta, ['total', 'page', 'perPage', 'lastPage'])
   })
 
@@ -114,7 +122,7 @@ test.group('Review Controller - GET Operations', () => {
     const response = await client
       .get(`/api/v1/repo/${testRepo.id}/reviews`)
       .header('Cookie', userToken)
-      .qs({ page: 1, perPage: 101 })  // Assuming max perPage is 100
+      .qs({ page: 1, perPage: 101 }) // Assuming max perPage is 100
 
     response.assertStatus(400)
     response.assertBodyContains({ message: 'Validation error' })
@@ -139,7 +147,7 @@ test.group('Review Controller - GET Operations', () => {
     // Flag a review
     await prisma.review.update({
       where: { id: testReviews[0].id },
-      data: { flag: 'FALSE_INFORMATION' },  // Changed from 'INAPPROPRIATE_LANGUAGE' to 'FALSE_INFORMATION'
+      data: { flag: 'FALSE_INFORMATION' }, // Changed from 'INAPPROPRIATE_LANGUAGE' to 'FALSE_INFORMATION'
     })
 
     const adminToken = await loginAsAdmin(client)
@@ -163,6 +171,6 @@ test.group('Review Controller - GET Operations', () => {
 
     const response = await client.get('/api/v1/admin/reviews').header('Cookie', userToken)
 
-    response.assertStatus(401)  // Changed from 403 to 401
+    response.assertStatus(401) // Changed from 403 to 401
   })
 })

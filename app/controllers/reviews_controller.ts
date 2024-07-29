@@ -150,7 +150,7 @@ export default class ReviewController {
       if (!userId) {
         throw new UnAuthorizedException('Unauthorized')
       }
-      
+
       const { id } = params
       const data = updateReviewSchema.parse(request.all())
       const review = await this.reviewService.updateReview(id, userId, data)
@@ -166,7 +166,9 @@ export default class ReviewController {
         return response.status(404).json({ message: error.message })
       }
       if (error.message === 'Forbidden') {
-        return response.status(403).json({ message: 'You do not have permission to update this review' })
+        return response
+          .status(403)
+          .json({ message: 'You do not have permission to update this review' })
       }
       return response.status(400).json({ message: error.message })
     }

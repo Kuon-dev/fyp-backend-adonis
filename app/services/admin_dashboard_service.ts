@@ -2,20 +2,28 @@ import { inject } from '@adonisjs/core'
 import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
 import SalesService from '#services/sales_service'
-import { CodeRepoStatus, OrderStatus, Role, SupportTicketStatus, UserCommentFlag, Language, SellerVerificationStatus } from '@prisma/client'
+import {
+  CodeRepoStatus,
+  OrderStatus,
+  Role,
+  SupportTicketStatus,
+  UserCommentFlag,
+  Language,
+  SellerVerificationStatus,
+} from '@prisma/client'
 import SupportTicketService from './support_service.js'
 import logger from '@adonisjs/core/services/logger'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 
-const languageEnum = z.enum(['JSX', 'TSX', 'Unknown']);
+const languageEnum = z.enum(['JSX', 'TSX', 'Unknown'])
 
 const topSellingRepoSchema = z.object({
   id: z.string(),
   name: z.string(),
   language: languageEnum,
-  totalRevenue: z.number()
-});
+  totalRevenue: z.number(),
+})
 
 const financialInsightsSchema = z.object({
   currentMonthRevenue: z.number(),
@@ -24,8 +32,8 @@ const financialInsightsSchema = z.object({
   pendingPayouts: z.number(),
   processedPayouts: z.number(),
   topSellingRepos: z.array(topSellingRepoSchema),
-  revenueByLanguage: z.record(languageEnum, z.number())
-});
+  revenueByLanguage: z.record(languageEnum, z.number()),
+})
 
 type SalesAggregateItem = {
   id: string
@@ -125,7 +133,7 @@ export default class AdminDashboardService {
         orderManagement,
         financialInsights,
         supportTickets,
-        contentModeration
+        contentModeration,
       ] = await Promise.all([
         this.getSalesOverview(startOfDay, startOfWeek, startOfMonth),
         this.getUserStatistics(),
@@ -134,7 +142,7 @@ export default class AdminDashboardService {
         this.getOrderManagement(),
         this.getFinancialInsights(),
         this.getSupportTickets(),
-        this.getContentModeration()
+        this.getContentModeration(),
       ])
 
       return {
@@ -145,7 +153,7 @@ export default class AdminDashboardService {
         orderManagement,
         financialInsights,
         supportTickets,
-        contentModeration
+        contentModeration,
       }
     } catch (error) {
       logger.error('Error in getDashboardData:', error)
@@ -158,21 +166,21 @@ export default class AdminDashboardService {
       const [sellers, totalRevenue, totalSales] = await Promise.all([
         prisma.user.findMany({
           where: { role: Role.SELLER },
-          select: { id: true }
+          select: { id: true },
         }),
         prisma.order.aggregate({
           _sum: { totalAmount: true },
-          where: { status: OrderStatus.SUCCEEDED }
+          where: { status: OrderStatus.SUCCEEDED },
         }),
-        prisma.order.count({ where: { status: OrderStatus.SUCCEEDED } })
+        prisma.order.count({ where: { status: OrderStatus.SUCCEEDED } }),
       ])
 
       const now = new Date()
 
-      const salesPromises = sellers.flatMap(seller => [
+      const salesPromises = sellers.flatMap((seller) => [
         this.salesService.getSalesAggregate(seller.id, startOfDay, now),
         this.salesService.getSalesAggregate(seller.id, startOfWeek, now),
-        this.salesService.getSalesAggregate(seller.id, startOfMonth, now)
+        this.salesService.getSalesAggregate(seller.id, startOfMonth, now),
       ])
 
       const allSalesData = await Promise.all(salesPromises)
@@ -180,18 +188,21 @@ export default class AdminDashboardService {
       const [dailySales, weeklySales, monthlySales] = [
         allSalesData.filter((_, index) => index % 3 === 0),
         allSalesData.filter((_, index) => index % 3 === 1),
-        allSalesData.filter((_, index) => index % 3 === 2)
+        allSalesData.filter((_, index) => index % 3 === 2),
       ]
 
       const aggregateSales = (sales: SalesAggregateItem[][]) => {
-        return sales.reduce((acc, sellerSales) => {
-          const totalRevenue = sellerSales.reduce((sum, sale) => sum + sale.revenue, 0)
-          const totalSalesCount = sellerSales.reduce((sum, sale) => sum + sale.salesCount, 0)
-          return {
-            revenue: acc.revenue + totalRevenue,
-            salesCount: acc.salesCount + totalSalesCount
-          }
-        }, { revenue: 0, salesCount: 0 })
+        return sales.reduce(
+          (acc, sellerSales) => {
+            const totalRevenue = sellerSales.reduce((sum, sale) => sum + sale.revenue, 0)
+            const totalSalesCount = sellerSales.reduce((sum, sale) => sum + sale.salesCount, 0)
+            return {
+              revenue: acc.revenue + totalRevenue,
+              salesCount: acc.salesCount + totalSalesCount,
+            }
+          },
+          { revenue: 0, salesCount: 0 }
+        )
       }
 
       return {
@@ -200,7 +211,7 @@ export default class AdminDashboardService {
         averageOrderValue: totalSales > 0 ? (totalRevenue._sum.totalAmount ?? 0) / totalSales : 0,
         dailySales: aggregateSales(dailySales),
         weeklySales: aggregateSales(weeklySales),
-        monthlySales: aggregateSales(monthlySales)
+        monthlySales: aggregateSales(monthlySales),
       }
     } catch (error) {
       logger.error('Error in getSalesOverview:', error)
@@ -214,24 +225,27 @@ export default class AdminDashboardService {
         prisma.user.count(),
         prisma.user.groupBy({
           by: ['role'],
-          _count: true
+          _count: true,
         }),
         prisma.user.count({
           where: {
             createdAt: {
-              gte: DateTime.now().minus({ days: 30 }).toJSDate()
-            }
-          }
-        })
+              gte: DateTime.now().minus({ days: 30 }).toJSDate(),
+            },
+          },
+        }),
       ])
 
       return {
         totalUsers,
-        userTypeCounts: userTypeCounts.reduce((acc, { role, _count }) => {
-          acc[role as Role] = _count
-          return acc
-        }, {} as Record<Role, number>),
-        newUsers
+        userTypeCounts: userTypeCounts.reduce(
+          (acc, { role, _count }) => {
+            acc[role as Role] = _count
+            return acc
+          },
+          {} as Record<Role, number>
+        ),
+        newUsers,
       }
     } catch (error) {
       logger.error('Error in getUserStatistics:', error)
@@ -244,25 +258,25 @@ export default class AdminDashboardService {
       const [totalRepos, pendingApprovalRepos, popularRepos, recentRepos] = await Promise.all([
         prisma.codeRepo.count(),
         prisma.codeRepo.count({
-          where: { status: CodeRepoStatus.pending }
+          where: { status: CodeRepoStatus.pending },
         }),
         prisma.codeRepo.findMany({
           take: 5,
           orderBy: { orders: { _count: 'desc' } },
-          select: { id: true, name: true, _count: { select: { orders: true } } }
+          select: { id: true, name: true, _count: { select: { orders: true } } },
         }),
         prisma.codeRepo.findMany({
           take: 5,
           orderBy: { createdAt: 'desc' },
-          select: { id: true, name: true, createdAt: true }
-        })
+          select: { id: true, name: true, createdAt: true },
+        }),
       ])
 
       return {
         totalRepos,
         pendingApprovalRepos,
         popularRepos,
-        recentRepos
+        recentRepos,
       }
     } catch (error) {
       logger.error('Error in getRepoMetrics:', error)
@@ -285,19 +299,19 @@ export default class AdminDashboardService {
             sellerProfile: {
               select: {
                 balance: true,
-                verificationStatus: true
-              }
-            }
-          }
+                verificationStatus: true,
+              },
+            },
+          },
         }),
         prisma.sellerProfile.count({
-          where: { verificationStatus: 'PENDING' }
-        })
+          where: { verificationStatus: 'PENDING' },
+        }),
       ])
 
       return {
         topSellers,
-        newSellerApplications
+        newSellerApplications,
       }
     } catch (error) {
       logger.error('Error in getSellerPerformance:', error)
@@ -313,21 +327,24 @@ export default class AdminDashboardService {
           orderBy: { createdAt: 'desc' },
           include: {
             user: { select: { email: true } },
-            codeRepo: { select: { name: true } }
-          }
+            codeRepo: { select: { name: true } },
+          },
         }),
         prisma.order.groupBy({
           by: ['status'],
-          _count: true
-        })
+          _count: true,
+        }),
       ])
 
       return {
         recentOrders,
-        orderStatusCounts: orderStatusCounts.reduce((acc, { status, _count }) => {
-          acc[status as OrderStatus] = _count
-          return acc
-        }, {} as Record<OrderStatus, number>)
+        orderStatusCounts: orderStatusCounts.reduce(
+          (acc, { status, _count }) => {
+            acc[status as OrderStatus] = _count
+            return acc
+          },
+          {} as Record<OrderStatus, number>
+        ),
       }
     } catch (error) {
       logger.error('Error in getOrderManagement:', error)
@@ -383,7 +400,7 @@ export default class AdminDashboardService {
         pendingPayouts: 0,
         processedPayouts: 0,
         topSellingRepos: [],
-        revenueByLanguage: {}
+        revenueByLanguage: {},
       }
     }
   }
@@ -395,9 +412,9 @@ export default class AdminDashboardService {
         status: OrderStatus.SUCCEEDED,
         createdAt: {
           gte: startDate,
-          lt: endDate
-        }
-      }
+          lt: endDate,
+        },
+      },
     })
     return result._sum.totalAmount ?? 0
   }
@@ -408,16 +425,20 @@ export default class AdminDashboardService {
   }
 
   private async getPendingPayouts() {
-    return prisma.payoutRequest.aggregate({
-      _sum: { totalAmount: true },
-      where: { status: 'PENDING' }
-    }).then(result => result._sum.totalAmount ?? 0)
+    return prisma.payoutRequest
+      .aggregate({
+        _sum: { totalAmount: true },
+        where: { status: 'PENDING' },
+      })
+      .then((result) => result._sum.totalAmount ?? 0)
   }
 
   private async getProcessedPayouts() {
-    return prisma.payout.aggregate({
-      _sum: { totalAmount: true }
-    }).then(result => result._sum.totalAmount ?? 0)
+    return prisma.payout
+      .aggregate({
+        _sum: { totalAmount: true },
+      })
+      .then((result) => result._sum.totalAmount ?? 0)
   }
 
   private async getTopSellingRepos(limit: number = 5) {
@@ -429,21 +450,21 @@ export default class AdminDashboardService {
         language: true,
         orders: {
           where: { status: OrderStatus.SUCCEEDED },
-          select: { totalAmount: true }
-        }
+          select: { totalAmount: true },
+        },
       },
       orderBy: {
         orders: {
-          _count: 'desc'
-        }
-      }
+          _count: 'desc',
+        },
+      },
     })
 
-    return repos.map(repo => ({
+    return repos.map((repo) => ({
       id: repo.id,
       name: repo.name,
       language: repo.language,
-      totalRevenue: repo.orders.reduce((sum, order) => sum + order.totalAmount, 0)
+      totalRevenue: repo.orders.reduce((sum, order) => sum + order.totalAmount, 0),
     }))
   }
 
@@ -451,21 +472,24 @@ export default class AdminDashboardService {
     const revenueByRepo = await prisma.order.groupBy({
       by: ['codeRepoId'],
       _sum: { totalAmount: true },
-      where: { status: OrderStatus.SUCCEEDED }
+      where: { status: OrderStatus.SUCCEEDED },
     })
 
     const repoLanguages = await prisma.codeRepo.findMany({
-      where: { id: { in: revenueByRepo.map(r => r.codeRepoId) } },
-      select: { id: true, language: true }
+      where: { id: { in: revenueByRepo.map((r) => r.codeRepoId) } },
+      select: { id: true, language: true },
     })
 
-    const languageMap = new Map(repoLanguages.map(r => [r.id, r.language]))
+    const languageMap = new Map(repoLanguages.map((r) => [r.id, r.language]))
 
-    return revenueByRepo.reduce((acc, { codeRepoId, _sum }) => {
-      const language = languageMap.get(codeRepoId) ?? 'Unknown'
-      acc[language] = (acc[language] ?? 0) + (_sum.totalAmount ?? 0)
-      return acc
-    }, {} as Record<Language | 'Unknown', number>)
+    return revenueByRepo.reduce(
+      (acc, { codeRepoId, _sum }) => {
+        const language = languageMap.get(codeRepoId) ?? 'Unknown'
+        acc[language] = (acc[language] ?? 0) + (_sum.totalAmount ?? 0)
+        return acc
+      },
+      {} as Record<Language | 'Unknown', number>
+    )
   }
 
   private async getSupportTickets() {
@@ -474,36 +498,40 @@ export default class AdminDashboardService {
         this.supportTicketService.getTicketsByStatus(SupportTicketStatus.todo),
         prisma.supportTicket.groupBy({
           by: ['status'],
-          _count: true
+          _count: true,
         }),
         prisma.supportTicket.findMany({
           where: {
             status: {
-              in: [SupportTicketStatus.inProgress, SupportTicketStatus.done]
-            }
+              in: [SupportTicketStatus.inProgress, SupportTicketStatus.done],
+            },
           },
           select: {
             createdAt: true,
-            updatedAt: true
-          }
-        })
+            updatedAt: true,
+          },
+        }),
       ])
 
       const totalResponseTime = completedTickets.reduce((total, ticket) => {
         return total + ticket.updatedAt.getTime() - ticket.createdAt.getTime()
       }, 0)
 
-      const averageResponseTime = completedTickets.length > 0
-        ? totalResponseTime / completedTickets.length / (1000 * 60 * 60) // Convert to hours
-        : null
+      const averageResponseTime =
+        completedTickets.length > 0
+          ? totalResponseTime / completedTickets.length / (1000 * 60 * 60) // Convert to hours
+          : null
 
       return {
         openTicketsCount: openTickets.length,
         averageResponseTime,
-        ticketStatusCounts: ticketStatusCounts.reduce((acc, { status, _count }) => {
-          acc[status as SupportTicketStatus] = _count
-          return acc
-        }, {} as Record<SupportTicketStatus, number>)
+        ticketStatusCounts: ticketStatusCounts.reduce(
+          (acc, { status, _count }) => {
+            acc[status as SupportTicketStatus] = _count
+            return acc
+          },
+          {} as Record<SupportTicketStatus, number>
+        ),
       }
     } catch (error) {
       logger.error('Error in getSupportTickets:', error)
@@ -515,17 +543,17 @@ export default class AdminDashboardService {
     try {
       const [flaggedReviews, flaggedComments] = await Promise.all([
         prisma.review.count({
-          where: { flag: { not: UserCommentFlag.NONE } }
+          where: { flag: { not: UserCommentFlag.NONE } },
         }),
         prisma.comment.count({
-          where: { flag: { not: UserCommentFlag.NONE } }
-        })
+          where: { flag: { not: UserCommentFlag.NONE } },
+        }),
       ])
 
       return {
         flaggedReviews,
         flaggedComments,
-        totalFlaggedContent: flaggedReviews + flaggedComments
+        totalFlaggedContent: flaggedReviews + flaggedComments,
       }
     } catch (error) {
       logger.error('Error in getContentModeration:', error)

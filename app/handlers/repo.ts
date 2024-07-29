@@ -1,5 +1,5 @@
-import CodeCheckService from "#services/code_check_service"
-import { CodeRepo, CodeRepoStatus, Language } from "@prisma/client"
+import CodeCheckService from '#services/code_check_service'
+import { CodeRepo, CodeRepoStatus, Language } from '@prisma/client'
 
 export interface RepoCheckContext {
   repo: CodeRepo

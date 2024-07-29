@@ -67,9 +67,11 @@ export default class AuthService {
    * @param {z.infer<typeof registrationFormSchema>} data - The registration data.
    * @returns {Promise<{ user: User, sessionCookie: string }>} - The created user and session cookie.
    */
-  public async handleRegistration(data: z.infer<typeof registrationSchema>): Promise<{ user: User; sessionCookie: string }> {
+  public async handleRegistration(
+    data: z.infer<typeof registrationSchema>
+  ): Promise<{ user: User; sessionCookie: string }> {
     try {
-      let result;
+      let result
       if (data.userType === 'seller') {
         result = await UserFactory.createSeller({
           email: data.email,
@@ -80,17 +82,20 @@ export default class AuthService {
         result = await UserFactory.createUser({
           email: data.email,
           password: data.password,
-          fullname: data.fullname
+          fullname: data.fullname,
         })
       }
 
-      const { user } = result;
+      const { user } = result
       const session = await lucia.createSession(user.id, {})
       const sessionCookie = lucia.createSessionCookie(session.id)
       const token = sessionCookie.serialize()
       logger.info(token)
 
-      const code = await this.userVerificationService.generateEmailVerificationCode(user.id, user.email)
+      const code = await this.userVerificationService.generateEmailVerificationCode(
+        user.id,
+        user.email
+      )
       await this.userVerificationService.sendVerificationCode(user.email, code, token)
 
       return { user, sessionCookie: token }

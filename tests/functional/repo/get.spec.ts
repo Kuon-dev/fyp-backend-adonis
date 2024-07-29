@@ -248,15 +248,18 @@ test.group('Repository Get Details', () => {
       // Verify that the repoCodeCheck is included but doesn't contain sensitive information
       //assert.exists(response.body().repoCodeCheck)
       //if (response.body().repoCodeCheck) {
-        //assert.exist(response.body().repoCodeChekc)
-        //assert.notExists(response.body().repoCodeCheck.sourceCss)
+      //assert.exist(response.body().repoCodeChekc)
+      //assert.notExists(response.body().repoCodeCheck.sourceCss)
       //}
     } finally {
       await deleteTestRepo(client, token, repoId)
     }
   })
 
-  test('check if tags are correctly returned with repository details', async ({client,assert}) => {
+  test('check if tags are correctly returned with repository details', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
     const repoId = await createTestRepo(client, token, 'public')
 

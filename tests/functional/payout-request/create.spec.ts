@@ -7,7 +7,10 @@ import { DateTime } from 'luxon'
 const COOLDOWN_PERIOD_DAYS = 7
 
 test.group('Payout Request Creation', () => {
-  async function getAuthToken(client: ApiClient, email: string = 'verifiedSeller@example.com'): Promise<string> {
+  async function getAuthToken(
+    client: ApiClient,
+    email: string = 'verifiedSeller@example.com'
+  ): Promise<string> {
     const loginResponse = await client.post('/api/v1/login').json({
       email,
       password: 'password',
@@ -28,17 +31,23 @@ test.group('Payout Request Creation', () => {
       where: { id: seller.sellerProfile.id },
       data: {
         lastPayoutDate: lastPayoutDate,
-        balance: balance
+        balance: balance,
       },
     })
-    console.log(`Updated seller profile: Last payout date set to ${lastPayoutDate}, balance set to ${balance}`)
+    console.log(
+      `Updated seller profile: Last payout date set to ${lastPayoutDate}, balance set to ${balance}`
+    )
     return seller.sellerProfile.id
   }
 
   test('fail to create payout request within cooldown period', async ({ client, assert }) => {
     const token = await getAuthToken(client)
 
-    const sellerProfileId = await updateSellerProfile('verifiedSeller@example.com', COOLDOWN_PERIOD_DAYS - 1, 1000)
+    const sellerProfileId = await updateSellerProfile(
+      'verifiedSeller@example.com',
+      COOLDOWN_PERIOD_DAYS - 1,
+      1000
+    )
 
     const payoutRequestData = {
       totalAmount: 500,
@@ -50,7 +59,10 @@ test.group('Payout Request Creation', () => {
       .json(payoutRequestData)
 
     response.assertStatus(400)
-    assert.equal(response.body().message, 'Cooldown period has not elapsed since last payout request')
+    assert.equal(
+      response.body().message,
+      'Cooldown period has not elapsed since last payout request'
+    )
 
     const updatedSellerProfile = await prisma.sellerProfile.findUnique({
       where: { id: sellerProfileId },
@@ -58,10 +70,17 @@ test.group('Payout Request Creation', () => {
     console.log('Current seller profile state:', updatedSellerProfile)
   })
 
-  test('successfully create payout request just after cooldown period', async ({ client, assert }) => {
+  test('successfully create payout request just after cooldown period', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
 
-    const sellerProfileId = await updateSellerProfile('verifiedSeller@example.com', COOLDOWN_PERIOD_DAYS, 1000)
+    const sellerProfileId = await updateSellerProfile(
+      'verifiedSeller@example.com',
+      COOLDOWN_PERIOD_DAYS,
+      1000
+    )
 
     const payoutRequestData = {
       totalAmount: 500,
@@ -73,7 +92,13 @@ test.group('Payout Request Creation', () => {
       .json(payoutRequestData)
 
     response.assertStatus(201)
-    assert.properties(response.body(), ['id', 'sellerProfileId', 'totalAmount', 'status', 'createdAt'])
+    assert.properties(response.body(), [
+      'id',
+      'sellerProfileId',
+      'totalAmount',
+      'status',
+      'createdAt',
+    ])
     assert.equal(response.body().totalAmount, payoutRequestData.totalAmount)
     assert.equal(response.body().status, PayoutRequestStatus.PENDING)
 
@@ -83,10 +108,17 @@ test.group('Payout Request Creation', () => {
     console.log('Current seller profile state:', updatedSellerProfile)
   })
 
-  test('fail to create payout request with insufficient balance after cooldown period', async ({ client, assert }) => {
+  test('fail to create payout request with insufficient balance after cooldown period', async ({
+    client,
+    assert,
+  }) => {
     const token = await getAuthToken(client)
 
-    const sellerProfileId = await updateSellerProfile('verifiedSeller@example.com', COOLDOWN_PERIOD_DAYS + 1, 100)
+    const sellerProfileId = await updateSellerProfile(
+      'verifiedSeller@example.com',
+      COOLDOWN_PERIOD_DAYS + 1,
+      100
+    )
 
     const payoutRequestData = {
       totalAmount: 500, // Higher than the balance of 100
@@ -147,9 +179,7 @@ test.group('Payout Request Creation', () => {
       totalAmount: 100,
     }
 
-    const response = await client
-      .post('/api/v1/seller/payout-requests')
-      .json(payoutRequestData)
+    const response = await client.post('/api/v1/seller/payout-requests').json(payoutRequestData)
 
     response.assertStatus(401)
     assert.equal(response.body().message, 'User not authenticated')

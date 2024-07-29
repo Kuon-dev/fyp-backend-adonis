@@ -90,6 +90,4 @@ export default class CodeCheckController {
         .json({ message: 'An error occurred while retrieving the code check result.' })
     }
   }
-
-
 }

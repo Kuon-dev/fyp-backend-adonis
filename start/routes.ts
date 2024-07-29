@@ -101,8 +101,12 @@ router
           .prefix('/admin')
           .use(middleware.auth({ role: 'MODERATOR' }))
 
-        router.get('/user/dashboard', [DashboardController, 'getUserDashboardData']).use(middleware.auth({ role: 'USER' }))
-        router.get('/mod/dashboard', [DashboardController, 'getModeratorDashboardData']).use(middleware.auth({ role: 'MODERATOR' }))
+        router
+          .get('/user/dashboard', [DashboardController, 'getUserDashboardData'])
+          .use(middleware.auth({ role: 'USER' }))
+        router
+          .get('/mod/dashboard', [DashboardController, 'getModeratorDashboardData'])
+          .use(middleware.auth({ role: 'MODERATOR' }))
 
         // User routes
         router
@@ -180,7 +184,9 @@ router
             router.put('/:id', [CommentController, 'update'])
             router.put('/:id/revert', [CommentController, 'revertFlag'])
             router.delete('/:id', [CommentController, 'delete'])
-            router.get('/', [CommentController, 'getAll']).use(middleware.auth({ role: 'MODERATOR' }))
+            router
+              .get('/', [CommentController, 'getAll'])
+              .use(middleware.auth({ role: 'MODERATOR' }))
             router.post('/:id/:vote', [CommentController, 'handleVote'])
           })
           .prefix('/comments')

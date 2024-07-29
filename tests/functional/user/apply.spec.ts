@@ -81,9 +81,7 @@ test.group('Seller Application Process', () => {
       routingNumber: '123456789',
     }
 
-    const response = await client
-      .post('/api/v1/seller/apply')
-      .json(sellerData)
+    const response = await client.post('/api/v1/seller/apply').json(sellerData)
 
     response.assertStatus(401)
     assert.equal(response.body().message, 'Unauthorized')
@@ -119,38 +117,32 @@ test.group('Seller Application Process', () => {
     const token = await getUserToken(client)
 
     // First application
-    await client
-      .post('/api/v1/seller/apply')
-      .header('Cookie', token)
-      .json({
-        businessName: 'Test Business',
-        businessAddress: '123 Test St, Test City, 12345',
-        businessPhone: '1234567890',
-        businessEmail: 'test@business.com',
-        accountHolderName: 'John Doe',
-        accountNumber: '1234567890',
-        bankName: 'Test Bank',
-        swiftCode: 'TESTSWIFT',
-        iban: 'TEST1234567890',
-        routingNumber: '123456789',
-      })
+    await client.post('/api/v1/seller/apply').header('Cookie', token).json({
+      businessName: 'Test Business',
+      businessAddress: '123 Test St, Test City, 12345',
+      businessPhone: '1234567890',
+      businessEmail: 'test@business.com',
+      accountHolderName: 'John Doe',
+      accountNumber: '1234567890',
+      bankName: 'Test Bank',
+      swiftCode: 'TESTSWIFT',
+      iban: 'TEST1234567890',
+      routingNumber: '123456789',
+    })
 
     // Second application attempt
-    const response = await client
-      .post('/api/v1/seller/apply')
-      .header('Cookie', token)
-      .json({
-        businessName: 'Another Business',
-        businessAddress: '456 Another St, Another City, 67890',
-        businessPhone: '9876543210',
-        businessEmail: 'another@business.com',
-        accountHolderName: 'Jane Doe',
-        accountNumber: '0987654321',
-        bankName: 'Another Bank',
-        swiftCode: 'ANOTHERSWIFT',
-        iban: 'ANOTHER1234567890',
-        routingNumber: '987654321',
-      })
+    const response = await client.post('/api/v1/seller/apply').header('Cookie', token).json({
+      businessName: 'Another Business',
+      businessAddress: '456 Another St, Another City, 67890',
+      businessPhone: '9876543210',
+      businessEmail: 'another@business.com',
+      accountHolderName: 'Jane Doe',
+      accountNumber: '0987654321',
+      bankName: 'Another Bank',
+      swiftCode: 'ANOTHERSWIFT',
+      iban: 'ANOTHER1234567890',
+      routingNumber: '987654321',
+    })
 
     response.assertStatus(400)
     assert.equal(response.body().message, 'User is already a seller or has a pending application')

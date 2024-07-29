@@ -20,7 +20,6 @@ interface ReviewUpdateData {
 
 @inject()
 export class ReviewService {
-
   constructor(protected repoAccessService: RepoAccessService) {}
   /**
    * Create a new review.
@@ -55,7 +54,7 @@ export class ReviewService {
     }
   }> {
     const repo = await prisma.codeRepo.findUnique({
-      where: { id: repoId }
+      where: { id: repoId },
     })
 
     if (!repo) {
@@ -80,14 +79,14 @@ export class ReviewService {
           },
         },
         _count: {
-          select: { comments: true }
-        }
+          select: { comments: true },
+        },
       },
     })
 
-    const reviewsWithCommentCount = reviews.map(review => ({
+    const reviewsWithCommentCount = reviews.map((review) => ({
       ...review,
-      commentCount: review._count.comments
+      commentCount: review._count.comments,
     }))
 
     const total = await prisma.review.count({

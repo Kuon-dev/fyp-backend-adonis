@@ -48,7 +48,10 @@ async function loginAsUser(client: ApiClient) {
 }
 
 test.group('Review Controller - POST Operations', () => {
-  test('authenticated user can create a review for a purchased repo', async ({ client, assert }) => {
+  test('authenticated user can create a review for a purchased repo', async ({
+    client,
+    assert,
+  }) => {
     const { testUser, purchasedRepo } = await getTestData()
     const userToken = await loginAsUser(client)
     const response = await client.post('/api/v1/reviews').header('Cookie', userToken).json({

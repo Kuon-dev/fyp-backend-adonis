@@ -17,7 +17,9 @@ test.group('Comment Controller - POST Operations', () => {
     const repoId = reposResponse.body().accessibleRepos[0].id
 
     // Then, get a review for that repo
-    const reviewsResponse = await client.get(`/api/v1/repo/${repoId}/reviews`).header('Cookie', token)
+    const reviewsResponse = await client
+      .get(`/api/v1/repo/${repoId}/reviews`)
+      .header('Cookie', token)
     return reviewsResponse.body().data[0].id
   }
 
@@ -30,13 +32,17 @@ test.group('Comment Controller - POST Operations', () => {
       reviewId: reviewId,
     }
 
-    const response = await client
-      .post('/api/v1/comments')
-      .header('Cookie', token)
-      .json(commentData)
+    const response = await client.post('/api/v1/comments').header('Cookie', token).json(commentData)
 
     response.assertStatus(201)
-    assert.properties(response.body(), ['id', 'content', 'userId', 'reviewId', 'createdAt', 'updatedAt'])
+    assert.properties(response.body(), [
+      'id',
+      'content',
+      'userId',
+      'reviewId',
+      'createdAt',
+      'updatedAt',
+    ])
     assert.equal(response.body().content, commentData.content)
     assert.equal(response.body().reviewId, commentData.reviewId)
   })
@@ -69,9 +75,7 @@ test.group('Comment Controller - POST Operations', () => {
       reviewId: reviewId,
     }
 
-    const response = await client
-      .post('/api/v1/comments')
-      .json(commentData)
+    const response = await client.post('/api/v1/comments').json(commentData)
 
     response.assertStatus(401)
   })
@@ -93,7 +97,14 @@ test.group('Comment Controller - POST Operations', () => {
       .header('Cookie', token)
 
     voteResponse.assertStatus(200)
-    assert.properties(voteResponse.body(), ['id', 'content', 'userId', 'reviewId', 'upvotes', 'downvotes'])
+    assert.properties(voteResponse.body(), [
+      'id',
+      'content',
+      'userId',
+      'reviewId',
+      'upvotes',
+      'downvotes',
+    ])
     assert.equal(voteResponse.body().upvotes, 1)
   })
 
@@ -114,7 +125,14 @@ test.group('Comment Controller - POST Operations', () => {
       .header('Cookie', token)
 
     voteResponse.assertStatus(200)
-    assert.properties(voteResponse.body(), ['id', 'content', 'userId', 'reviewId', 'upvotes', 'downvotes'])
+    assert.properties(voteResponse.body(), [
+      'id',
+      'content',
+      'userId',
+      'reviewId',
+      'upvotes',
+      'downvotes',
+    ])
     assert.equal(voteResponse.body().downvotes, 1)
   })
 
@@ -138,8 +156,7 @@ test.group('Comment Controller - POST Operations', () => {
       .json({ content: 'Comment for unauthenticated vote test', reviewId })
     const commentId = commentResponse.body().id
 
-    const response = await client
-      .post(`/api/v1/comments/${commentId}/upvote`)
+    const response = await client.post(`/api/v1/comments/${commentId}/upvote`)
 
     response.assertStatus(401)
   })

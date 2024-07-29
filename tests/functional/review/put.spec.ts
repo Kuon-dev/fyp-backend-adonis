@@ -104,7 +104,7 @@ test.group('Review Update Operations', () => {
     const response = await client
       .put(`/api/v1/reviews/${reviewId}`)
       .header('Cookie', adminToken)
-      .json({ content: 'Attempt to Update Other User\'s Review' })
+      .json({ content: "Attempt to Update Other User's Review" })
 
     response.assertStatus(403)
     assert.equal(response.body().message, 'You do not have permission to update this review')

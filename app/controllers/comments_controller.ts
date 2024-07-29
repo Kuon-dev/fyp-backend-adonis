@@ -10,11 +10,13 @@ const createCommentSchema = z.object({
   reviewId: z.string(),
 })
 
-type UserCommentFlagType = typeof UserCommentFlag[keyof typeof UserCommentFlag];
+type UserCommentFlagType = (typeof UserCommentFlag)[keyof typeof UserCommentFlag]
 
 const updateCommentSchema = z.object({
   content: z.string().max(1000).optional(),
-  flag: z.enum(Object.values(UserCommentFlag) as [UserCommentFlagType, ...UserCommentFlagType[]]).optional(),
+  flag: z
+    .enum(Object.values(UserCommentFlag) as [UserCommentFlagType, ...UserCommentFlagType[]])
+    .optional(),
 })
 
 const paginationSchema = z.object({

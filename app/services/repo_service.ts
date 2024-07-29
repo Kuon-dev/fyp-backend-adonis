@@ -6,12 +6,21 @@ import { prisma } from './prisma_service.js'
 import { publishRepoSchema } from '#validators/repo'
 import { z } from 'zod'
 import CodeCheckService from './code_check_service.js'
-import { RepoExistenceHandler, UserAuthorizationHandler, RepoStatusHandler, RepoContentHandler, CodeCheckHandler, CodeQualityHandler, RepoCheckHandler, RepoCheckContext } from '../handlers/repo.js'
+import {
+  RepoExistenceHandler,
+  UserAuthorizationHandler,
+  RepoStatusHandler,
+  RepoContentHandler,
+  CodeCheckHandler,
+  CodeQualityHandler,
+  RepoCheckHandler,
+  RepoCheckContext,
+} from '../handlers/repo.js'
 
 type PartialCodeRepo = Omit<CodeRepo, 'sourceJs' | 'sourceCss' | 'userId'> & {
   sourceJs?: string
   sourceCss?: string
-  tags?: { tag: Tag }[];
+  tags?: { tag: Tag }[]
 }
 
 type RepoCheckoutInfo = {
@@ -23,7 +32,9 @@ interface CodeRepoWithTags extends CodeRepo {
   tags: string[]
 }
 
-type CreateRepoData = Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & { tags: string[] }
+type CreateRepoData = Omit<CodeRepo, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> & {
+  tags: string[]
+}
 
 @inject()
 export default class RepoService {
@@ -61,9 +72,7 @@ export default class RepoService {
     return repoExistenceHandler
   }
 
-  public async createRepo(
-    data: CreateRepoData & { userId: string }
-  ): Promise<CodeRepo> {
+  public async createRepo(data: CreateRepoData & { userId: string }): Promise<CodeRepo> {
     const { userId, tags, ...repoData } = data
 
     // Validate the input data
@@ -73,8 +82,8 @@ export default class RepoService {
         where: {
           userId: userId,
           name: repoData.name,
-          deletedAt: null // Ensure we don't count deleted repos
-        }
+          deletedAt: null, // Ensure we don't count deleted repos
+        },
       })
 
       if (existingRepo) {
@@ -108,15 +117,15 @@ export default class RepoService {
     const repo = await prisma.codeRepo.findUnique({
       where: {
         id,
-        deletedAt: null // Only return non-deleted repos
+        deletedAt: null, // Only return non-deleted repos
       },
       include: {
         tags: {
           include: {
-            tag: true // Include the actual tag data
-          }
-        }
-      }
+            tag: true, // Include the actual tag data
+          },
+        },
+      },
     })
 
     if (!repo) return null
@@ -124,7 +133,7 @@ export default class RepoService {
     // Transform the tags to return only the tag names
     const transformedRepo: CodeRepoWithTags = {
       ...repo,
-      tags: repo.tags.map(tagRelation => tagRelation.tag.name)
+      tags: repo.tags.map((tagRelation) => tagRelation.tag.name),
     }
 
     return transformedRepo
@@ -171,7 +180,7 @@ export default class RepoService {
       where: {
         id,
         deletedAt: null,
-        visibility: 'public'
+        visibility: 'public',
       },
       select: {
         id: true,
@@ -186,17 +195,16 @@ export default class RepoService {
         deletedAt: true,
         tags: {
           select: {
-            tag: true
-          }
-        }
-      }
+            tag: true,
+          },
+        },
+      },
     })
 
     if (!repo) return null
 
-    return repo;
+    return repo
   }
-
 
   /**
    * Check if a user has purchased a repo.
@@ -234,7 +242,7 @@ export default class RepoService {
         where: { id },
         data: {
           deletedAt: new Date(),
-          visibility: 'private'
+          visibility: 'private',
         },
       })
       return softDeletedRepo
@@ -248,12 +256,12 @@ export default class RepoService {
    * @returns Promise<CodeRepo> - The updated CodeRepo.
    * @throws Error if the repo is not found, user is not authorized, or if the operation fails.
    */
- public async publishRepo(data: z.infer<typeof publishRepoSchema>): Promise<CodeRepo> {
+  public async publishRepo(data: z.infer<typeof publishRepoSchema>): Promise<CodeRepo> {
     const { id, userId } = publishRepoSchema.parse(data)
 
     const repo = await prisma.codeRepo.findUnique({
       where: { id },
-      include: { user: true }
+      include: { user: true },
     })
 
     if (!repo) {
@@ -275,15 +283,15 @@ export default class RepoService {
         data: {
           status: CodeRepoStatus.active,
           visibility: Visibility.public,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       })
 
       await tx.codeCheck.create({
         data: {
           repoId: id,
-          ...context.codeCheckResult!
-        }
+          ...context.codeCheckResult!,
+        },
       })
 
       return updatedRepo
@@ -293,7 +301,7 @@ export default class RepoService {
   public async submitCodeCheck(repoId: string, userId: string): Promise<CodeRepo> {
     const repo = await prisma.codeRepo.findUnique({
       where: { id: repoId },
-      include: { user: true }
+      include: { user: true },
     })
 
     if (!repo) {
@@ -315,15 +323,15 @@ export default class RepoService {
         data: {
           //status: CodeRepoStatus.active,
           //visibility: Visibility.public,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       })
 
       await tx.codeCheck.create({
         data: {
           repoId: repoId,
-          ...context.codeCheckResult!
-        }
+          ...context.codeCheckResult!,
+        },
       })
 
       return updatedRepo
@@ -425,29 +433,29 @@ export default class RepoService {
     })
   }
 
-/**
- * Retrieve Repos by user ID.
- *
- * @param userId - The user ID to filter by.
- * @returns Promise<CodeRepo[]> - Array of CodeRepo objects belonging to the user.
- */
+  /**
+   * Retrieve Repos by user ID.
+   *
+   * @param userId - The user ID to filter by.
+   * @returns Promise<CodeRepo[]> - Array of CodeRepo objects belonging to the user.
+   */
   public async getReposByUser(userId: string): Promise<CodeRepo[]> {
-  try {
-    const repos = await prisma.codeRepo.findMany({
-      where: {
-        userId: userId,
-        deletedAt: null // Only return non-deleted repos
-      },
-      include: {
-        tags: true // Include tags to match the previous implementation
-      }
-    })
-    return repos
-  } catch (error) {
-    console.error('Error fetching repos by user:', error)
-    throw new Error('Failed to fetch repos by user')
+    try {
+      const repos = await prisma.codeRepo.findMany({
+        where: {
+          userId: userId,
+          deletedAt: null, // Only return non-deleted repos
+        },
+        include: {
+          tags: true, // Include tags to match the previous implementation
+        },
+      })
+      return repos
+    } catch (error) {
+      console.error('Error fetching repos by user:', error)
+      throw new Error('Failed to fetch repos by user')
+    }
   }
-}
 
   public async getFeaturedRepos(limit: number = 5): Promise<CodeRepo[]> {
     const featuredRepos = await prisma.codeRepo.findMany({

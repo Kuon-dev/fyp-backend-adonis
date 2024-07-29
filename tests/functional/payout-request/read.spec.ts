@@ -5,7 +5,10 @@ import { prisma } from '#services/prisma_service'
 import { DateTime } from 'luxon'
 
 test.group('Payout Request Read Operations', () => {
-  async function getAuthToken(client: ApiClient, email: string = 'verifiedSeller@example.com'): Promise<string> {
+  async function getAuthToken(
+    client: ApiClient,
+    email: string = 'verifiedSeller@example.com'
+  ): Promise<string> {
     const loginResponse = await client.post('/api/v1/login').json({
       email,
       password: 'password',
@@ -33,10 +36,18 @@ test.group('Payout Request Read Operations', () => {
 
     const payoutRequest = await createTestPayoutRequest(user.id)
 
-    const response = await client.get(`/api/v1/payout-requests/${payoutRequest.id}`).header('Cookie', token)
+    const response = await client
+      .get(`/api/v1/payout-requests/${payoutRequest.id}`)
+      .header('Cookie', token)
 
     response.assertStatus(200)
-    assert.properties(response.body(), ['id', 'sellerProfileId', 'totalAmount', 'status', 'createdAt'])
+    assert.properties(response.body(), [
+      'id',
+      'sellerProfileId',
+      'totalAmount',
+      'status',
+      'createdAt',
+    ])
     assert.equal(response.body().id, payoutRequest.id)
     assert.equal(response.body().totalAmount, payoutRequest.totalAmount)
     assert.equal(response.body().status, PayoutRequestStatus.PENDING)
@@ -46,7 +57,9 @@ test.group('Payout Request Read Operations', () => {
     const token = await getAuthToken(client)
     const nonExistentId = 'non-existent-id'
 
-    const response = await client.get(`/api/v1/payout-requests/${nonExistentId}`).header('Cookie', token)
+    const response = await client
+      .get(`/api/v1/payout-requests/${nonExistentId}`)
+      .header('Cookie', token)
 
     response.assertStatus(400)
     assert.equal(response.body().message, 'PayoutRequest not found')
@@ -61,12 +74,20 @@ test.group('Payout Request Read Operations', () => {
     await createTestPayoutRequest(user.id)
     await createTestPayoutRequest(user.id)
 
-    const response = await client.get('/api/v1/payout-requests/user/current').header('Cookie', token)
+    const response = await client
+      .get('/api/v1/payout-requests/user/current')
+      .header('Cookie', token)
 
     response.assertStatus(200)
     assert.isArray(response.body())
     assert.isNotEmpty(response.body())
-    assert.properties(response.body()[0], ['id', 'sellerProfileId', 'totalAmount', 'status', 'createdAt'])
+    assert.properties(response.body()[0], [
+      'id',
+      'sellerProfileId',
+      'totalAmount',
+      'status',
+      'createdAt',
+    ])
   })
 
   test('fail to get payout requests without authentication', async ({ client }) => {
@@ -90,7 +111,13 @@ test.group('Payout Request Read Operations', () => {
     response.assertStatus(200)
     assert.isArray(response.body())
     assert.isNotEmpty(response.body())
-    assert.properties(response.body()[0], ['id', 'sellerProfileId', 'totalAmount', 'status', 'createdAt'])
+    assert.properties(response.body()[0], [
+      'id',
+      'sellerProfileId',
+      'totalAmount',
+      'status',
+      'createdAt',
+    ])
   })
 
   test('fail to get all payout requests with non-admin user', async ({ client, assert }) => {

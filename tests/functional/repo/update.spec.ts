@@ -47,7 +47,6 @@ test.group('Repository Update and Delete', () => {
       .header('Cookie', token)
       .json(updateData)
 
-
     response.assertStatus(200)
     assert.properties(response.body(), ['id', 'name', 'description', 'language', 'price', 'status'])
     assert.equal(response.body().name, updateData.name)
@@ -128,5 +127,3 @@ test.group('Repository Update and Delete', () => {
     //assert.equal(response.body().message, 'Repo not found or already deleted')
   })
 })
-
-

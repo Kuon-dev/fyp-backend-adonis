@@ -122,7 +122,6 @@ export default class RepoAccessService {
     })
   }
 
-
   /**
    * Get all repos a user has access to
    * @param userId - The ID of the user

@@ -5,5 +5,3 @@ export default class NotFoundException extends Exception {
   static code = 'E_NOT_FOUND'
   static message = 'Not found'
 }
-
-

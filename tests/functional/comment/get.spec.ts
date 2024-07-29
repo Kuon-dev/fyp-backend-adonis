@@ -14,7 +14,9 @@ test.group('Comment Controller - GET Operations', () => {
   async function getReviewId(client: ApiClient, token: string): Promise<string> {
     const reposResponse = await client.get('/api/v1/repos/accessed').header('Cookie', token)
     const repoId = reposResponse.body().accessibleRepos[0].id
-    const reviewsResponse = await client.get(`/api/v1/repo/${repoId}/reviews`).header('Cookie', token)
+    const reviewsResponse = await client
+      .get(`/api/v1/repo/${repoId}/reviews`)
+      .header('Cookie', token)
     return reviewsResponse.body().data[0].id
   }
 
@@ -23,25 +25,33 @@ test.group('Comment Controller - GET Operations', () => {
     return reposResponse.body().accessibleRepos[0].id
   }
 
-  async function createTestReview(client: ApiClient, token: string, repoId: string): Promise<string> {
+  async function createTestReview(
+    client: ApiClient,
+    token: string,
+    repoId: string
+  ): Promise<string> {
     const reviewData = {
       content: 'Test review for comment pagination',
       repoId: repoId,
-      rating: 4
+      rating: 4,
     }
-    const reviewResponse = await client.post('/api/v1/reviews').header('Cookie', token).json(reviewData)
+    const reviewResponse = await client
+      .post('/api/v1/reviews')
+      .header('Cookie', token)
+      .json(reviewData)
     return reviewResponse.body().id
   }
 
-  async function createTestComment(client: ApiClient, token: string, reviewId: string): Promise<string> {
+  async function createTestComment(
+    client: ApiClient,
+    token: string,
+    reviewId: string
+  ): Promise<string> {
     const commentData = {
       content: 'Test comment for pagination',
       reviewId: reviewId,
     }
-    const response = await client
-      .post('/api/v1/comments')
-      .header('Cookie', token)
-      .json(commentData)
+    const response = await client.post('/api/v1/comments').header('Cookie', token).json(commentData)
     return response.body().id
   }
 
@@ -53,7 +63,14 @@ test.group('Comment Controller - GET Operations', () => {
     const response = await client.get(`/api/v1/comments/${commentId}`).header('Cookie', token)
 
     response.assertStatus(200)
-    assert.properties(response.body(), ['id', 'content', 'userId', 'reviewId', 'createdAt', 'updatedAt'])
+    assert.properties(response.body(), [
+      'id',
+      'content',
+      'userId',
+      'reviewId',
+      'createdAt',
+      'updatedAt',
+    ])
     assert.equal(response.body().id, commentId)
     assert.equal(response.body().reviewId, reviewId)
   })
@@ -62,7 +79,7 @@ test.group('Comment Controller - GET Operations', () => {
     const token = await getUserToken(client)
     const repoId = await getRepoId(client, token)
     const reviewId = await createTestReview(client, token, repoId)
-    
+
     // Create multiple comments
     for (let i = 0; i < 5; i++) {
       await createTestComment(client, token, reviewId)
@@ -84,7 +101,7 @@ test.group('Comment Controller - GET Operations', () => {
     const token = await getUserToken(client)
     const repoId = await getRepoId(client, token)
     const reviewId = await createTestReview(client, token, repoId)
-    
+
     // Create multiple comments
     for (let i = 0; i < 15; i++) {
       await createTestComment(client, token, reviewId)
@@ -144,10 +161,13 @@ test.group('Comment Controller - GET Operations', () => {
   })
 
   test('get all flagged comments (admin only)', async ({ client, assert }) => {
-    const adminToken = await client.post('/api/v1/login').json({
-      email: 'admin@example.com',
-      password: 'password',
-    }).then(response => response.headers()['set-cookie'][0])
+    const adminToken = await client
+      .post('/api/v1/login')
+      .json({
+        email: 'admin@example.com',
+        password: 'password',
+      })
+      .then((response) => response.headers()['set-cookie'][0])
 
     const response = await client.get('/api/v1/comments').header('Cookie', adminToken)
 

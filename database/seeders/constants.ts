@@ -361,7 +361,7 @@ function ButtonShowcase() {
 }
 
 render(<ButtonShowcase />);
-`;
+`
 
 export const INPUT_COMPONENTS = `
 import React from "react";
@@ -455,7 +455,7 @@ function InputShowcase() {
 }
 
 render(<InputShowcase />);
-`;
+`
 
 export const CARD_COMPONENTS = `
 import React from "react";
@@ -552,7 +552,7 @@ function CardShowcase() {
 }
 
 render(<CardShowcase />);
-`;
+`
 
 export const COMPONENTS_CSS = `
 /* No additional CSS needed as styles are handled by Tailwind */

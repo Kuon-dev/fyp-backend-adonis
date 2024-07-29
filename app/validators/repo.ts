@@ -36,5 +36,5 @@ export const updateRepoSchema = z.object({
 
 export const publishRepoSchema = z.object({
   id: z.string(),
-  userId: z.string()
+  userId: z.string(),
 })

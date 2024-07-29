@@ -5,16 +5,16 @@ import { ZodError, z } from 'zod'
  * Schema for validating user registration data.
  */
 export const registrationSchema = z.object({
-  fullname: z.string().min(1, { message: "Please enter your full name" }),
+  fullname: z.string().min(1, { message: 'Please enter your full name' }),
   email: z
     .string()
-    .min(1, { message: "Please enter your email" })
-    .email({ message: "Invalid email address" }),
+    .min(1, { message: 'Please enter your email' })
+    .email({ message: 'Invalid email address' }),
   password: z
     .string()
-    .min(1, { message: "Please enter your password" })
-    .min(7, { message: "Password must be at least 7 characters long" }),
-  userType: z.enum(["buyer", "seller"], {
+    .min(1, { message: 'Please enter your password' })
+    .min(7, { message: 'Password must be at least 7 characters long' }),
+  userType: z.enum(['buyer', 'seller'], {
     required_error: "Please select whether you're registering as a buyer or seller",
   }),
 })

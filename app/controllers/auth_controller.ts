@@ -116,8 +116,8 @@ export default class AuthController {
           user: {
             id: user.id,
             email: user.email,
-            role: user.role
-          }
+            role: user.role,
+          },
         })
     } catch (error) {
       logger.error(error)

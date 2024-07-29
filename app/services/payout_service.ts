@@ -64,7 +64,10 @@ export default class PayoutService {
    * @returns {Promise<Payout | null>} The processed payout or null if rejected.
    * @throws {Error} If the payout request is not found or not in a pending state.
    */
-  public async processPayoutRequest(id: string, action: 'approve' | 'reject'): Promise<Payout | null> {
+  public async processPayoutRequest(
+    id: string,
+    action: 'approve' | 'reject'
+  ): Promise<Payout | null> {
     return prisma.$transaction(async (tx) => {
       const payoutRequest = await tx.payoutRequest.findUnique({
         where: { id },

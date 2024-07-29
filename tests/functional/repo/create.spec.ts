@@ -18,7 +18,7 @@ test.group('Repository Creation', () => {
       language: 'TSX',
       price: 0,
       tags: ['redux', 'react'],
-      visibility: "public",
+      visibility: 'public',
     }
     const token = await getAuthToken(client)
 
