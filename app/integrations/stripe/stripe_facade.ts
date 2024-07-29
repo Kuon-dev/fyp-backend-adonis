@@ -29,7 +29,6 @@ export default class StripeFacade {
       })
       return paymentIntent
     } catch (error) {
-      console.error('Stripe payment intent creation error:', error)
       throw new Exception('Failed to create payment intent', {
         code: 'E_STRIPE_PAYMENT_INTENT_CREATION',
         status: 500,
@@ -53,7 +52,6 @@ export default class StripeFacade {
 
       return updatedPaymentIntent
     } catch (error) {
-      console.error('Error creating payment intent for repo:', error)
       throw new Exception('Failed to create payment intent for repo', {
         code: 'E_STRIPE_PAYMENT_INTENT_CREATION',
         status: 500,
@@ -65,7 +63,6 @@ export default class StripeFacade {
     try {
       return await this.stripe.paymentIntents.retrieve(paymentIntentId)
     } catch (error) {
-      console.error('Error retrieving payment intent:', error)
       throw new Exception('Failed to retrieve payment intent', {
         code: 'E_STRIPE_PAYMENT_INTENT_RETRIEVAL',
         status: 500,
@@ -77,7 +74,6 @@ export default class StripeFacade {
     try {
       return await this.stripe.paymentIntents.confirm(paymentIntentId)
     } catch (error) {
-      console.error('Error confirming payment intent:', error)
       throw new Exception('Failed to confirm payment intent', {
         code: 'E_STRIPE_PAYMENT_INTENT_CONFIRMATION',
         status: 500,

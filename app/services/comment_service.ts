@@ -1,3 +1,4 @@
+import NotFoundException from '#exceptions/not_found_exception'
 import { prisma } from '#services/prisma_service'
 import { Comment, UserCommentFlag, VoteType } from '@prisma/client'
 import { RegExpMatcher, englishDataset, englishRecommendedTransformers } from 'obscenity'
@@ -55,21 +56,48 @@ export class CommentService {
     return comment ? this.sanitizeComment(comment) : null
   }
 
-  async updateComment(id: string, data: CommentUpdateData): Promise<CommentResponse> {
-    const flag = data.content ? this.checkContent(data.content) : undefined
-    const comment = await prisma.comment.update({
-      where: { id, deletedAt: null },
-      data: { ...data, flag },
+  async updateComment(id: string, userId: string, content: string): Promise<Comment> {
+    const comment = await prisma.comment.findUnique({ where: { id } })
+    if (!comment) {
+      throw new NotFoundException('Comment not found')
+    }
+    if (comment.userId !== userId) {
+      throw new Error('You do not have permission to update this comment')
+    }
+    return prisma.comment.update({
+      where: { id },
+      data: { content },
     })
-    return this.sanitizeComment(comment)
   }
 
-  async revertFlag(id: string): Promise<CommentResponse> {
-    const comment = await prisma.comment.update({
+  async revertFlag(id: string, userId: string): Promise<Comment> {
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user || user.role !== 'ADMIN') {
+      throw new Error('Admin rights required')
+    }
+    const comment = await prisma.comment.findUnique({ where: { id } })
+    if (!comment) {
+      throw new NotFoundException('Comment not found')
+    }
+    return prisma.comment.update({
       where: { id },
-      data: { flag: UserCommentFlag.NONE },
+      data: { flag: 'NONE' },
     })
-    return this.sanitizeComment(comment)
+  }
+
+  async flagComment(id: string, userId: string, flag: UserCommentFlag): Promise<Comment> {
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user || user.role !== 'ADMIN') {
+      throw new Error('Admin rights required')
+    }
+    const comment = await prisma.comment.findUnique({ where: { id } })
+    if (!comment) {
+      throw new NotFoundException('Comment not found')
+    }
+    return prisma.comment.update({
+      where: { id },
+      data: { flag },
+    })
   }
 
   async deleteComment(id: string): Promise<CommentResponse> {

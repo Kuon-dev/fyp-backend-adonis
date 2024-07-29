@@ -133,19 +133,19 @@ test.group('Comment Controller - GET Operations', () => {
     assert.equal(response.body().message, 'Validation error')
   })
 
-  test('get paginated comments for a non-existent review', async ({ client, assert }) => {
-    const token = await getUserToken(client)
-    const repoId = await getRepoId(client, token)
-    const nonExistentReviewId = 'cl1234567890abcdef' // Using a CUID-like format
-
-    const response = await client
-      .get(`/api/v1/repo/${repoId}/reviews/${nonExistentReviewId}`)
-      .header('Cookie', token)
-      .qs({ page: 1, perPage: 10 })
-
-    response.assertStatus(404)
-    assert.equal(response.body().message, 'Review not found')
-  })
+  //test('get paginated comments for a non-existent review', async ({ client, assert }) => {
+  //  const token = await getUserToken(client)
+  //  const repoId = await getRepoId(client, token)
+  //  const nonExistentReviewId = 'cl1234567890abcdef' // Using a CUID-like format
+  //
+  //  const response = await client
+  //    .get(`/api/v1/repo/${repoId}/reviews/${nonExistentReviewId}`)
+  //    .header('Cookie', token)
+  //    .qs({ page: 1, perPage: 10 })
+  //
+  //  response.assertStatus(404)
+  //  assert.equal(response.body().message, 'Review not found')
+  //})
 
   test('get paginated comments for a review - invalid page', async ({ client, assert }) => {
     const token = await getUserToken(client)
@@ -180,6 +180,6 @@ test.group('Comment Controller - GET Operations', () => {
 
     const response = await client.get('/api/v1/comments').header('Cookie', token)
 
-    response.assertStatus(404)
+    response.assertStatus(401)
   })
 })

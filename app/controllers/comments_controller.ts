@@ -4,6 +4,7 @@ import { CommentService } from '#services/comment_service'
 import { z } from 'zod'
 import UnAuthorizedException from '#exceptions/un_authorized_exception'
 import { UserCommentFlag, VoteType } from '@prisma/client'
+import NotFoundException from '#exceptions/not_found_exception'
 
 const createCommentSchema = z.object({
   content: z.string().min(1).max(1000),
@@ -17,6 +18,10 @@ const updateCommentSchema = z.object({
   flag: z
     .enum(Object.values(UserCommentFlag) as [UserCommentFlagType, ...UserCommentFlagType[]])
     .optional(),
+})
+
+const flagCommentSchema = z.object({
+  flag: z.nativeEnum(UserCommentFlag),
 })
 
 const paginationSchema = z.object({
@@ -174,15 +179,26 @@ export default class CommentController {
    */
   public async update({ params, request, response }: HttpContext) {
     try {
+      const userId = request.user?.id
+      if (!userId) {
+        throw new UnAuthorizedException('Unauthorized')
+      }
+
       const { id } = params
       const data = updateCommentSchema.parse(request.all())
-      const comment = await this.commentService.updateComment(id, data)
-      return response.status(200).json(comment)
+      const comment = await this.commentService.updateComment(id, userId, data.content ?? '')
+      return response.ok(comment)
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return response.status(400).json({ message: 'Validation error', errors: error.errors })
+        return response.badRequest({ message: 'Validation error', errors: error.errors })
       }
-      return response.status(error.status ?? 400).json({ message: error.message })
+      if (error instanceof UnAuthorizedException) {
+        return response.unauthorized({ message: error.message })
+      }
+      if (error instanceof NotFoundException) {
+        return response.notFound({ message: error.message })
+      }
+      return response.forbidden({ message: error.message })
     }
   }
 
@@ -204,16 +220,24 @@ export default class CommentController {
    * }
    * @responseBody 400 - { "message": "Invalid ID", "errors": [...] }
    */
-  public async revertFlag({ params, response }: HttpContext) {
+  public async revertFlag({ params, request, response }: HttpContext) {
     try {
-      const { id } = params
-      const comment = await this.commentService.revertFlag(id)
-      return response.status(200).json(comment)
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return response.status(400).json({ message: 'Invalid ID', errors: error.errors })
+      const userId = request.user?.id
+      if (!userId) {
+        throw new UnAuthorizedException('Unauthorized')
       }
-      return response.status(error.status ?? 400).json({ message: error.message })
+
+      const { id } = params
+      const comment = await this.commentService.revertFlag(id, userId)
+      return response.ok(comment)
+    } catch (error) {
+      if (error instanceof UnAuthorizedException) {
+        return response.unauthorized({ message: error.message })
+      }
+      if (error instanceof NotFoundException) {
+        return response.notFound({ message: error.message })
+      }
+      return response.forbidden({ message: error.message })
     }
   }
 
@@ -263,6 +287,31 @@ export default class CommentController {
       return response.status(200).json(comments)
     } catch (error) {
       return response.status(error.status ?? 400).json({ message: error.message })
+    }
+  }
+
+  public async flag({ params, request, response }: HttpContext) {
+    try {
+      const userId = request.user?.id
+      if (!userId) {
+        throw new UnAuthorizedException('Unauthorized')
+      }
+
+      const { id } = params
+      const data = flagCommentSchema.parse(request.all())
+      const comment = await this.commentService.flagComment(id, userId, data.flag)
+      return response.ok(comment)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return response.badRequest({ message: 'Validation error', errors: error.errors })
+      }
+      if (error instanceof UnAuthorizedException) {
+        return response.unauthorized({ message: error.message })
+      }
+      if (error instanceof NotFoundException) {
+        return response.notFound({ message: error.message })
+      }
+      return response.forbidden({ message: error.message })
     }
   }
 

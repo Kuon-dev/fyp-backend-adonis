@@ -120,14 +120,19 @@ export default class CheckoutService {
       paymentIntentId,
     })
 
-    const paymentIntent = await this.stripeFacade.retrievePaymentIntent(validatedPaymentIntentId)
-    if (!paymentIntent) {
-      throw new Error('Payment intent not found')
-    }
 
     const order = await this.orderService.getOrderByStripePaymentIntentId(paymentIntentId)
     if (!order) {
       throw new Error('Order not found')
+    }
+
+    if (order.stripePaymentIntentId !== paymentIntentId) {
+      throw new Error('Invalid payment intent')
+    }
+
+    const paymentIntent = await this.stripeFacade.retrievePaymentIntent(validatedPaymentIntentId)
+    if (!paymentIntent) {
+      throw new Error('Payment intent not found')
     }
 
     const repo = await this.repoService.getRepoById(order.codeRepoId)
@@ -139,6 +144,11 @@ export default class CheckoutService {
     if (sellerProfile === null) {
       throw new Error('Seller not available')
     }
+    if (order.status === OrderStatus.SUCCEEDED) {
+      throw new Error('Payment has already been processed')
+    }
+
+    // check if the payment intent is successful
 
     await this.orderService.updateOrderStatus(order.id, OrderStatus.SUCCEEDED, tx)
     await this.sellerService.updateBalance(sellerProfile.id, order.totalAmount, tx)

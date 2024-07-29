@@ -51,8 +51,9 @@ export default class CheckoutController {
       ) {
         return response.notFound({ message: error.message })
       }
-      return response.internalServerError({
-        message: 'An error occurred while initiating checkout',
+      return response.abort({
+        message: error.message || 'An error occurred while initiating checkout',
+        status: 500,
       })
     }
   }
@@ -69,28 +70,49 @@ export default class CheckoutController {
    * }
    * @responseBody 400 - { "message": "Invalid input data" }
    * @responseBody 404 - { "message": "Payment intent not found" }
+   * @responseBody 409 - { "message": "Payment has already been processed" }
    * @responseBody 500 - { "message": "An error occurred while processing payment" }
    */
   public async processPayment({ request, response }: HttpContext) {
     const user = request.user
     if (!user) return response.unauthorized({ message: 'User not authenticated' })
-    const trx = await prisma.$transaction(async (tx) => {
-      try {
-        const { paymentIntentId } = processPaymentSchema.parse(request.body())
-        const result = await this.checkoutService.processPayment(user.id, paymentIntentId, tx)
-        return response.ok(result)
-      } catch (error) {
-        logger.error({ err: error }, 'Error in processPayment')
-        if (error instanceof z.ZodError) {
-          return response.badRequest({ message: 'Invalid input data', errors: error.errors })
-        }
-        if (error instanceof Error && error.message === 'Payment intent not found') {
-          return response.notFound({ message: error.message })
-        }
-        throw error // Re-throw to trigger transaction rollback
-      }
-    })
 
-    return trx
+    try {
+      const { paymentIntentId } = processPaymentSchema.parse(request.body())
+
+      const result = await prisma.$transaction(async (tx) => {
+        return await this.checkoutService.processPayment(user.id, paymentIntentId, tx)
+      })
+
+      return response.ok(result)
+    } catch (error) {
+
+      if (error instanceof z.ZodError) {
+        return response.badRequest({ message: 'Invalid input data', errors: error.errors })
+      }
+
+      if (error instanceof Error) {
+        switch (error.message) {
+          case 'Invalid payment intent':
+          case 'Order not found':
+          case 'Repo not found':
+            return response.notFound({ message: error.message })
+          case 'Payment has already been processed':
+            return response.conflict({ message: error.message })
+          case 'Seller not available':
+          case 'Payment intent is not in a succeeded state':
+          case 'Failed to grant access to the repo':
+            return response.badRequest({ message: error.message })
+          default:
+            return response.internalServerError({
+              message: 'An unexpected error occurred while processing payment',
+            })
+        }
+      }
+
+      return response.internalServerError({
+        message: 'An error occurred while processing payment',
+      })
+    }
   }
 }
