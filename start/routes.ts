@@ -180,7 +180,7 @@ router
             router.put('/:id', [CommentController, 'update'])
             router.put('/:id/revert', [CommentController, 'revertFlag'])
             router.delete('/:id', [CommentController, 'delete'])
-            router.get('/', [CommentController, 'getAll'])
+            router.get('/', [CommentController, 'getAll']).use(middleware.auth({ role: 'MODERATOR' }))
             router.post('/:id/:vote', [CommentController, 'handleVote'])
           })
           .prefix('/comments')

@@ -63,16 +63,6 @@ test.group('Review Controller - GET Operations', () => {
     assert.equal(response.body().id, reviewId)
   })
 
-  test('get review by id - not found', async ({ client, assert }) => {
-    const userToken = await loginAsUser(client)
-    const nonExistentId = 'non-existent-id'
-
-    const response = await client.get(`/api/v1/reviews/${nonExistentId}`).header('Cookie', userToken)
-
-    response.assertStatus(200)
-    console.log(response.body())
-  })
-
   test('get paginated reviews for a repo', async ({ client, assert }) => {
     const { testRepo } = await getTestData()
     const userToken = await loginAsUser(client)

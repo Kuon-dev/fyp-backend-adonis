@@ -117,11 +117,24 @@ export class ReviewService {
   /**
    * Update a review by ID.
    * @param id - The ID of the review to update.
+   * @param userId - The ID of the user attempting to update the review.
    * @param data - The data to update the review.
    * @returns The updated review.
+   * @throws NotFoundException if the review is not found.
+   * @throws UnAuthorizedException if the user is not the owner of the review.
    */
-  async updateReview(id: string, data: ReviewUpdateData): Promise<Review> {
-    return prisma.review.update({ where: { id, deletedAt: null }, data })
+  async updateReview(id: string, userId: string, data: ReviewUpdateData): Promise<Review> {
+    const review = await prisma.review.findUnique({ where: { id, deletedAt: null } })
+
+    if (!review) {
+      throw new NotFoundException('Review not found')
+    }
+
+    if (review.userId !== userId) {
+      throw new Error('Forbidden')
+    }
+
+    return prisma.review.update({ where: { id }, data })
   }
 
   /**

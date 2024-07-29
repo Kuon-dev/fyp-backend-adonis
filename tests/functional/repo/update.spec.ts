@@ -3,9 +3,9 @@ import { ApiClient } from '@japa/api-client'
 import { prisma } from '#services/prisma_service'
 
 test.group('Repository Update and Delete', () => {
-  async function getAuthToken(client: ApiClient): Promise<string> {
+  async function getSellerToken(client: ApiClient): Promise<string> {
     const loginResponse = await client.post('/api/v1/login').json({
-      email: 'normalUser@example.com',
+      email: 'verifiedSeller@example.com',
       password: 'password',
     })
     return loginResponse.headers()['set-cookie'][0]
@@ -21,31 +21,32 @@ test.group('Repository Update and Delete', () => {
 
   async function createTestRepo(client: ApiClient, token: string): Promise<string> {
     const repoData = {
-      name: 'Test Repo for Update/Delete',
+      name: 'Test Repo for Update/Delete' + Math.random().toString(36).substring(7),
       description: 'A test repository',
       language: 'JSX',
       price: 0,
-      tags: ['test', 'react'],
+      tags: ['redux', 'react'],
     }
     const response = await client.post('/api/v1/repo').header('Cookie', token).json(repoData)
     return response.body().id
   }
 
   test('successfully update a repository', async ({ client, assert }) => {
-    const token = await getAuthToken(client)
+    const token = await getSellerToken(client)
     const repoId = await createTestRepo(client, token)
 
     const updateData = {
       name: 'Updated Test Repo',
       description: 'An updated test repository',
       price: 10,
-      tags: ['test', 'react', 'updated'],
+      tags: ['react'],
     }
 
     const response = await client
       .put(`/api/v1/repo/${repoId}`)
       .header('Cookie', token)
       .json(updateData)
+
 
     response.assertStatus(200)
     assert.properties(response.body(), ['id', 'name', 'description', 'language', 'price', 'status'])
@@ -59,7 +60,7 @@ test.group('Repository Update and Delete', () => {
   })
 
   test('fail to update repository with invalid data', async ({ client, assert }) => {
-    const token = await getAuthToken(client)
+    const token = await getSellerToken(client)
     const repoId = await createTestRepo(client, token)
 
     const invalidUpdateData = {
@@ -87,7 +88,7 @@ test.group('Repository Update and Delete', () => {
   })
 
   test('fail to delete non-existent repository', async ({ client, assert }) => {
-    const token = await getAuthToken(client)
+    const token = await getSellerToken(client)
     const nonExistentId = 'non_existent_id'
 
     const response = await client.delete(`/api/v1/repo/${nonExistentId}`).header('Cookie', token)
@@ -104,7 +105,7 @@ test.group('Repository Update and Delete', () => {
   test('successfully soft delete a repository', async ({ client, assert }) => {
     const token = await getAdminToken(client)
     const repoId = await createTestRepo(client, token)
-    
+
     const response = await client.delete(`/api/v1/repo/${repoId}`).header('Cookie', token)
     response.assertStatus(200)
     assert.equal(response.body().message, 'Repo deleted successfully')
@@ -117,7 +118,7 @@ test.group('Repository Update and Delete', () => {
   test('attempt to soft delete an already deleted repository', async ({ client, assert }) => {
     const token = await getAdminToken(client)
     const repoId = await createTestRepo(client, token)
-    
+
     // Soft delete the repository
     await client.delete(`/api/v1/repo/${repoId}`).header('Cookie', token)
 

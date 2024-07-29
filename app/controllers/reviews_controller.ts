@@ -138,28 +138,35 @@ export default class ReviewController {
    *   "content": "Updated review content",
    *   "rating": 4
    * }
-   * @responseBody 200 - {
-   *   "id": "cuid0987654321",
-   *   "content": "Updated review content",
-   *   "userId": "user123",
-   *   "repoId": "cuid1234567890",
-   *   "rating": 4,
-   *   "createdAt": "2023-07-15T10:00:00Z",
-   *   "updatedAt": "2023-07-15T11:00:00Z",
-   *   "upvotes": 10,
-   *   "downvotes": 2
-   * }
+   * @responseBody 200 - { ... }
    * @responseBody 400 - { "message": "Validation error", "errors": [...] }
+   * @responseBody 401 - { "message": "Unauthorized" }
+   * @responseBody 403 - { "message": "Forbidden" }
+   * @responseBody 404 - { "message": "Review not found" }
    */
   public async update({ params, request, response }: HttpContext) {
     try {
+      const userId = request.user?.id
+      if (!userId) {
+        throw new UnAuthorizedException('Unauthorized')
+      }
+      
       const { id } = params
       const data = updateReviewSchema.parse(request.all())
-      const review = await this.reviewService.updateReview(id, data)
+      const review = await this.reviewService.updateReview(id, userId, data)
       return response.status(200).json(review)
     } catch (error) {
       if (error instanceof z.ZodError) {
         return response.status(400).json({ message: 'Validation error', errors: error.errors })
+      }
+      if (error instanceof UnAuthorizedException) {
+        return response.status(401).json({ message: error.message })
+      }
+      if (error instanceof NotFoundException) {
+        return response.status(404).json({ message: error.message })
+      }
+      if (error.message === 'Forbidden') {
+        return response.status(403).json({ message: 'You do not have permission to update this review' })
       }
       return response.status(400).json({ message: error.message })
     }
