@@ -19,3 +19,4 @@ declare module '@adonisjs/core/http' {
 Request.macro('user', null as User | null)
 
 Request.macro('session', null as Session | null)
+
